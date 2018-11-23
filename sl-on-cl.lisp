@@ -298,18 +298,17 @@ an error occurs:
 		  ((or (eq u0 '\-) (digit u0))	; NUMBER
 		   (read-from-string (cl:map 'string #'character u)))
 		  (t						   ; IDENTIFIER
-		   ;; Replace ! by \, but !! by \!
+		   ;; Delete a single ! but replace !! by !
 		   (loop with newu while u do
-				 (cond ((eq (car u) '\!)
-						(push '\\ newu)
-						(when (eq (cadr u) '\!)
-						  (push '\! newu)
-						  (setf u (cdr u))))
-			 		   (t (push (car u) newu)))
-				 (setf u (cdr u))
-				 finally (return
-						  (make-symbol	; uninterned symbol
-						   (cl:map 'string #'character (nreverse newu)))))))))
+				(cond ((eq (car u) '!)
+					   (when (eq (cadr u) '!)
+						 (push '! newu)
+						 (setf u (cdr u))))
+					  (t (push (car u) newu)))
+				(setf u (cdr u))
+			  finally (return
+						(make-symbol	; uninterned symbol
+						 (cl:map 'string #'character (nreverse newu)))))))))
 
 (defun explode (u)
   "EXPLODE(U:{atom}-{vector}):id-list eval, spread
