@@ -109,7 +109,7 @@ determined by DEFINITION.  The return value is undefined."
 ;; EXPR PROCEDURE ATOM(U);
 ;;    NULL PAIRP U;
 
-(defalias 'codep 'functionp
+(defalias 'codep 'cl:functionp
   "CODEP(U:any):boolean eval, spread
 Returns T if U is a function-pointer.")
 
@@ -124,7 +124,7 @@ EXPR PROCEDURE CONSTANTP(U);
 ;; Returns T if U points to the same object as V. EQ is not a reliable
 ;; comparison between numeric arguments.
 
-(defalias 'eqn 'eql
+(defalias 'eqn 'cl:eql
   "EQN(U:any, V:any):boolean eval, spread
 Returns T if U and V are EQ or if U and V are numbers and have
 the same value and type.")
@@ -136,14 +136,14 @@ the same value and type.")
 ;; positions. Strings must have identical characters. Function
 ;; pointers must have EQ values. Other atoms must be EQN equal.
 
-(defalias 'fixp 'integerp
+(defalias 'fixp 'cl:integerp
   "FIXP(U:any):boolean eval, spread
 Returns T if U is an integer (a fixed number).")
 
 ;; FLOATP(U:any):boolean eval, spread
 ;; Returns T if U is a floating point number.
 
-(defalias 'idp 'symbolp
+(defalias 'idp 'cl:symbolp
   "IDP(U:any):boolean eval, spread
 Returns T if U is an id.")
 
@@ -171,7 +171,7 @@ EXPR PROCEDURE ONEP(U);
    OR(EQN(U, 1), EQN(U, 1.0));"
   (equalp u 1))
 
-(defalias 'pairp 'consp
+(defalias 'pairp 'cl:consp
   "PAIRP(U:any):boolean eval, spread
 Returns T if U is a dotted-pair.")
 
@@ -223,7 +223,7 @@ Returns T if U is a dotted-pair.")
 
 ;; first, second, third, fourth, rest are all defined in CL.
 
-(defalias 'lastpair 'last
+(defalias 'lastpair 'cl:last
   "(lastpair L:pair): any expr
 Returns the last pair of a L. It is often useful to think of this
 as a pointer to the last element for use with destructive
@@ -846,8 +846,8 @@ dependent format."
 	   (car args)))
 	(cl:error
 	 (err)
-	 (if msgp (format t "~A" err))
-	 nil)))
+	 (if msgp (format t "~%***** CL error: ~a" err))
+	 999)))
 
 
 ;;; Vectors
@@ -942,13 +942,13 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;; EXPR PROCEDURE ABS(U);
 ;;    IF LESSP(U, 0) THEN MINUS(U) ELSE U;
 
-(defalias 'add1 '1+
+(defalias 'add1 'cl:1+
   "ADD1(U:number):number eval, spread
 Returns the value of U plus 1 of the same type as U (fixed or floating).
 EXPR PROCEDURE ADD1(U);
    PLUS2(U, 1);")
 
-(defalias 'difference '-
+(defalias 'difference 'cl:-
   "DIFFERENCE(U:number, V:number):number eval, spread
 The value U - V is returned.")
 
@@ -984,7 +984,7 @@ EXPR PROCEDURE DIVIDE(U, V);
 ;; power V does not have V changed to a floating number before
 ;; exponentiation.
 
-(defalias 'fix 'truncate
+(defalias 'fix 'cl:truncate
   "FIX(U:number):integer eval, spread
 Returns an integer which corresponds to the truncated value of U.
 The result of conversion must retain all significant portions of U. If
@@ -999,11 +999,11 @@ U is an integer it is returned unchanged.")
 ;; error occurs:
 ;; ***** Argument to FLOAT is too large
 
-(defalias 'greaterp '>
+(defalias 'greaterp 'cl:>
   "GREATERP(U:number, V:number):boolean eval, spread
 Returns T if U is strictly greater than V, otherwise returns NIL.")
 
-(defalias 'lessp '<
+(defalias 'lessp 'cl:<
   "LESSP(U:number, V:number):boolean eval, spread
 Returns T if U is strictly less than V, otherwise returns NIL.")
 
@@ -1013,7 +1013,7 @@ Returns T if U is strictly less than V, otherwise returns NIL.")
 ;; MACRO PROCEDURE MAX(U);
 ;;    EXPAND(CDR U, 'MAX2);
 
-(defalias 'max2 'max
+(defalias 'max2 'cl:max
   "MAX2(U:number, V:number):number eval, spread
 Returns the larger of U and V. If U and V are the same value U is
 returned (U and V might be of different types).
@@ -1026,30 +1026,30 @@ EXPR PROCEDURE MAX2(U, V);
 ;; MACRO PROCEDURE MIN(U);
 ;;    EXPAND(CDR U, 'MIN2);
 
-(defalias 'min2 'min
+(defalias 'min2 'cl:min
   "MIN2(U:number, V:number):number eval, spread
 Returns the smaller of its arguments. If U and V are the same value,
 U is returned (U and V might be of different types).
 EXPR PROCEDURE MIN2(U, V);
    IF GREATERP(U, V) THEN V ELSE U;")
 
-(defalias 'minus '-
+(defalias 'minus 'cl:-
   "MINUS(U:number):number eval, spread
 Returns -U.
 EXPR PROCEDURE MINUS(U);
    DIFFERENCE(0, U);")
 
-(defalias 'plus '+
+(defalias 'plus 'cl:+
   "PLUS([U:number]):number noeval, nospread, or macro
 Forms the sum of all its arguments.
 MACRO PROCEDURE PLUS(U);
    EXPAND(CDR U, 'PLUS2);")
 
-(defalias 'plus2 '+
+(defalias 'plus2 'cl:+
   "PLUS2(U:number, V:number):number eval, spread
 Returns the sum of U and V.")
 
-(defalias 'quotient 'truncate
+(defalias 'quotient 'cl:truncate
   "QUOTIENT(U:number, V:number):number eval, spread
 The quotient of U divided by V is returned. Division of two positive
 or two negative integers is conventional. When both U and V are
@@ -1058,7 +1058,7 @@ the negative truncation of the absolute value of U divided by the
 absolute value of V. An error occurs if division by zero is attempted:
 ***** Attempt to divide by 0 in QUOTIENT")
 
-(defalias 'remainder 'rem
+(defalias 'remainder 'cl:rem
   "REMAINDER(U:number, V:number):number eval, spread
 If both U and V are integers the result is the integer remainder of
 U divided by V. If either parameter is floating point, the result is
@@ -1070,20 +1070,20 @@ zero:
 EXPR PROCEDURE REMAINDER(U, V);
    DIFFERENCE(U, TIMES2(QUOTIENT(U, V), V));")
 
-(defalias 'sub1 '1-
+(defalias 'sub1 'cl:1-
   "SUB1(U:number):number eval, spread
 Returns the value of U less 1. If U is a FLOAT type number, the
 value returned is U less 1.0.
 EXPR PROCEDURE SUB1(U);
    DIFFERENCE(U, 1);")
 
-(defalias 'times '*
+(defalias 'times 'cl:*
   "TIMES([U:number]):number noeval, nospread, or macro
 Returns the product of all its arguments.
 MACRO PROCEDURE TIMES(U);
    EXPAND(CDR U, 'TIMES2);")
 
-(defalias 'times2 '*
+(defalias 'times2 'cl:*
   "TIMES2(U:number, V:number):number eval, spread
 Returns the product of U and V.")
 
@@ -1261,7 +1261,7 @@ Returns T if U is a digit, otherwise NIL.
 EXPR PROCEDURE DIGIT(U);
    IF MEMQ(U, '(!0 !1 !2 !3 !4 !5 !6 !7 !8 !9))
       THEN T ELSE NIL;"
-  (digit-char-p (character u)))
+  (cl:member u '(\0 \1 \2 \3 \4 \5 \6 \7 \8 \9) :test #'eq))
 
 (defun length (x)
   "LENGTH(X:any):integer eval, spread
@@ -1284,7 +1284,10 @@ EXPR PROCEDURE LITER(U);
                 !a !b !c !d !e !f !g !h !i !j !k !l !m
                 !n !o !p !q !r !s !t !u !v !w !x !y !z))
       THEN T ELSE NIL;"
-  (alpha-char-p (character u)))
+  (cl:member u '(\A \B \C \D \E \F \G \H \I \J \K \L \M
+                 \N \O \P \Q \R \S \T \U \V \W \X \Y \Z
+                 \a \b \c \d \e \f \g \h \i \j \k \l \m
+                 \n \o \p \q \r \s \t \u \v \w \x \y \z) :test #'eq))
 
 (defun member (a b)
   "MEMBER(A:any, B:list):extra-boolean eval, spread
@@ -1343,7 +1346,7 @@ EXPR PROCEDURE PAIR(U, V);
 ;;    RETURN W
 ;; END;
 
-(defalias 'reversip 'nreverse)			; PSL function
+(defalias 'reversip 'cl:nreverse)			; PSL function
 
 (defun sassoc (u v fn)
   "SASSOC(U:any, V:alist, FN:function):any eval, spread
