@@ -7,9 +7,10 @@
 
 ;; Current targets are Cygwin CLISP and Windows SBCL.
 
-;; The file does not provide a Standard Lisp REPL and is intended
-;; primarily for running REDUCE (which provides its own REPL) on
-;; Common Lisp.
+;; This file implements a superset of Standard Lisp that is a subset
+;; of the union of PSL and CSL.  It does not provide a Standard Lisp
+;; REPL and is intended primarily for running REDUCE (which provides
+;; its own REPL) on Common Lisp.
 
 (defpackage :standard-lisp
   (:nicknames :sl)
@@ -21,7 +22,8 @@
   (:shadow :constantp :nth :pnth :intern :get :remprop :error :map
 		   :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
 		   :delete :length :member :close :open :princ :print :prin1
-		   :prin2 :read :terpri :compile-file :load)
+		   :prin2 :read :terpri :compile-file :load :time
+		   :char-downcase :char-upcase)
   #+CLISP (:import-from :ext :exit :quit :bye :getenv) ; CLISP only
   #+SBCL (:import-from :sb-ext :exit :quit)			   ; SBCL only
   )
@@ -1102,7 +1104,7 @@ Returns the product of U and V.")
 ;; (defalias 'ITIMES2 '*)
 ;; (defalias 'IADD1 '1+)
 ;; (defalias 'ISUB1 '1-)
-;; (defalias 'IMINUS '-)
+(defalias 'iminus '-)				 ; used early in rlisp
 ;; (defalias 'IMINUSP 'cl-minusp)
 ;; (defalias 'IDIFFERENCE '-)
 ;; (defalias 'IQUOTIENT '/)
@@ -1726,7 +1728,7 @@ Comments delimited by % and end-of-line are not transparent to READCH."
 		  (cond ((eq c $eof$) $eof$)
 				((char= c #\Newline) $eol$)
 				((eq %%readch-prev-id '!) (cl:intern (string c)))
-				(*raise (cl:intern (string (char-upcase c))))
+				(*raise (cl:intern (string (cl:char-upcase c))))
 				(t (cl:intern (string c)))))))
 
 (defun terpri ()
@@ -1753,14 +1755,134 @@ selected output file.
 ;;; Additional Lisp functions expected by REDUCE
 ;;; ============================================
 
-;;; These function are not defined in the Standard Lisp Report.
+;; These function are not defined in the Standard Lisp Report,
+;; although some of them are defined in PSL.
 
-;; ...
+;; In the Standard Lisp world, "character" means either a symbol whose
+;; name is one character long or an ASCII character code.
 
-;; This code is useful for bootstrapping:
+(defun date ()							; PSL
+  "(date): string expr
+The date in the form \"day-month-year\"
+1 lisp> (date)
+\"21-Jan-1997\""
+  (let ((months '("Jan" "Feb" "Mar" "Apr" "May" "Jun"
+				  "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")))
+	(multiple-value-bind
+		  (second minute hour date month year)
+		(get-decoded-time)
+	  (declare (ignore second minute hour))
+      (format t "~2,'0d-~a-~d" date (cl:nth (1- month) months) year))))
+
+(defconstant +milliseconds-per-internal-time-unit+
+  (/ 1000 internal-time-units-per-second)
+  "Multiplier to convert internal time units to milliseconds.")
+
+(defun time ()							; PSL
+  "(time): integer expr
+Elapsed time from some arbitrary initial point in milliseconds."
+  ;; This is used for timing computations, so use run time.
+  (round (* (get-internal-run-time) +milliseconds-per-internal-time-unit+)))
+
+(defun explode2 (u)						; PSL
+  "(explode2 U:atom-vector): id-list expr
+PRIN2-like version of EXPLODE without escapes or double quotes."
+  (cl:map 'list
+		  #'(lambda (c) (cl:intern (string c)))
+		  (princ-to-string u)))
+
+(defalias 'allocate-string 'cl:make-string ; PSL
+  "(allocate-string SIZE:integer): string expr
+Constructs and returns a string with SIZE characters. The contents of
+the string are not initialized.")
+
+(defun string2list (s)					; PSL
+  "(string2list S:string): inum-list expr
+Creates a list of length (add1 (size S)), converting the ASCII
+characters into small integers.
+lisp> (string2list \"STRING\")
+\(83 84 82 73 78 71)"
+  (cl:map 'list
+		  #'(lambda (x) (char-code x))
+		  s))
+
+(defun %%character (x)
+  "Generalize cl:character to accept also a character code."
+  (if (integerp x)
+	  (if (and (<= 0 x) (<= x 127))
+		  (code-char x)
+		  (cl:error
+		   "***** SL error in `character': ~d is not a character code" x))
+	  (character x)))
+
+(defun list2string (l)					; PSL
+  "(list2string L:inum-list): string expr
+Allocates a string of the same size as L, and converts small integers
+into characters according to their ASCII code. An integer outside the
+range of 0 ... 127 will result in an error.
+lisp> (list2string '(83 84 82 73 78 71))
+\"STRING\""
+  (cl:map 'string #'%%character l))
+
+(defun string-store (s i x)				; PSL
+  "(string-store S:string I:integer X:char): None Returned expr
+Stores into a PSL string. String indexes start with 0."
+  (setf (aref s i) (%%character x)))
+
+(defalias 'string-length 'cl:length		; PSL
+  "(string-length S:string): integer expr
+Returns the number of elements in a PSL string. Since indexes start with
+index 0, the size is one larger than the greatest legal index. Compare this
+function with string-upper-bound, documented below.")
+
+(defun char-downcase (c)
+  "Convert single-character identifier C to lower case; cf. CSL."
+  (intern (string-downcase (symbol-name c))))
+
+(defun char-upcase (c)
+  "Convert single-character identifier C to lower case; cf. CSL."
+  (intern (string-upcase (symbol-name c))))
+
+(defun int2id (i)						; PSL
+  "(int2id I:integer): id expr
+Converts an integer to an id; this refers to the I'th id in the id space. Since
+0 ... 255 correspond to ASCII characters, int2id with an argument in this
+range converts an ASCII code to the corresponding single character id. The
+id NIL is always found by (int2id 128)."
+  ;; I'm guessing that the id should be interned! If not, use make-symbol.
+  ;; This may not be correct for i >= 128.
+  (intern (string (code-char i))))
+
+(defalias 'id2string 'cl:symbol-name	; PSL
+  "(id2string D:id): string expr
+Get name from id space. Id2string returns the print name of its argument
+as a string. This is not a copy, so destructive operations should not be performed
+on the result. PSL uses an escape convention for notating identifiers
+which contain special characters. Any character which follows the character
+! is considered to be an alphabetic character. In the example, notice that the
+character ! does not appear in the result.
+1 lisp> (id2string ’is-!%)
+\"is-%\"")
+
+(defalias 'land 'cl:logand				; PSL
+  "(land U:integer V:integer): integer expr
+Bitwise or logical and. Each bit of the result is independently
+determined from the corresponding bits of the operands.")
+
+(defalias 'lshift 'cl:ash				; PSL
+  ;; Not quite right for negative integers N!
+  "(lshift N:integer K:integer): integer expr
+Shifts N to the left by K bits. The effect is similar to multiplying
+by 2 to the K power. Negative values are acceptable for K, and cause a
+right shift (in the usual manner). Lshift is a logical shift, so right
+shifts do not resemble division by a power of 2.")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; This code may be useful for bootstrapping:
 ;; (compile-file "boot.sl")
 ;; (load "boot.sl")
-;; (dskin "dbuild.el")
+;; (dskin "dbuild.sl")
 
 (defun compile-file (input-file &rest other-args)
   ;; (compile-file input-file &key output-file verbose print
@@ -1788,5 +1910,15 @@ The contents of the file NAME are processed as if they were typed in.
 Once the input stream has been bound to the channel which
 represents the open file, each form is processed."
   (rds (setf oldchan* (open name 'input))))
+
+
+;;; Common Lisp functions that are redefined in REDUCE
+;;; ==================================================
+
+;; Allow this for now by shadowing the symbols in the STANDARD-LISP
+;; package.  Later, it might be better to use the Common Lisp
+;; functions, but their compatibility needs checking!
+
+(shadow '(arrayp listp subsetp union intersection))
 
 ;;; sl-on-cl.lisp ends here
