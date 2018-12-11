@@ -19,11 +19,11 @@
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
-  (:shadow :constantp :nth :pnth :intern :get :remprop :error :map
-		   :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
+  (:shadow :constantp :vectorp :nth :pnth :intern :get :remprop :error
+		   :map :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
 		   :delete :length :member :close :open :princ :print :prin1
 		   :prin2 :read :terpri :compile-file :load :time
-		   :char-downcase :char-upcase)
+		   :char-downcase :char-upcase :string-downcase)
   #+CLISP (:import-from :ext :exit :quit :bye :getenv) ; CLISP only
   #+SBCL (:import-from :sb-ext :exit :quit)			   ; SBCL only
   )
@@ -180,8 +180,12 @@ Returns T if U is a dotted-pair.")
 ;; STRINGP(U:any):boolean eval, spread
 ;; Returns T if U is a string.
 
-;; VECTORP(U:any):boolean eval, spread
-;; Returns T if U is a vector.
+(defun vectorp (u)
+  "VECTORP(U:any):boolean eval, spread
+Returns T if U is a vector."
+  ;; Must exclude strings, which are also vectors in CL.
+  ;; (and (vectorp u) (not (stringp u)))
+  (typep u '(vector t)))
 
 ;; ZEROP(U:any):boolean eval, spread
 ;; Returns T if U is a number and has the value 0 or 0.0. Returns
@@ -564,7 +568,13 @@ is returned."
 	   (cond ((eq (cl:get fname '%%ftype) 'macro)
 			  ;; ;; Return the (uncompiled) SL macro form:
 			  ;; (cl:get fname '%%macro)
-			  (cons 'macro (macro-function fname)))
+			  ;; This may need more work.
+			  ;; A CL macro expansion needs an environment.
+			  ;; Try the null environment (nil) initially.
+			  ;; (The parameter x should perhaps be a gensym.)
+			  (cons 'macro
+					(eval `(lambda (x)
+							 (funcall (macro-function ',fname) x nil)))))
 			 (t
 			  (cons 'expr (symbol-function fname))))))
 
@@ -729,9 +739,9 @@ in interpreted functions are automatically considered fluid."
 		   idlist)
   nil)
 
-;; Special variables defined above that are SL globals:
-(fluid '(*raise))
-(global '(*comp emsg* *gc))
+;; SL declarations for special variables defined above:
+(fluid '(*comp *raise))
+(global '(emsg* *gc))
 
 
 ;;; Program Feature Functions
@@ -817,7 +827,6 @@ In PSL it is throw('!$error!$,99)."
   (cl:error "***** SL error ~a" 99))
 
 (defun errorset (u msgp tr)
-  (declare (ignore tr))					; TEMPORARY!
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
 If an error occurs during the evaluation of U, the value of
 NUMBER from the ERROR call is returned as the value of
@@ -839,17 +848,22 @@ trace-back sequence will be initiated on the selected output
 device. The traceback will display information such as unbindings
 of FLUID variables, argument lists and so on in an implementation
 dependent format."
-  (handler-case (list (eval u))			; protected form
-	(simple-error
-	 (err)
-	 (let ((fmt (simple-condition-format-control err))
-		   (args (simple-condition-format-arguments err)))
-	   (if (and msgp (cdr args)) (apply #'format t fmt args))
-	   (car args)))
-	(cl:error
-	 (err)
-	 (if msgp (format t "~%***** CL error: ~a" err))
-	 999)))
+  (if tr
+	  ;; Enter the debugger if an error arises.
+	  ;; Probably not the optimal way to generate a traceback!
+	  (list (eval u))
+	  ;; Handle any error that arises.
+	  (handler-case (list (eval u))		; protected form
+		(simple-error
+			(err)
+		  (let ((fmt (simple-condition-format-control err))
+				(args (simple-condition-format-arguments err)))
+			(if (and msgp (cdr args)) (apply #'format t fmt args))
+			(car args)))
+		(cl:error
+			(err)
+		  (if msgp (format t "~%***** CL error: ~a" err))
+		  999))))
 
 
 ;;; Vectors
@@ -1836,11 +1850,11 @@ function with string-upper-bound, documented below.")
 
 (defun char-downcase (c)
   "Convert single-character identifier C to lower case; cf. CSL."
-  (intern (string-downcase (symbol-name c))))
+  (cl:intern (cl:string-downcase (symbol-name c))))
 
 (defun char-upcase (c)
   "Convert single-character identifier C to lower case; cf. CSL."
-  (intern (string-upcase (symbol-name c))))
+  (cl:intern (cl:string-upcase (symbol-name c))))
 
 (defun int2id (i)						; PSL
   "(int2id I:integer): id expr
@@ -1850,7 +1864,7 @@ range converts an ASCII code to the corresponding single character id. The
 id NIL is always found by (int2id 128)."
   ;; I'm guessing that the id should be interned! If not, use make-symbol.
   ;; This may not be correct for i >= 128.
-  (intern (string (code-char i))))
+  (cl:intern (string (code-char i))))
 
 (defalias 'id2string 'cl:symbol-name	; PSL
   "(id2string D:id): string expr
@@ -1862,6 +1876,10 @@ which contain special characters. Any character which follows the character
 character ! does not appear in the result.
 1 lisp> (id2string ’is-!%)
 \"is-%\"")
+
+(defun string-downcase (u)
+  "Convert identifier or string U to a lower-case string."
+  (cl:string-downcase (if (symbolp u) (symbol-name u) u)))
 
 (defalias 'land 'cl:logand				; PSL
   "(land U:integer V:integer): integer expr
@@ -1918,6 +1936,7 @@ represents the open file, each form is processed."
 ;; package.  Later, it might be better to use the Common Lisp
 ;; functions, but their compatibility needs checking!
 
-(shadow '(arrayp listp subsetp union intersection))
+(shadow '(arrayp listp subsetp union intersection identity clrhash
+		  gethash *print-array* *print-length* *print-level*))
 
 ;;; sl-on-cl.lisp ends here
