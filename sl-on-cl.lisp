@@ -16,14 +16,17 @@
   (:nicknames :sl)
   (:documentation "Standard Lisp on Common Lisp")
   (:use :common-lisp)
+
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
-  (:shadow :constantp :vectorp :nth :pnth :intern :get :remprop :error
-		   :map :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
-		   :delete :length :member :close :open :princ :print :prin1
-		   :prin2 :read :terpri :compile-file :load :time
-		   :char-downcase :char-upcase :string-downcase)
+  (:shadow :constantp :minusp :vectorp :nth :pnth :intern :get
+		   :remprop :error :expt :map :mapc :mapcan :mapcar :mapcon
+		   :maplist :append :assoc :delete :length :member :apply
+		   :close :open :princ :print :prin1 :prin2 :read :terpri
+		   :compile-file :load :time :char-downcase :char-upcase
+		   :string-downcase)
+
   #+CLISP (:import-from :ext :exit :quit :bye :getenv) ; CLISP only
   #+SBCL (:import-from :sb-ext :exit :quit)			   ; SBCL only
   )
@@ -149,11 +152,13 @@ Returns T if U is an integer (a fixed number).")
   "IDP(U:any):boolean eval, spread
 Returns T if U is an id.")
 
-;; MINUSP(U:any):boolean eval, spread
-;; Returns T if U is a number and less than 0. If U is not a number
-;; or is a positive number, NIL is returned.
-;; EXPR PROCEDURE MINUSP(U);
-;;    IF NUMBERP U THEN LESSP(U, 0) ELSE NIL;
+(defun minusp (u)
+  "MINUSP(U:any):boolean eval, spread
+Returns T if U is a number and less than 0. If U is not a number
+or is a positive number, NIL is returned.
+EXPR PROCEDURE MINUSP(U);
+   IF NUMBERP U THEN LESSP(U, 0) ELSE NIL;"
+  (and (realp u) (cl:minusp u)))
 
 ;; NULL(U:any):boolean eval, spread
 ;; Returns T if U is NIL.
@@ -574,7 +579,7 @@ is returned."
 			  ;; (The parameter x should perhaps be a gensym.)
 			  (cons 'macro
 					(eval `(lambda (x)
-							 (funcall (macro-function ',fname) x nil)))))
+							 (funcall ,(macro-function fname) x nil)))))
 			 (t
 			  (cons 'expr (symbol-function fname))))))
 
@@ -824,7 +829,11 @@ variables are not affected by the process."
   "This is the simplest error return, without a message printed.
 It can be defined as ERROR(99,NIL) if necessary.
 In PSL it is throw('!$error!$,99)."
-  (cl:error "***** SL error ~a" 99))
+  (cl:error "***** SL no-message error"))
+
+(defvar *debug nil
+  "If non-nil then errorset does not catch errors,
+so they fall through to the debugger.")
 
 (defun errorset (u msgp tr)
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
@@ -848,7 +857,7 @@ trace-back sequence will be initiated on the selected output
 device. The traceback will display information such as unbindings
 of FLUID variables, argument lists and so on in an implementation
 dependent format."
-  (if tr
+  (if (or *debug tr)
 	  ;; Enter the debugger if an error arises.
 	  ;; Probably not the optimal way to generate a traceback!
 	  (list (eval u))
@@ -858,7 +867,7 @@ dependent format."
 			(err)
 		  (let ((fmt (simple-condition-format-control err))
 				(args (simple-condition-format-arguments err)))
-			(if (and msgp (cdr args)) (apply #'format t fmt args))
+			(if (and msgp (cdr args)) (cl:apply #'format t fmt args))
 			(car args)))
 		(cl:error
 			(err)
@@ -995,10 +1004,13 @@ EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
   (multiple-value-call #'cons (truncate u v)))
 
-;; EXPT(U:number, V:integer):number eval, spread
-;; Returns U raised to the V power. A floating point U to an integer
-;; power V does not have V changed to a floating number before
-;; exponentiation.
+(defun expt (u v)
+  ;; Defined explicitly so that it can be redefined in arith/math
+  "EXPT(U:number, V:integer):number eval, spread
+Returns U raised to the V power. A floating point U to an integer
+power V does not have V changed to a floating number before
+exponentiation."
+  (cl:expt u v))
 
 (defalias 'fix 'cl:truncate
   "FIX(U:number):integer eval, spread
@@ -1065,14 +1077,18 @@ MACRO PROCEDURE PLUS(U);
   "PLUS2(U:number, V:number):number eval, spread
 Returns the sum of U and V.")
 
-(defalias 'quotient 'cl:truncate
+(defun quotient (u v)
   "QUOTIENT(U:number, V:number):number eval, spread
 The quotient of U divided by V is returned. Division of two positive
 or two negative integers is conventional. When both U and V are
 integers and exactly one of them is negative the value returned is
 the negative truncation of the absolute value of U divided by the
 absolute value of V. An error occurs if division by zero is attempted:
-***** Attempt to divide by 0 in QUOTIENT")
+***** Attempt to divide by 0 in QUOTIENT"
+  ;; Can probably implement this better using generic functions!
+  (if (or (floatp u) (floatp v))
+	  (/ u v)
+	  (cl:truncate u v)))
 
 (defalias 'remainder 'cl:rem
   "REMAINDER(U:number, V:number):number eval, spread
@@ -1401,6 +1417,18 @@ EXPR PROCEDURE SASSOC(U, V, FN);
 ;;; The Interpreter
 ;;; ===============
 
+;; In "alg/reval.red" is the code
+;; deflist('( ... (!*sq (lambda (x) nil))),'rtypefn);
+;; which leads in "alg/elem.red" to (apply (lambda (x) nil) (!*sq ...))
+;; and this fails in Common Lisp because a lambda form is not a function!
+;; It might be better to add the function call to the code in reval,
+;; but try this for now...
+
+(defun apply (fn args)
+  (if (and (consp fn) (eq (car fn) 'lambda))
+	  (setq fn (eval fn)))
+  (cl:apply fn args))
+
 ;; APPLY(FN:{id,function}, ARGS:any-list):any eval, spread
 ;; APPLY returns the value of FN with actual parameters ARGS. The
 ;; actual parameters in ARGS are already in the form required for
@@ -1726,8 +1754,8 @@ selected input file is reached."
   (let ((*readtable* *sl-readtable*))
 	(cl:read nil nil $eof$)))
 
-(defvar %%readch-prev-id nil
-  "Previous identifier returned by READCH.")
+(defvar %%readch-escape nil
+  "True if the next character to be read by READCH should be escaped.")
 
 (defun readch ()
   "READCH():id
@@ -1737,12 +1765,15 @@ record have been read, the value of !$EOL!$ is returned. If the file
 selected for input has all been read the value of !$EOF!$ is returned.
 Comments delimited by % and end-of-line are not transparent to READCH."
   ;; This function must perform any required case change.
-  (setf %%readch-prev-id
-		(let ((c (read-char nil nil $eof$)))
-		  (cond ((eq c $eof$) $eof$)
-				((eq %%readch-prev-id '!) (cl:intern (string c)))
-				(*raise (cl:intern (string (cl:char-upcase c))))
-				(t (cl:intern (string c)))))))
+  (let ((c (read-char nil nil $eof$)))
+	(cond ((eq c $eof$)
+		   (setq %%readch-escape nil) $eof$)
+		  ((eq c #\!)
+		   (setq %%readch-escape (not %%readch-escape)) '!)
+		  (%%readch-escape
+		   (setq %%readch-escape nil) (cl:intern (string c)))
+		  (*raise (cl:intern (string (cl:char-upcase c))))
+		  (t (cl:intern (string c))))))
 
 (defun terpri ()
   "TERPRI():NIL
@@ -1894,6 +1925,23 @@ by 2 to the K power. Negative values are acceptable for K, and cause a
 right shift (in the usual manner). Lshift is a logical shift, so right
 shifts do not resemble division by a power of 2.")
 
+(defun list2vector (l)					; PSL
+  "(list2vector L:list): vector expr
+Copy the elements of the list into a vector of the same size.
+1 lisp> (list2vector '(V E C T O R))
+[V E C T O R]"
+  (cl:apply #'vector l))
+
+(defalias 'list-to-vector 'list2vector)
+
+(defun vector2list (v)					; PSL (should be flagged lose!)
+  "(vector2list V:vector): list expr
+Create a list of the same size as V, the elements are copied in a left to right
+order.
+1 lisp> (vector2list [L I S T])
+\(L I S T)"
+  (cl:map 'list #'cl:identity v))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; This code may be useful for bootstrapping:
@@ -1908,7 +1956,7 @@ shifts do not resemble division by a power of 2.")
   (let ((*readtable*
 		 (if (string-equal (pathname-type input-file) "sl")
 			 *sl-readtable* *readtable*)))
-	(apply #'cl:compile-file input-file other-args)))
+	(cl:apply #'cl:compile-file input-file other-args)))
 
 (defun load (filespec &rest other-args)
   ;; (load filespec &key verbose print if-does-not-exist
@@ -1917,7 +1965,7 @@ shifts do not resemble division by a power of 2.")
   (let ((*readtable*
 		 (if (string-equal (pathname-type filespec) "sl")
 			 *sl-readtable* *readtable*)))
-	(apply #'cl:load filespec other-args)))
+	(cl:apply #'cl:load filespec other-args)))
 
 (defvar oldchan* nil)
 
@@ -1937,6 +1985,20 @@ represents the open file, each form is processed."
 ;; functions, but their compatibility needs checking!
 
 (shadow '(arrayp listp subsetp union intersection identity clrhash
-		  gethash *print-array* *print-length* *print-level*))
+		  gethash *print-array* *print-length* *print-level* remf lcm
+		  realp conjugate evenp remove random sort stable-sort boundp
+		  let isqrt sqrt floor ceiling round log atan sin tan exp
+		  cos asin acos sinh cosh tanh asinh acosh atanh))
+
+(defun standard-lisp ()
+  "Switch to STANDARD LISP mode."
+  (in-package :sl)
+  (setq *readtable* *sl-readtable*
+		*read-default-float-format* 'double-float))
+
+(defun cl-user ()
+  "Switch to Common Lisp User mode."
+  (in-package :cl-user)
+  (setq *readtable* (copy-readtable nil)))
 
 ;;; sl-on-cl.lisp ends here
