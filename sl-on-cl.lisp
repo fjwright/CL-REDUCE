@@ -5,12 +5,15 @@
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 ;; Created: 4 November 2018
 
-;; Current targets are Cygwin CLISP and Windows SBCL.
+;; Current target is Windows SBCL (Steel Bank Common Lisp).
 
 ;; This file implements a superset of Standard Lisp that is a subset
 ;; of the union of PSL and CSL.  It does not provide a Standard Lisp
 ;; REPL and is intended primarily for running REDUCE (which provides
 ;; its own REPL) on Common Lisp.
+
+(declaim (optimize debug)				; same as (debug 3)
+		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (defpackage :standard-lisp
   (:nicknames :sl)
@@ -1796,8 +1799,8 @@ selected output file.
 	(setf *standard-output* (or filehandle *terminal-io*))))
 
 
-;;; Additional Lisp functions expected by REDUCE
-;;; ============================================
+;;; PSL/CSL and other useful functions
+;;; ==================================
 
 ;; These function are not defined in the Standard Lisp Report,
 ;; although some of them are defined in PSL.
@@ -1816,7 +1819,7 @@ The date in the form \"day-month-year\"
 		  (second minute hour date month year)
 		(get-decoded-time)
 	  (declare (ignore second minute hour))
-      (format t "~2,'0d-~a-~d" date (cl:nth (1- month) months) year))))
+      (format nil "~2,'0d-~a-~d" date (cl:nth (1- month) months) year))))
 
 (defconstant +milliseconds-per-internal-time-unit+
   (/ 1000 internal-time-units-per-second)
@@ -1834,6 +1837,11 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
   (cl:map 'list
 		  #'(lambda (c) (cl:intern (string c)))
 		  (princ-to-string u)))
+
+(defun string-concat (&rest s)			; PSL
+  "(string-concat [S:string]): string macro
+Concatenates all of its string arguments, returning the newly created string."
+  (cl:apply #'concatenate 'string s))
 
 (defalias 'allocate-string 'cl:make-string ; PSL
   "(allocate-string SIZE:integer): string expr
@@ -1958,14 +1966,32 @@ order.
 			 *sl-readtable* *readtable*)))
 	(cl:apply #'cl:compile-file input-file other-args)))
 
-(defun load (filespec &rest other-args)
-  ;; (load filespec &key verbose print if-does-not-exist
-  ;; external-format)
-  "Load a \".sl\" file using Standard Lisp read syntax."
-  (let ((*readtable*
-		 (if (string-equal (pathname-type filespec) "sl")
-			 *sl-readtable* *readtable*)))
-	(cl:apply #'cl:load filespec other-args)))
+(defvar *verboseload nil
+  "*verboseload = [Initially: nil] switch
+If non-nil, a message is displayed when a request is made to load a
+file which has already been loaded, when a file is about to be loaded,
+and when the loading of a file is complete. Since *redefmsg is set to
+the value of *verboseload, a non-nil value will also cause a message
+to be printed whenever a function is redefined during a load.")
+
+(defun load (file)			   ; currently only supports a single file
+  "(load [FILE:{string, id}]): nil macro
+For each argument FILE, an attempt is made to locate a corresponding
+file.  If a file is found then it will be loaded by a call on an
+appropriate function.  A full file name is constructed by using the
+directory specifications in loaddirectories* and the extensions in
+loadextensions*.  The strings from each list are used in a left to
+right order, for a given string from loaddirectories* each extension
+from loadextensions* is used.
+
+Load a \".sl\" file using Standard Lisp read syntax."
+  (let ((*readtable* *readtable*))
+	(if (symbolp file)
+		(setq file (cl:string-downcase (symbol-name file)))
+		(if (string-equal (pathname-type file) "sl")
+			(setq *readtable* *sl-readtable*)
+			(setq *readtable* (copy-readtable nil))))
+	(cl:load file :verbose *verboseload)))
 
 (defvar oldchan* nil)
 
@@ -1988,17 +2014,21 @@ represents the open file, each form is processed."
 		  gethash *print-array* *print-length* *print-level* remf lcm
 		  realp conjugate evenp remove random sort stable-sort boundp
 		  let isqrt sqrt floor ceiling round log atan sin tan exp
-		  cos asin acos sinh cosh tanh asinh acosh atanh))
+		  cos asin acos sinh cosh tanh asinh acosh atanh symbol))
 
 (defun standard-lisp ()
   "Switch to STANDARD LISP mode."
-  (in-package :sl)
-  (setq *readtable* *sl-readtable*
-		*read-default-float-format* 'double-float))
+  (prog1
+	  (in-package :sl)
+	(setq *readtable* *sl-readtable*
+		  *read-default-float-format* 'double-float)))
 
-(defun cl-user ()
-  "Switch to Common Lisp User mode."
-  (in-package :cl-user)
+(export 'standard-lisp)
+
+(defun reset-readtable ()
+  "Switch to Common Lisp read syntax."
   (setq *readtable* (copy-readtable nil)))
+
+(pushnew :standard-lisp *features*)
 
 ;;; sl-on-cl.lisp ends here
