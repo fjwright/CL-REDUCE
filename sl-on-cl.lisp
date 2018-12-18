@@ -82,12 +82,12 @@ NIL characters will be input as is.")
 
 ;; Not Standard LISP but PSL and assumed by REDUCE:
 
-;; (defvar *echo nil
-;;   "*echo = [Initially: nil] switch
-;; The switch echo is used to control the echoing of input. When (on echo)
-;; is placed in an input file, the contents of the file are echoed on the standard
-;; output device. Dskin does not change the value of *echo, so one may say
-;; (on echo) before calling dskin, and the input will be echoed.")
+(defvar *echo nil
+  "*echo = [Initially: nil] switch
+The switch echo is used to control the echoing of input. When (on echo)
+is placed in an input file, the contents of the file are echoed on the standard
+output device. Dskin does not change the value of *echo, so one may say
+(on echo) before calling dskin, and the input will be echoed.")
 
 (defvar *redefmsg t
   "*redefmsg = [Initially: t] switch
@@ -1537,7 +1537,7 @@ is that returned by the corresponding OPEN. The value returned is
 the value of FILEHANDLE. An error occurs if the file can not be
 closed.
 ***** FILEHANDLE could not be closed"
-  ;; A null filehandle represents the terminal; ignore it.
+  ;; A null filehandle represents standard IO; ignore it.
   (if filehandle (cl:close filehandle))
   filehandle)
 
@@ -1718,6 +1718,8 @@ Output is not suitable for input to read."
 		   (prin2 (car u))
 		   (%%prin2-cdr (cdr u)))))
 
+(defvar %%read-stream *standard-input*)
+
 (defun rds (filehandle)
   "RDS(FILEHANDLE:any):any eval, spread
 Input from the currently selected input file is suspended and
@@ -1730,8 +1732,8 @@ standard input device the Standard LISP reader terminates. RDS
 returns the internal name of the previously selected input file.
 ***** FILEHANDLE could not be selected for input"
   (prog1
-	  *standard-input*
-	(setf *standard-input* (or filehandle *terminal-io*))))
+	  %%read-stream
+	(setq %%read-stream (or filehandle *standard-input*))))
 
 (defparameter *sl-readtable* (copy-readtable))
 ;; Cannot redefine *readtable* directly because it would come into
@@ -1745,6 +1747,10 @@ returns the internal name of the previously selected input file.
 (set-syntax-from-char #\| #\A *sl-readtable*)
 ;; May need a bit more customisation!
 
+;; The read functions must handle echoing explicitly because REDUCE
+;; sets *echo AFTER open and rds have been called, so cannot use a
+;; Common Lisp echo stream.
+
 (defun read ()
   "READ():any
 The next expression from the file currently selected for
@@ -1754,8 +1760,10 @@ identifiers with escape characters. Identifiers are interned on
 the OBLIST (see the INTERN function in \"Identifiers\"). READ
 returns the value of !$EOF!$ when the end of the currently
 selected input file is reached."
-  (let ((*readtable* *sl-readtable*))
-	(cl:read nil nil $eof$)))
+  (let* ((*readtable* *sl-readtable*)
+		 (exprn (cl:read %%read-stream nil $eof$)))
+	(if *echo (prin1 exprn))
+	exprn))
 
 (defvar %%readch-escape nil
   "True if the next character to be read by READCH should be escaped.")
@@ -1768,15 +1776,19 @@ record have been read, the value of !$EOL!$ is returned. If the file
 selected for input has all been read the value of !$EOF!$ is returned.
 Comments delimited by % and end-of-line are not transparent to READCH."
   ;; This function must perform any required case change.
-  (let ((c (read-char nil nil $eof$)))
-	(cond ((eq c $eof$)
-		   (setq %%readch-escape nil) $eof$)
-		  ((eq c #\!)
-		   (setq %%readch-escape (not %%readch-escape)) '!)
-		  (%%readch-escape
-		   (setq %%readch-escape nil) (cl:intern (string c)))
-		  (*raise (cl:intern (string (cl:char-upcase c))))
-		  (t (cl:intern (string c))))))
+  (let ((c (read-char %%read-stream nil $eof$)))
+	(if (eq c $eof$)
+		(progn
+		  (setq %%readch-escape nil)
+		  $eof$)
+		(progn
+		  (if *echo (write-char c))
+		  (cond ((eq c #\!)
+				 (setq %%readch-escape (not %%readch-escape)) '!)
+				(%%readch-escape
+				 (setq %%readch-escape nil) (cl:intern (string c)))
+				(*raise (cl:intern (string (cl:char-upcase c))))
+				(t (cl:intern (string c))))))))
 
 (defun terpri ()
   "TERPRI():NIL
