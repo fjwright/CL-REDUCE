@@ -23,7 +23,7 @@
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
-  (:shadow :constantp :minusp :vectorp :nth :pnth :intern :get
+  (:shadow :constantp :minusp :vectorp :zerop :nth :pnth :intern :get
 		   :remprop :error :expt :map :mapc :mapcan :mapcar :mapcon
 		   :maplist :append :assoc :delete :length :member :apply
 		   :close :open :princ :print :prin1 :prin2 :read :terpri
@@ -36,10 +36,10 @@
 
 (in-package :standard-lisp)
 
-;; The following definitions roughly follow the Standard Lisp Report.
-;; Symbols not explicitly defined, or described only in a comment, are
-;; inherited from Common Lisp.  In particular, nil and t are
-;; inherited.
+;; The following definitions roughly follow the order in the Standard
+;; Lisp Report.  Symbols not explicitly defined, or described only in
+;; a comment, are inherited from Common Lisp.  In particular, nil and
+;; t are inherited.
 
 
 ;;; System GLOBAL Variables
@@ -195,21 +195,23 @@ Returns T if U is a vector."
   ;; (and (vectorp u) (not (stringp u)))
   (typep u '(vector t)))
 
-;; ZEROP(U:any):boolean eval, spread
-;; Returns T if U is a number and has the value 0 or 0.0. Returns
-;; NIL otherwise.
-;; EXPR PROCEDURE ZEROP(U);
-;;    OR(EQN(U, 0), EQN(U, 0.0));
+(defun zerop (u)
+  "ZEROP(U:any):boolean eval, spread
+Returns T if U is a number and has the value 0 or 0.0. Returns
+NIL otherwise.
+EXPR PROCEDURE ZEROP(U);
+   OR(EQN(U, 0), EQN(U, 0.0));"
+  (and (numberp u) (cl:zerop u)))
 
 
 ;;; Functions on Dotted-Pairs
 ;;; =========================
 
-;; CAR(U:dotted-pair ):any eval, spread
+;; CAR(U:dotted-pair):any eval, spread
 ;; CAR(CONS(a, b)) --> a. The left part of U is returned. The type
 ;; mismatch error occurs if U is not a dotted-pair.
 
-;; CDR(U:dotted-pair ):any eval, spread
+;; CDR(U:dotted-pair):any eval, spread
 ;; CDR(CONS(a, b)) --> b. The right part of U is returned. The type
 ;; mismatch error occurs if U is not a dotted-pair.
 
@@ -252,7 +254,9 @@ error occurs.
   "(lastcar L:pair): any expr
 Returns the last element of the pair L. A type mismatch error
 results if L is not a pair."
-  (if (atom l) l (car (last l))))
+  ;; This inconsistent description above and code below are from the
+  ;; PSL manual!
+  (if (atom l) l (car (cl:last l))))
 
 (defun nth (l n)						; should be inlined
   "(nth L:pair N:integer): any expr
