@@ -5,7 +5,7 @@
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 ;; Created: 4 November 2018
 
-;; Current target is Windows SBCL (Steel Bank Common Lisp).
+;; Current target is Windows SBCL (Steel Bank Common Lisp) 1.4.14.
 
 ;; This file implements a superset of Standard Lisp that is a subset
 ;; of the union of PSL and CSL.  It does not provide a Standard Lisp
@@ -1724,6 +1724,9 @@ Output is not suitable for input to read."
 
 (defvar %%read-stream *standard-input*)
 
+;; It might be more elegant to handle input and output redirection in
+;; the same way!  Reconsider this later.
+
 (defun rds (filehandle)
   "RDS(FILEHANDLE:any):any eval, spread
 Input from the currently selected input file is suspended and
@@ -1801,6 +1804,9 @@ The current print line is terminated."
   (cl:terpri)
   nil)
 
+(defconstant +default-standard-output+ *standard-output*
+  "The initial value of *standard-output* at load time.")
+
 (defun wrs (filehandle)
   "WRS(FILEHANDLE:any):any eval, spread
 Output to the currently active output file is suspended and further
@@ -1812,7 +1818,7 @@ selected output file.
 ***** FILEHANDLE could not be selected for output"
   (prog1
 	  *standard-output*
-	(setf *standard-output* (or filehandle *terminal-io*))))
+	(setq *standard-output* (or filehandle +default-standard-output+))))
 
 
 ;;; PSL/CSL and other useful functions
@@ -2039,7 +2045,7 @@ represents the open file, each form is processed."
 	(setq *readtable* *sl-readtable*
 		  *read-default-float-format* 'double-float)))
 
-(export 'standard-lisp)
+(import 'standard-lisp :cl-user)
 
 (defun reset-readtable ()
   "Switch to Common Lisp read syntax."
