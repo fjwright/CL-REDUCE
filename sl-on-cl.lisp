@@ -842,6 +842,8 @@ In PSL it is throw('!$error!$,99)."
   "If non-nil then errorset does not catch errors,
 so they fall through to the debugger.")
 
+;; See also invoke-debugger in the CLHS.
+
 (defun errorset (u msgp tr)
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
 If an error occurs during the evaluation of U, the value of
@@ -1587,8 +1589,11 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
-  (cond ((eq how 'input) (cl:open file :direction :input))
-		((eq how 'output) (cl:open file :direction :output))
+  (cond ((eq how 'input)
+		 (cl:open file :direction :input))
+		((eq how 'output)
+		 (cl:open file :direction :output
+				  :if-exists :overwrite :if-does-not-exist :create))
 		(t (cl:error "~a is not option for OPEN" how))))
 
 (defun pagelength (len)
@@ -1821,11 +1826,8 @@ selected output file.
 	(setq *standard-output* (or filehandle +default-standard-output+))))
 
 
-;;; PSL/CSL and other useful functions
-;;; ==================================
-
-;; These function are not defined in the Standard Lisp Report,
-;; although some of them are defined in PSL.
+;;; PSL/CSL functions and some other useful functions
+;;; =================================================
 
 ;; In the Standard Lisp world, "character" means either a symbol whose
 ;; name is one character long or an ASCII character code.
@@ -2007,6 +2009,8 @@ right order, for a given string from loaddirectories* each extension
 from loadextensions* is used.
 
 Load a \".sl\" file using Standard Lisp read syntax."
+  ;; filename defaults are taken from *default-pathname-defaults*,
+  ;; which defaults to the directory in which SBCL was started.
   (let ((*readtable* *readtable*))
 	(if (symbolp file)
 		(setq file (cl:string-downcase (symbol-name file)))
