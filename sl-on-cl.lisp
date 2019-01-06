@@ -26,15 +26,19 @@
   (:shadow :constantp :minusp :vectorp :zerop :nth :pnth :intern :get
 		   :remprop :error :expt :map :mapc :mapcan :mapcar :mapcon
 		   :maplist :append :assoc :delete :length :member :apply
-		   :close :open :princ :print :prin1 :prin2 :read :terpri
-		   :compile-file :load :time :char-downcase :char-upcase
-		   :string-downcase)
+		   :eval :close :open :princ :print :prin1 :prin2 :read
+		   :terpri :compile-file :load :time :char-downcase
+		   :char-upcase :string-downcase)
 
-  #+CLISP (:import-from :ext :exit :quit :bye :getenv) ; CLISP only
-  #+SBCL (:import-from :sb-ext :exit :quit)			   ; SBCL only
+  #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
+  #+CLISP (:import-from :ext :exit :quit :bye :getenv)
   )
 
 (in-package :standard-lisp)
+
+(defun eval (u)
+  "Redefined below, but required now!"
+  (cl:eval u))
 
 ;; The following definitions roughly follow the order in the Standard
 ;; Lisp Report.  Symbols not explicitly defined, or described only in
@@ -105,8 +109,9 @@ The optional third argument DOCSTRING specifies the documentation string
 for SYMBOL; if it is omitted or nil, SYMBOL uses the documentation string
 determined by DEFINITION.  The return value is undefined."
   `(setf (documentation ,symbol 'function)
-		(or ,docstring (documentation ,definition 'function))
-		(symbol-function ,symbol) (symbol-function ,definition)))
+		 (or ,docstring (documentation ,definition 'function))
+		 (symbol-function ,symbol)
+		 (symbol-function ,definition)))
 
 
 ;;; Elementary Predicates
@@ -1434,6 +1439,8 @@ EXPR PROCEDURE SASSOC(U, V, FN);
 ;; but try this for now...
 
 (defun apply (fn args)
+  "Treat a lambda expression as an operator.
+Otherwise revert to the Common Lisp apply."
   (if (and (consp fn) (eq (car fn) 'lambda))
 	  (setq fn (eval fn)))
   (cl:apply fn args))
@@ -1469,6 +1476,13 @@ EXPR PROCEDURE SASSOC(U, V, FN);
 ;;       | of parameters do not match\"); The value
 ;;       | returned is EVAL CADDR FN.
 ;; END;
+
+(defun eval (u)
+  "Treat (function foo) the same as the operator foo.
+Otherwise revert to the Common Lisp eval."
+  (if (and (consp u) (functionp (car u)))
+	  (cl:apply (car u) (cdr u))
+	  (cl:eval u)))
 
 ;; EVAL(U:any):any eval, spread
 ;; The value of the expression U is computed. Error numbers are
@@ -1593,7 +1607,7 @@ OUTPUT or the file can't be opened.
 		 (cl:open file :direction :input))
 		((eq how 'output)
 		 (cl:open file :direction :output
-				  :if-exists :overwrite :if-does-not-exist :create))
+				  :if-exists :supersede :if-does-not-exist :create))
 		(t (cl:error "~a is not option for OPEN" how))))
 
 (defun pagelength (len)
@@ -1862,10 +1876,21 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 		  #'(lambda (c) (cl:intern (string c)))
 		  (princ-to-string u)))
 
-(defun string-concat (&rest s)			; PSL
-  "(string-concat [S:string]): string macro
-Concatenates all of its string arguments, returning the newly created string."
-  (cl:apply #'concatenate 'string s))
+;; Don't use variable numbers of arguments since it triggers a warning
+;; in REDUCE!
+
+;; (defun string-concat (&rest s)			; PSL
+;;   "(string-concat [S:string]): string macro
+;; Concatenates all of its string arguments, returning the newly created string."
+;;   (cl:apply #'concatenate 'string s))
+
+(defun concat (s1 s2)
+  "Concatenates its two string arguments, returning the newly created string."
+  (concatenate 'string s1 s2))
+
+(defun concat2 (s1 s2)
+  "Concatenates its two string arguments, returning the newly created string."
+  (concatenate 'string s1 s2))
 
 (defalias 'allocate-string 'cl:make-string ; PSL
   "(allocate-string SIZE:integer): string expr
@@ -1937,7 +1962,7 @@ on the result. PSL uses an escape convention for notating identifiers
 which contain special characters. Any character which follows the character
 ! is considered to be an alphabetic character. In the example, notice that the
 character ! does not appear in the result.
-1 lisp> (id2string ’is-!%)
+1 lisp> (id2string 'is-!%)
 \"is-%\"")
 
 (defun string-downcase (u)
@@ -1974,6 +1999,8 @@ order.
 \(L I S T)"
   (cl:map 'list #'cl:identity v))
 
+(defalias 'filep 'probe-file)			; PSL
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; This code may be useful for bootstrapping:
@@ -1987,7 +2014,8 @@ order.
   "Compile a \".sl\" file using Standard Lisp read syntax."
   (let ((*readtable*
 		 (if (string-equal (pathname-type input-file) "sl")
-			 *sl-readtable* *readtable*)))
+			 *sl-readtable*
+			 (copy-readtable nil))))	; normal CL syntax
 	(cl:apply #'cl:compile-file input-file other-args)))
 
 (defvar *verboseload nil
@@ -2011,13 +2039,15 @@ from loadextensions* is used.
 Load a \".sl\" file using Standard Lisp read syntax."
   ;; filename defaults are taken from *default-pathname-defaults*,
   ;; which defaults to the directory in which SBCL was started.
-  (let ((*readtable* *readtable*))
+  (let ((*readtable* (copy-readtable nil)) ; normal CL syntax
+		(*load-verbose* *verboseload))
 	(if (symbolp file)
 		(setq file (cl:string-downcase (symbol-name file)))
 		(if (string-equal (pathname-type file) "sl")
-			(setq *readtable* *sl-readtable*)
-			(setq *readtable* (copy-readtable nil))))
-	(cl:load file :verbose *verboseload)))
+			(setq *readtable* *sl-readtable*)))
+	;; Look in "." and "./fasl" and if not found then throw an error:
+	(or (cl:load file :if-does-not-exist nil)
+		(cl:load (concat2 "fasl/" file)))))
 
 (defvar oldchan* nil)
 
