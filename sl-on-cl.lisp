@@ -2103,12 +2103,12 @@ represents the open file, each form is processed."
 ;; package.  Later, it might be better to use the Common Lisp
 ;; functions, but their compatibility needs checking!
 
-(shadow '(arrayp listp subsetp union intersection identity clrhash
-		  gethash *print-array* *print-length* *print-level* remf lcm
-		  realp conjugate remove random sort stable-sort boundp let
-		  isqrt sqrt floor ceiling round log atan sin tan exp cos asin
-		  acos sinh cosh tanh asinh acosh atanh symbol vector array
-		  adjoin class merge copy-tree reduce mod defstruct describe))
+(shadow '(arrayp listp subsetp identity clrhash gethash *print-array*
+		  *print-length* *print-level* remf lcm realp conjugate remove
+		  random sort stable-sort boundp let isqrt sqrt floor ceiling
+		  round log atan sin tan exp cos asin acos sinh cosh tanh
+		  asinh acosh atanh symbol vector array adjoin class merge
+		  copy-tree reduce mod defstruct describe))
 
 (defun standard-lisp ()
   "Switch to STANDARD LISP mode."

@@ -8,21 +8,21 @@
 
 # Usage: ./bootstrap.sh
 
-mkdir -p buildlogs			 # -p avoids complaint if directory exists
+mkdir -p log				 # -p avoids complaint if directory exists
 mkdir -p fasl
 
 echo ++++++ Build bootstrap REDUCE ++++++
 
-sbcl << XXX &> buildlogs/bootstrap.blg
+# This starts with the normal distributed version of SBCL and creates
+# a bootstrap version of the REDUCE parser. It uses the resulting
+# very initial version of a REDUCE core to compile key REDUCE modules
+# that are needed when re-compiling the rest of the system. It does
+# not checkpoint itself at the end of this because the general Lisp
+# environment will be in a somewhat untidy state, so a separate stage
+# will load up the modules compiled here and checkpoint them to make
+# the REDUCE bootstrap build system.
 
-;; This starts with the normal distributed version of SBCL and creates
-;; a bootstrap version of the REDUCE parser. It uses the resulting
-;; very initial version of a REDUCE core to compile key REDUCE modules
-;; that are needed when re-compiling the rest of the system. It does
-;; not checkpoint itself at the end of this because the general Lisp
-;; environment will be in a somewhat untidy state, so a separate stage
-;; will load up the modules compiled here and checkpoint them to make
-;; the REDUCE bootstrap build system.
+sbcl << XXX &> log/bootstrap.blg
 
 (declaim (optimize debug)				; same as (debug 3)
 		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
@@ -70,6 +70,7 @@ rds(xxx := open("build.red",'input));
 
 (prog nil
    (gc)
+   (terpri)
    (prin2 "Time to build bootstrapping REDUCE: ")
    (prin2 (quotient (difference (time) !*init!-time!*) 1000.0))
    (prin2t " secs")
@@ -92,7 +93,6 @@ package!-remake2('clrend, nil);
 package!-remake2('entry, 'support);
 package!-remake2('remake, nil);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Create the .dat files that indicate which modules will need building
 
 begin
@@ -117,7 +117,6 @@ begin
   wrs s;
   close i;
 end;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Without above addition, penultimate wrs returns the closed stream
 % for "fasl/core-packages.dat" and then the final wrs tries to switch

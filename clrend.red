@@ -249,11 +249,6 @@ deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
 
 symbolic procedure gctime; 0;
 
-% These functions are already defined in Common Lisp and attempting
-% (unnecessarily) to redefine them will cause an error:
-
-flag('(first second third rest evenp oddp),'lose);
-
 % FLOOR is already defined.
 
 % flag('(floor),'lose);

@@ -34,6 +34,12 @@ symbolic procedure evload l;
    % "rlisp/module.red".  Might be better defined in "sl-on-cl.lisp".
    while l do << apply(function load, list car l); l := cdr l >>;
 
+% These functions are already defined in Common Lisp (and union is
+% needed in the build process before it is defined in the rlisp
+% module):
+
+flag('(first second third rest evenp oddp union intersection),'lose);
+
 % Common Lisp provides integer functions gcd and lcm, which I could use.
 
 % flag('(gcdn),'lose);     % Defined in bignum package.
