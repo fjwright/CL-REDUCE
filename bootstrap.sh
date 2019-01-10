@@ -8,7 +8,7 @@
 
 # Usage: ./bootstrap.sh
 
-mkdir -p buildlogs			 # -p avoids complaint if buildlogs exists
+mkdir -p buildlogs			 # -p avoids complaint if directory exists
 mkdir -p fasl
 
 echo ++++++ Build bootstrap REDUCE ++++++
@@ -91,6 +91,39 @@ package!-remake2('revision, 'support);
 package!-remake2('clrend, nil);
 package!-remake2('entry, 'support);
 package!-remake2('remake, nil);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Create the .dat files that indicate which modules will need building
+
+begin
+  scalar w, i, s, core, noncore;
+  i := open("packages/package.map", 'input);
+  s := rds i;
+  w := read();
+  rds s;
+  close i;
+  for each x in w do
+     if member('psl, x) then <<
+        if member('core, x) then core := x . core
+        else noncore := x . noncore >>;
+  i := open("fasl/core-packages.dat", 'output);
+  s := wrs i;
+  for each x in reverse core do print car x;
+  wrs s; % ADDED TO AVOID A NASTY CRASH!
+  close i;
+  i := open("fasl/noncore-packages.dat", 'output);
+  s := wrs i;
+  for each x in reverse noncore do print car x;
+  wrs s;
+  close i;
+end;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Without above addition, penultimate wrs returns the closed stream
+% for "fasl/core-packages.dat" and then the final wrs tries to switch
+% to the closed stream. This crashes SBCL!
+
+initreduce();
 
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
 % save!-lisp!-and!-die("bootstrap", !:executable, t, !:toplevel, (lambda () (standard-lisp) (begin)))

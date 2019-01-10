@@ -169,8 +169,10 @@ symbolic procedure upd!-fasl1(u,v,w);
       if !*loadall and w and w neq u then <<
          evload list w;
          loaded!-modules!* := union(loaded!-modules!*, list w) >>;
-      if x := get(u,'compiletime)
-        then <<prin2 "*** Compile time: "; prin2t x; lispeval x>>;
+	  % The following is not currently useful for Common Lisp.
+	  % E.g. x = (setq *fastfor t) for the factor module.
+      % if x := get(u,'compiletime)
+      %   then <<prin2 "*** Compile time: "; prin2t x; lispeval x>>;
       u := mkfil u;
       lprim list("Compiling",u,"...");
       terpri();

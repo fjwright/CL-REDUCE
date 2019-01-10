@@ -36,6 +36,8 @@
 
 (in-package :standard-lisp)
 
+;; (setq *print-case* :downcase)			; print symbols in lower case
+
 (defun eval (u)
   "Redefined below, but required now!"
   (cl:eval u))
@@ -432,7 +434,7 @@ Its value should normally be nil, except while ON DEFN.")
 Do not do this if Lisp file load in progress."
   (or *load-pathname*
 	  (cl:assoc symbol %%saved-plist-alist :test #'eq)
-	  (push (cons symbol (copy-tree (symbol-plist symbol)))
+	  (push (cons symbol (cl:copy-tree (symbol-plist symbol)))
 			%%saved-plist-alist)))
 
 (defun %reinstate-plists ()
@@ -1666,14 +1668,21 @@ EXPR PROCEDURE PRINT(U);
 Output case is determined by the value of *print-case*."
   (setf u (princ-to-string u))
   (loop with newu and c
-		for i below (cl:length u) do
-		(setf c (aref u i))
-		(unless (or (alpha-char-p c)
-					(and (> i 0) (digit-char-p c))
-					(char= c #\_))
-		  (push #\! newu))
-		(push c newu)
-		finally (return (coerce (nreverse newu) 'string))))
+	 for i below (cl:length u) do
+	   (setf c (aref u i))
+	   (unless (or (alpha-char-p c)
+				   (and (> i 0) (digit-char-p c))
+				   (char= c #\_))
+		 (push #\! newu))
+	   (push c newu)
+	 finally (return (coerce (nreverse newu) 'string))))
+
+(defun %%prin1-string-to-string (u)
+  "Change the escape convention in string U from Common to Standard Lisp.
+That is, replace backslashes with double quotes."
+  (cl:map 'string
+		  #'(lambda (x) (if (char= x #\\) #\" x))
+		  (prin1-to-string u)))
 
 (defun prin1 (u)
   "PRIN1(U:any):any eval, spread
@@ -1682,6 +1691,7 @@ the result of EXPLODE expansion; special characters are prefixed
 with the escape character !, and strings are enclosed in \"...\". Lists
 are displayed in list-notation and vectors in vector-notation."
   (cond ((symbolp u) (%%prin-string (%%prin1-id-to-string u)))
+		((stringp u) (%%prin-string (%%prin1-string-to-string u)))
 		((atom u) (%%prin-string (prin1-to-string u)))
 		(t (%%prin-string "(")
 		   (prin1 (car u))
@@ -1761,7 +1771,9 @@ returns the internal name of the previously selected input file.
 	  %%read-stream
 	(setq %%read-stream (or filehandle *standard-input*))))
 
-(defparameter *sl-readtable* (copy-readtable))
+(defparameter *sl-readtable* (copy-readtable)
+  "Readtable implementing Standard Lisp syntax.
+% introduces a comment and ! is the single-escape character.")
 ;; Cannot redefine *readtable* directly because it would come into
 ;; effect immediately during a load of the uncompiled file and break
 ;; the syntax below!
@@ -1771,7 +1783,30 @@ returns the internal name of the previously selected input file.
 (set-syntax-from-char #\\ #\A *sl-readtable*)
 (set-syntax-from-char #\# #\A *sl-readtable*)
 (set-syntax-from-char #\| #\A *sl-readtable*)
-;; May need a bit more customisation!
+
+(defparameter *string-readtable* (copy-readtable *sl-readtable*)
+  "Readtable implementing Standard Lisp string syntax.
+No escape characters are defined.")
+(set-syntax-from-char #\! #\A *string-readtable*)
+
+(defun %%sl-read-string (stream closech)
+  ;; This accumulates chars until it sees same char that invoked it,
+  ;; namely closech. See the function read-string in
+  ;; "sbcl-1.4.14/src/code/reader.lisp".
+  ;; NEEDS RE-IMPLEMENTING PORTABLY! Get and use the default read macro.
+  (declare (character closech))
+  (let* ((*readtable* *string-readtable*)
+		 (s (sb-impl::read-string stream closech)))
+	(loop while	;; following character is "
+		 (char= (peek-char nil stream nil $eof$ t) closech)
+	   do ;; read and ignore it
+		 (read-char stream nil $eof$ t)
+	   ;; then read and concatenate the following string
+		 (setq s (concatenate 'string s (string closech)
+							  (sb-impl::read-string stream closech))))
+	s))
+
+(set-macro-character #\" #'%%sl-read-string nil *sl-readtable*)
 
 ;; The read functions must handle echoing explicitly because REDUCE
 ;; sets *echo AFTER open and rds have been called, so cannot use a
@@ -1910,7 +1945,9 @@ lisp> (string2list \"STRING\")
 (defun %%character (x)
   "Generalize cl:character to accept also a character code."
   (if (integerp x)
-	  (if (and (<= 0 x) (<= x 127))
+	  (if (and (<= 0 x) (<= x 255))
+		  ;; Was 127, but then reading rlisp/tok.red fails!
+		  ;; Should 128 -> nil as specified for PSL?
 		  (code-char x)
 		  (cl:error
 		   "***** SL error in `character': ~d is not a character code" x))
@@ -1987,7 +2024,7 @@ shifts do not resemble division by a power of 2.")
 Copy the elements of the list into a vector of the same size.
 1 lisp> (list2vector '(V E C T O R))
 [V E C T O R]"
-  (cl:apply #'vector l))
+  (cl:apply #'cl:vector l))
 
 (defalias 'list-to-vector 'list2vector)
 
@@ -2068,9 +2105,10 @@ represents the open file, each form is processed."
 
 (shadow '(arrayp listp subsetp union intersection identity clrhash
 		  gethash *print-array* *print-length* *print-level* remf lcm
-		  realp conjugate evenp remove random sort stable-sort boundp
-		  let isqrt sqrt floor ceiling round log atan sin tan exp
-		  cos asin acos sinh cosh tanh asinh acosh atanh symbol))
+		  realp conjugate remove random sort stable-sort boundp let
+		  isqrt sqrt floor ceiling round log atan sin tan exp cos asin
+		  acos sinh cosh tanh asinh acosh atanh symbol vector array
+		  adjoin class merge copy-tree reduce mod defstruct describe))
 
 (defun standard-lisp ()
   "Switch to STANDARD LISP mode."

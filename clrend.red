@@ -29,12 +29,17 @@ global '(!*extraecho
 
 switch break, lower, redefmsg, verboseload, debug;
 
+% This procedure definition taken from "pslrend.red" is required for
+% the factor module:
+symbolic procedure carcheck fff;
+   nil;  % CSL function used much as setting !*fastcar in PSL.
+
 Comment The following functions, which are referenced in the basic
 REDUCE source (RLISP, ALG1, ALG2, MATR and PHYS) should be defined to
 complete the definition of REDUCE:
 
 	BYE
-	EVLOAD -- ???
+	EVLOAD -- defined in "clprolo.red"
 	ERROR1 -- defined in "sl-on-cl.lisp"
 	MKFIL
 	ORDERP -- defined in "clprolo.red"
@@ -243,6 +248,11 @@ deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
 % is currently undefined in CL, we provide the following definition.
 
 symbolic procedure gctime; 0;
+
+% These functions are already defined in Common Lisp and attempting
+% (unnecessarily) to redefine them will cause an error:
+
+flag('(first second third rest evenp oddp),'lose);
 
 % FLOOR is already defined.
 
