@@ -74,6 +74,7 @@ sbcl --noinform << XXX &> log/reduce.blg
 (load!-package 'alg)
 (load!-package 'mathpr)
 (load!-package 'entry)
+(defautoload prettyprint pretty) % since only in entry for PSL!
 
 (setq date!* (date))
 (setq version!* "REDUCE Experimental Version")
@@ -81,6 +82,7 @@ sbcl --noinform << XXX &> log/reduce.blg
 
 % (setq !*loadversion t)             % Load entry module during BEGIN.
 (setq !*verboseload nil)           % Inhibit loading messages.
+(setf sb-ext:*muffled-warnings* 'warning)
 
 (prog nil
    (gc)

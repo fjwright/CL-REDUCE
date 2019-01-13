@@ -23,20 +23,18 @@
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
-  (:shadow :constantp :minusp :vectorp :zerop :nth :pnth :intern :get
-		   :remprop :error :expt :map :mapc :mapcan :mapcar :mapcon
-		   :maplist :append :assoc :delete :length :member :apply
-		   :eval :close :open :princ :print :prin1 :prin2 :read
-		   :terpri :compile-file :load :time :char-downcase
-		   :char-upcase :string-downcase)
+  (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
+		   :intern :get :remprop :error :expt :map :mapc :mapcan
+		   :mapcar :mapcon :maplist :append :assoc :delete :length
+		   :member :apply :eval :close :open :princ :print :prin1
+		   :prin2 :read :terpri :compile-file :load :time
+		   :char-downcase :char-upcase :string-downcase)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
   #+CLISP (:import-from :ext :exit :quit :bye :getenv)
   )
 
 (in-package :standard-lisp)
-
-;; (setq *print-case* :downcase)			; print symbols in lower case
 
 (defun eval (u)
   "Redefined below, but required now!"
@@ -139,17 +137,26 @@ EXPR PROCEDURE CONSTANTP(U);
 ;; Returns T if U points to the same object as V. EQ is not a reliable
 ;; comparison between numeric arguments.
 
-(defalias 'eqn 'cl:eql
+(defun eqn (u v)
   "EQN(U:any, V:any):boolean eval, spread
 Returns T if U and V are EQ or if U and V are numbers and have
-the same value and type.")
+the same value and type."				; i.e. the same SL type!
+  (or (eql u v)
+	  ;;  eql may not be true of two floats even when they represent
+	  ;;  the same value. = is used to compare mathematical values.
+	  (and (floatp u) (floatp v) (= u v))))
 
-;; EQUAL(U:any, V:any):boolean eval, spread
-;; Returns T if U and V are the same. Dotted-pairs are compared
-;; recursively to the bottom levels of their trees. Vectors must
-;; have identical dimensions and EQUAL values in all
-;; positions. Strings must have identical characters. Function
-;; pointers must have EQ values. Other atoms must be EQN equal.
+(defun equal (u v)
+  "EQUAL(U:any, V:any):boolean eval, spread
+Returns T if U and V are the same. Dotted-pairs are compared
+recursively to the bottom levels of their trees. Vectors must
+have identical dimensions and EQUAL values in all
+positions. Strings must have identical characters. Function
+pointers must have EQ values. Other atoms must be EQN equal."
+  (or (cl:equal u v)
+	  ;;  equal may not be true of two floats even when they represent
+	  ;;  the same value. = is used to compare mathematical values.
+	  (and (floatp u) (floatp v) (= u v))))
 
 (defalias 'fixp 'cl:integerp
   "FIXP(U:any):boolean eval, spread
@@ -1051,6 +1058,11 @@ Returns T if U is strictly greater than V, otherwise returns NIL.")
   "LESSP(U:number, V:number):boolean eval, spread
 Returns T if U is strictly less than V, otherwise returns NIL.")
 
+;; The definitions in REDUCE don't work correctly with mixed integer
+;; and float arguments, so...
+(defalias 'geq 'cl:>=)
+(defalias 'leq 'cl:<=)
+
 ;; MAX([U:number]):number noeval, nospread, or macro
 ;; Returns the largest of the values in U. If two or more values are the
 ;; same the first is returned.
@@ -1663,10 +1675,13 @@ EXPR PROCEDURE PRINT(U);
   (terpri)
   u)
 
+(defun %%princ-to-string (u)
+  "Print identifier U to a lower-case string without any escapes."
+  (write-to-string u :case :downcase :escape nil :readably nil))
+
 (defun %%prin1-id-to-string (u)
-  "Convert identifier U to a string including appropriate `!' characters.
-Output case is determined by the value of *print-case*."
-  (setf u (princ-to-string u))
+  "Convert identifier U to a lower-case string including appropriate `!' escapes."
+  (setf u (%%princ-to-string u))
   (loop with newu and c
 	 for i below (cl:length u) do
 	   (setf c (aref u i))
@@ -1718,9 +1733,8 @@ Output is suitable for input to read."
 		   (%%prin1-cdr (cdr u)))))
 
 (defun %%prin2-id-to-string (u)
-  "Convert identifier U to a string excluding inappropriate `!' characters.
-Output case is determined by the value of *print-case*."
-  (setf u (princ-to-string u))
+  "Convert identifier U to a lower-case string excluding inappropriate `!' escapes."
+  (setf u (%%princ-to-string u))
   (if (string= "!:" u :end2 1) (subseq u 1) u))
 
 (defun prin2 (u)
@@ -2040,11 +2054,6 @@ order.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; This code may be useful for bootstrapping:
-;; (compile-file "boot.sl")
-;; (load "boot.sl")
-;; (dskin "dbuild.sl")
-
 (defun compile-file (input-file &rest other-args)
   ;; (compile-file input-file &key output-file verbose print
   ;; external-format)
@@ -2086,14 +2095,20 @@ Load a \".sl\" file using Standard Lisp read syntax."
 	(or (cl:load file :if-does-not-exist nil)
 		(cl:load (concat2 "fasl/" file)))))
 
-(defvar oldchan* nil)
+(defun smallcompress (li)
+  "Compress list LI to a string representing a number (only).
+Defined and called only in \"arith/smlbflot.red\" and redefined here
+to down-case the E in floats."
+  (cl:string-downcase (cl:map 'string #'character li)))
 
-(defun dskin (name)
-  "(dskin NAME:string): nil, abort expr
-The contents of the file NAME are processed as if they were typed in.
-Once the input stream has been bound to the channel which
-represents the open file, each form is processed."
-  (rds (setf oldchan* (open name 'input))))
+;; (defvar oldchan* nil)
+
+;; (defun dskin (name)
+;;   "(dskin NAME:string): nil, abort expr
+;; The contents of the file NAME are processed as if they were typed in.
+;; Once the input stream has been bound to the channel which
+;; represents the open file, each form is processed."
+;;   (rds (setf oldchan* (open name 'input))))
 
 
 ;;; Common Lisp functions that are redefined in REDUCE
@@ -2117,7 +2132,12 @@ represents the open file, each form is processed."
 	(setq *readtable* *sl-readtable*
 		  *read-default-float-format* 'double-float)))
 
-(import 'standard-lisp :cl-user)
+(defun start-reduce ()
+  "Switch to STANDARD LISP mode and start REDUCE."
+  (standard-lisp)
+  (begin))
+
+(import '(standard-lisp start-reduce) :cl-user)
 
 (defun reset-readtable ()
   "Switch to Common Lisp read syntax."

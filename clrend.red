@@ -196,9 +196,6 @@ symbolic procedure prop u; symbol!-plist u;
 
 % A machine independent traceset.
 
-% Tr and untr are new names for CL trace and untrace:
-deflist('((tr trace) (untr untrace)), 'newnam);
-
 symbolic procedure traceset1 u;
    if atom u then u
     else if car u eq 'setq
@@ -231,8 +228,12 @@ symbolic procedure trst u; for each x in u do traceset x;
 
 symbolic procedure untrst u; for each x in u do untraceset x;
 
-deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
+% Tr and untr are essentially new names for the CL trace and untrace
+% macros:
+symbolic procedure tr u; eval('trace . u);
+symbolic procedure untr u; eval('untrace . u);
 
+deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
 
 % The following function is necessary in Common Lisp startup sequence,
 % since initial packages are not loaded with load-package.

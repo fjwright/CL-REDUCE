@@ -40,14 +40,25 @@ symbolic procedure evload l;
 
 flag('(first second third rest evenp oddp union intersection),'lose);
 
+% These two functions are defined in arith/smlbflot.red, but
+% smallcompress is re-implemented in sl-on-cl.lisp and smallsplit is
+% used only in smallcompress, so is no longer required:
+
+flag('(smallcompress smallsplit),'lose);
+
 % Common Lisp provides integer functions gcd and lcm, which I could use.
 
 % flag('(gcdn),'lose);     % Defined in bignum package.
 
-% Common Lisp provides numerical predicates >= and <=, which I could use.
+% The definitions of geq and leq in rlisp/rsupport.red don't work
+% correctly with mixed integer and float arguments because (equal 1.0
+% 1) is nil in Common Lisp!  (It is also nil according to the Standard
+% Lisp Report, but I suspect it is actually true in PSL and CSL!)
+% However, Common Lisp provides numerical predicates >= and <= that
+% correctly accept mixed-type arguments, to which I alias geq and leq,
+% so...
 
-% flag('(geq leq reversip),'lose);
-flag('(reversip),'lose);
+flag('(geq leq reversip),'lose);
 
 % yesp1 is more or less equivalent to y-or-n-p.
 
