@@ -56,8 +56,7 @@ restart.
 
 poly.tst and polydiv.tst run correctly.
 
-alg.tst runs correctly except that it complains about a singular
-matrix the first time it is run, but not when it is run again.
+alg.tst runs correctly.
 
 arith.tst shows lots of rounding differences and one error, which may
 be caused by rounding differences.

@@ -1495,7 +1495,7 @@ Otherwise revert to the Common Lisp apply."
   "Treat (function foo) the same as the operator foo.
 Otherwise revert to the Common Lisp eval."
   (if (and (consp u) (functionp (car u)))
-	  (cl:apply (car u) (cdr u))
+	  (cl:apply (car u) (evlis (cdr u)))
 	  (cl:eval u)))
 
 ;; EVAL(U:any):any eval, spread
