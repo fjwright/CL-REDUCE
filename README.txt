@@ -58,8 +58,12 @@ poly.tst and polydiv.tst run correctly.
 
 alg.tst runs correctly.
 
-arith.tst shows lots of rounding differences and one error, which may
-be caused by rounding differences.
+arith.tst runs correctly and displays less numerical error than the
+reference output, arith.rlg.
+
+factor.tst
+
+int.tst
 
 To do
 =====

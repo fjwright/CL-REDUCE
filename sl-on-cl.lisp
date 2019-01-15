@@ -24,10 +24,10 @@
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
   (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
-		   :intern :get :remprop :error :expt :map :mapc :mapcan
-		   :mapcar :mapcon :maplist :append :assoc :delete :length
-		   :member :apply :eval :close :open :princ :print :prin1
-		   :prin2 :read :terpri :compile-file :load :time
+		   :intern :get :remprop :error :expt :float :map :mapc
+		   :mapcan :mapcar :mapcon :maplist :append :assoc :delete
+		   :length :member :apply :eval :close :open :princ :print
+		   :prin1 :prin2 :read :terpri :compile-file :load :time
 		   :char-downcase :char-upcase :string-downcase)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
@@ -985,6 +985,8 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;;; Arithmetic Functions
 ;;; ====================
 
+;; Use double precision floats.
+
 ;; ABS(U:number):number eval, spread
 ;; Returns the absolute value of its argument.
 ;; EXPR PROCEDURE ABS(U);
@@ -1041,14 +1043,17 @@ Returns an integer which corresponds to the truncated value of U.
 The result of conversion must retain all significant portions of U. If
 U is an integer it is returned unchanged.")
 
-;; FLOAT(U:number):floating eval, spread
-;; The floating point number corresponding to the value of the
-;; argument U is returned.  Some of the least significant digits of
-;; an integer may be lost do to the implementation of floating point
-;; numbers.  FLOAT of a floating point number returns the number
-;; unchanged.  If U is too large to represent in floating point an
-;; error occurs:
-;; ***** Argument to FLOAT is too large
+(defun float (u)
+  "FLOAT(U:number):floating eval, spread
+The floating point number corresponding to the value of the
+argument U is returned.  Some of the least significant digits of
+an integer may be lost do to the implementation of floating point
+numbers.  FLOAT of a floating point number returns the number
+unchanged.  If U is too large to represent in floating point an
+error occurs:
+***** Argument to FLOAT is too large"
+  ;; Floats must be double precision:
+  (cl:float u 1d0))
 
 (defalias 'greaterp 'cl:>
   "GREATERP(U:number, V:number):boolean eval, spread
@@ -1737,6 +1742,29 @@ Output is suitable for input to read."
   (setf u (%%princ-to-string u))
   (if (string= "!:" u :end2 1) (subseq u 1) u))
 
+(defparameter *float-print-precision* 12
+  ;; The choice of 12 is somewhat arbitrary.  Algebraic output seems
+  ;; to default to 6.  13 or less makes arith.tst agree with its
+  ;; reference output.  Should perhaps try to compute this; cf. !!nfpd
+  ;; defined in the REDUCE source file "arith/paraset.red".
+  "Number of significant decimal digits to include when printing floats, or nil.
+If nil then floats are printed without any additional rounding.")
+
+(defun %%prin-float-to-string (u)
+  "Print a float to a string rounded to include only significant digits."
+  ;; Rescale u so that the significant digits form the integer part,
+  ;; round that and then undo the rescaling.
+  (princ-to-string
+   (if (and *float-print-precision* (not (zerop u)))
+	   (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
+			  ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
+			  ;; integer part of u contains e+1 digits.  To make u
+			  ;; contain d significant digits, multiply by a scale
+			  ;; factor s = 10^(d-e-1), round and divide s out again:
+			  (s (expt 10d0 (- *float-print-precision* e 1))))
+		 (setq u (/ (fround (* u s)) s)))
+	   u)))
+
 (defun prin2 (u)
   "PRIN2(U:any):any eval, spread
 U is displayed upon the currently selected print device but output is
@@ -1746,6 +1774,7 @@ the escape character does not prefix special characters and strings
 are not enclosed in \"...\". Lists are displayed in list-notation and
 vectors in vector-notation. The value of U is returned."
   (cond ((symbolp u) (%%prin-string (%%prin2-id-to-string u)))
+		((floatp u) (%%prin-string (%%prin-float-to-string u)))
 		((atom u) (%%prin-string (princ-to-string u)))
 		(t (%%prin-string "(")
 		   (prin2 (car u))
@@ -2130,6 +2159,9 @@ to down-case the E in floats."
   (prog1
 	  (in-package :sl)
 	(setq *readtable* *sl-readtable*
+		  ;; The REDUCE source code implies that 64-bit IEEE
+		  ;; arithmetic is expected and it seems to be necessary to
+		  ;; read the constant 1.0e300 in arith/paraset.red:
 		  *read-default-float-format* 'double-float)))
 
 (defun start-reduce ()
