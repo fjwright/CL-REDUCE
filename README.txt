@@ -61,9 +61,10 @@ alg.tst runs correctly.
 arith.tst runs correctly and displays less numerical error than the
 reference output, arith.rlg.
 
-factor.tst
+factor.tst runs correctly.
 
-int.tst
+int.tst runs with 5 unevaluated integrals.  But int(erf(a + x),x)
+evaluates whereas in int.rlg it doesn't!
 
 To do
 =====

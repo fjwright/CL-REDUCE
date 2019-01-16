@@ -9,7 +9,7 @@
 % make REDUCE and the underlying CL system compatible, and which need
 % to be input before the system independent REDUCE source is loaded.
 
-fluid '(lispsystem!* !*savedef !*gc!-hook!*);
+fluid '(lispsystem!* !*savedef !*gc!-hook!* !*noinlines);
 
 lispsystem!* := !*features!*;			% must include COMMON-LISP
 
@@ -77,16 +77,16 @@ symbolic procedure orderp(u,v);
    string!-not!-greaterp(symbol!-name u, symbol!-name v);
 
 % TEMPORARY -- Ignore inline declarations for now:
-put('inline, 'newnam, 'symbolic);
-% or could do
-% !*noinlines := nil;
+% (See rlisp/proc.red and rlisp/smacro.red for details.)
+
+!*noinlines := t;
 
 % Note that rlisp/proc.red claims that
 
 % !*loginlines will cause a compile-time report of patterns of inline usage.
 
-% This is just what I need to turn off in faslout, but I think that
-% this variable is ignored.
+% This is just what I need to turn off in faslout, but this variable
+% is ignored in proc, although it is used in smacro, so it might work!
 
 % endmodule;
 
