@@ -109,6 +109,11 @@ sbcl --noinform << XXX &> log/reduce.blg
 
 XXX
 
+echo 'Errors:'
+grep  --exclude=bootstrap.blg '\*\*\*\*\*\|\<error\>' log/*.blg
+
+echo $'\a'
+
 exit
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

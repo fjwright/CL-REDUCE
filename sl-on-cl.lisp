@@ -26,9 +26,10 @@
   (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
 		   :intern :get :remprop :error :expt :float :map :mapc
 		   :mapcan :mapcar :mapcon :maplist :append :assoc :delete
-		   :length :member :apply :eval :close :open :princ :print
-		   :prin1 :prin2 :read :terpri :compile-file :load :time
-		   :char-downcase :char-upcase :string-downcase)
+		   :length :member :sublis :subst :apply :eval :close :open
+		   :princ :print :prin1 :prin2 :read :terpri :compile-file
+		   :load :time :char-downcase :char-upcase :string-downcase
+		   :rassoc)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
   #+CLISP (:import-from :ext :exit :quit :bye :getenv)
@@ -1272,6 +1273,13 @@ EXPR PROCEDURE MAPLIST(X, FN);
 ;;; Composite Functions
 ;;; ===================
 
+;; Common Lisp uses the test function eql by default
+;; (see the CLHS 17.2.1 Satisfying a Two-Argument Test,
+;; e.g. http://www.lispworks.com/documentation/HyperSpec/Body/17_ba.htm),
+;; whereas Standard Lisp uses the test function equal, which must
+;; therefore always be supplied to CL functions as the :test keyword
+;; argument.
+
 (defun append (u v)
   "(append U:list V:list): list expr
 Returns a constructed list in which the last element of U is followed by the
@@ -1318,7 +1326,7 @@ EXPR PROCEDURE DELETE(U, V);
    IF NULL V THEN NIL
       ELSE IF CAR V = U THEN CDR V
       ELSE CAR V . DELETE(U, CDR V);"
-  (cl:remove u v :count 1))
+  (cl:remove u v :test #'equal :count 1))
 
 (defun digit (u)
   "DIGIT(U:any):boolean eval, spread
@@ -1421,30 +1429,34 @@ EXPR PROCEDURE SASSOC(U, V, FN);
    IF NULL V THEN FN()
       ELSE IF U = CAAR V THEN CAR V
       ELSE SASSOC(U, CDR V, FN);"
-  (or (cl:assoc u v) (funcall fn)))
+  (or (cl:assoc u v :test #'equal) (funcall fn)))
 
-;; SUBLIS(X:alist, Y:any):any eval, spread
-;; The value returned is the result of substituting the CDR of each
-;; element of the alist X for every occurrence of the CAR part of that
-;; element in Y.
-;; EXPR PROCEDURE SUBLIS(X, Y);
-;;    IF NULL X THEN Y
-;;       ELSE BEGIN SCALAR U;
-;;                  U := ASSOC(Y, X);
-;;                  RETURN IF U THEN CDR U
-;;                         ELSE IF ATOM Y THEN Y
-;;                         ELSE SUBLIS(X, CAR Y) .
-;;                              SUBLIS(X, CDR Y)
-;;                  END;
+(defun sublis (x y)
+  "SUBLIS(X:alist, Y:any):any eval, spread
+The value returned is the result of substituting the CDR of each
+element of the alist X for every occurrence of the CAR part of that
+element in Y.
+EXPR PROCEDURE SUBLIS(X, Y);
+   IF NULL X THEN Y
+      ELSE BEGIN SCALAR U;
+                 U := ASSOC(Y, X);
+                 RETURN IF U THEN CDR U
+                        ELSE IF ATOM Y THEN Y
+                        ELSE SUBLIS(X, CAR Y) .
+                             SUBLIS(X, CDR Y)
+                 END;"
+  (cl:sublis x y :test #'equal))
 
-;; SUBST(U:any, V:any, W:any):any eval, spread
-;; The value returned is the result of substituting U for all occurrences
-;; of V in W.
-;; EXPR PROCEDURE SUBST(U, V, W);
-;;    IF NULL W THEN NIL
-;;       ELSE IF V = W THEN U
-;;       ELSE IF ATOM W THEN W
-;;       ELSE SUBST(U, V, CAR W) . SUBST(U, V, CDR W);
+(defun subst (u v w)
+  "SUBST(U:any, V:any, W:any):any eval, spread
+The value returned is the result of substituting U for all occurrences
+of V in W.
+EXPR PROCEDURE SUBST(U, V, W);
+   IF NULL W THEN NIL
+      ELSE IF V = W THEN U
+      ELSE IF ATOM W THEN W
+      ELSE SUBST(U, V, CAR W) . SUBST(U, V, CDR W);"
+  (cl:subst u v w :test #'equal))
 
 
 ;;; The Interpreter
@@ -2080,6 +2092,19 @@ order.
   (cl:map 'list #'cl:identity v))
 
 (defalias 'filep 'probe-file)			; PSL
+
+;; This function is used in several places in REDUCE, but I can't find
+;; a reference to it anywhere!  The documentation string below is
+;; based on that in Emacs Lisp:
+(defun rassoc (key list)
+  "Return non-nil if KEY is ‘equal’ to the cdr of an element of LIST.
+The value is actually the first element of LIST whose cdr equals KEY."
+  (cl:rassoc key list :test #'equal))
+
+(defalias 'copy 'copy-tree				; PSL
+  "(copy X:any): any expr
+This function returns a copy of X. While each pair is copied, atomic
+elements (for example ids, strings, and vectors) are not.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

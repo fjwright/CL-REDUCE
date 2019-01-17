@@ -277,6 +277,9 @@ symbolic procedure gctime; 0;
 
 % flag('(find!!minnorm), 'lose);
 
+symbolic procedure gensymp u;			% from pslrend
+   idp u and not find!-symbol symbol!-name u;
+
 endmodule;
 
 end;

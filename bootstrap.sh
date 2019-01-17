@@ -131,3 +131,8 @@ save!-lisp!-and!-die "bootstrap.img"; % better for debugging
 XXX
 
 echo ++++++ Bootstrap REDUCE built ++++++
+
+echo 'Errors:'
+grep '\*\*\*\*\*\|\<error\>' log/bootstrap.blg
+
+echo $'\a'

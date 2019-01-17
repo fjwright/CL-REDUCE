@@ -16,7 +16,14 @@ Files required
 "sl-on-cl.lisp" implements Standard Lisp on Common Lisp in a package
 called STANDARD-LISP with nickname SL.
 
-"boot.sl" is (a link to or copy of) the file "psl/boot.sl".
+"boot.sl" is (a link to or copy of) the file "psl/boot.sl" from the
+Subversion repository.
+
+"packages" is (a link to or copy of) the packages directory of the
+version of REDUCE you want to build.  I recommend using the latest
+distributed version, which is included in the installed files if you
+install a binary distribution, but you can also use a recent download
+from the Subversion repository.
 
 "build.red" is a modified version of "packages/support/build.red".
 
@@ -53,18 +60,37 @@ can be run directly from File Explorer.
 Then interrupt (^C) invokes the SBCL debugger, with currently no
 restart.
 
+All core test files run to completion without any catastrophic errors,
+although some fail trying to load non-core packages and some are not
+completely consistent with the reference output.
 
-poly.tst and polydiv.tst run correctly.
-
-alg.tst runs correctly.
+poly, polydiv, alg OK.
 
 arith.tst runs correctly and displays less numerical error than the
-reference output, arith.rlg.
+reference output, arith.rlg!
 
-factor.tst runs correctly.
+factor OK.
 
-int.tst runs with 5 unevaluated integrals.  But int(erf(a + x),x)
-evaluates whereas in int.rlg it doesn't!
+int.tst runs with some unevaluated integrals.  But int(erf(a + x),x)
+evaluates whereas in int.rlg it doesn't!  I think the source code
+might be temporarily unstable, so I will ignore these errors for now.
+
+matrix OK.
+
+solve.tst has some errors and fails to load groebner and odesolve (why
+odesolve?).
+
+desir OK.
+
+ineq.tst fails to load roots2.
+
+modsr, rsolve OK.
+
+assist.tst shows minor (?) differences from the reference output,
+mostly affecting sort order.
+
+algint.tst is much like int.tst.
+
 
 To do
 =====
