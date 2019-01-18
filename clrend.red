@@ -245,11 +245,6 @@ deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
 %                if (x := get(x,'patchfn)) then eval list x>>;
 
 
-% The FACTOR module also requires a definition for GCTIME. Since this
-% is currently undefined in CL, we provide the following definition.
-
-symbolic procedure gctime; 0;
-
 % FLOOR is already defined.
 
 % flag('(floor),'lose);

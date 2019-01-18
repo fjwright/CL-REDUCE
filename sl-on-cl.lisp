@@ -1959,6 +1959,17 @@ Elapsed time from some arbitrary initial point in milliseconds."
   ;; This is used for timing computations, so use run time.
   (round (* (get-internal-run-time) +milliseconds-per-internal-time-unit+)))
 
+(defun gctime ()
+  "The total time (in milliseconds) spent in garbage collection."
+  ;; sb-ext:*gc-run-time* [Variable]
+  ;; Total cpu time spent doing garbage collection (as reported by
+  ;; get-internal-run-time.) Initialized to zero on startup.
+  (round (* sb-ext:*gc-run-time* +milliseconds-per-internal-time-unit+)))
+
+(defun gtheap ()
+  "Size of the free dynamic space in bytes."
+  (- (sb-ext:dynamic-space-size) (sb-ext:get-bytes-consed)))
+
 (defun explode2 (u)						; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."

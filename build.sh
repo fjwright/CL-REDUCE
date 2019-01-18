@@ -1,20 +1,67 @@
 #!/usr/bin/bash
 
-# Modified by FJW for REDUCE on Common Lisp.
-# The standard version is "psl/build.sh".
+# Build REDUCE on Common Lisp.
+# Based on "psl/bootstrap.sh" and "psl/build.sh".
 
-# Do a complete rebuild of REDUCE, assuming ./bootstrap.sh has been
-# run to build an initial bootstrap REDUCE core image.
+# Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
+
+# Compile all required fasl files and save a final REDUCE image.
 
 # Usage: ./build.sh
 
-# Compile the "core" modules.  These are each built in a
-# freshly-loaded system since otherwise there can be bad effects from
-# left-over declarations and the like.
+# Build an initial bootstrap REDUCE image if necessary:
+if [ ! -e bootstrap.img ]; then ./bootstrap.sh; fi
 
 mkdir -p log				 # -p avoids complaint if directory exists
+mkdir -p fasl
 
-for p in `cat fasl/core-packages.dat`
+# First, compile fasl files for non-package source files:
+sbcl --core bootstrap.img --noinform << XXX &> log/build.blg
+(standard-lisp)
+(begin)
+symbolic;
+
+package!-remake2('clprolo, nil);
+package!-remake2('revision, 'support);
+package!-remake2('clrend, nil);
+package!-remake2('entry, 'support);
+
+% Create .dat files that list core and non-core modules to build:
+
+begin
+  scalar w, i, s, core, noncore;
+  i := open("packages/package.map", 'input);
+  s := rds i;
+  w := read();
+  rds s;
+  close i;
+  for each x in w do
+     if member('psl, x) then <<
+        if member('core, x) then core := x . core
+        else noncore := x . noncore >>;
+  i := open("fasl/core-packages.dat", 'output);
+  s := wrs i;
+  for each x in reverse core do print car x;
+  wrs s; % ADDED TO AVOID A NASTY CRASH!
+  close i;
+  i := open("fasl/noncore-packages.dat", 'output);
+  s := wrs i;
+  for each x in reverse noncore do print car x;
+  wrs s;
+  close i;
+end;
+
+% Without above addition, penultimate wrs returns the closed stream
+% for "fasl/core-packages.dat" and then the final wrs tries to switch
+% to the closed stream. This crashes SBCL!
+
+bye;
+XXX
+
+# Compile the "core" modules, each in a separate invocation of
+# bootstrapping REDUCE to avoid adverse interactions:
+
+for p in $(< fasl/core-packages.dat)
 do
 echo ++++++ About to remake $p ++++++
 
@@ -23,10 +70,6 @@ sbcl --core bootstrap.img --noinform << XXX &> log/${p,,}.blg
 (standard-lisp)
 (begin)
 symbolic;
-on verboseload;
-load compiler;
-load remake;
-!*argnochk := t;
 
 begin
   scalar w, i, s;
@@ -47,16 +90,15 @@ done
 
 echo ++++++ Now create the REDUCE image file ++++++
 
-# This starts a bare Common Lisp image and loads in the modules
-# compiled by the very first step.  It then checkpoints a system that
-# can be used to rebuild all other modules.
+# Start a new invocation of Lisp and load the key modules compiled
+# above.  Then save a final REDUCE image that wil be used below to
+# compile the non-core modules.
 
 sbcl --noinform << XXX &> log/reduce.blg
 (load "sl-on-cl")
 (standard-lisp)
 
-%(setq !*init!-stats!* (list (time) (gtheap nil) (free-bps) nextsymbol))
-(defparameter !*init!-stats!* (list (time)))
+(defparameter !*init!-stats!* (list (time) (gtheap)))
 
 (setq !*verboseload t)
 (defvar !*argnochk t)           % Check argument count.
@@ -64,7 +106,7 @@ sbcl --noinform << XXX &> log/reduce.blg
 % Load is expected to be a macro but isn't; does that matter?
 
 (load "module")                 % Contains definition of load-package.
-(load "clprolo")                % CL specific code.
+(load "clprolo")                % Initial CL specific code.
 
 (load!-package 'revision)
 (load!-package 'rlisp)
@@ -74,33 +116,28 @@ sbcl --noinform << XXX &> log/reduce.blg
 (load!-package 'alg)
 (load!-package 'mathpr)
 (load!-package 'entry)
-(defautoload prettyprint pretty) % since only in entry for PSL!
+(defautoload prettyprint pretty)  % since only in entry file for PSL!
 
 (setq date!* (date))
-(setq version!* "REDUCE Experimental Version")
+(setq version!* (format nil "REDUCE (Free SBCL version, revision ~a)" revision!*))
 (initreduce)
 
-% (setq !*loadversion t)             % Load entry module during BEGIN.
 (setq !*verboseload nil)           % Inhibit loading messages.
+
 (setf sb-ext:*muffled-warnings* 'warning)
 
 (prog nil
-   (gc)
    (terpri)
-   (prin2 "Time to build core REDUCE: ")
+   (prin2 "Time to build REDUCE: ")
    (prin2 (quotient (difference (time) (car !*init!-stats!*)) 1000.0))
    (prin2t " secs")
-   % (prin2 "Symbols used:   ")
-   % (prin2t (difference nextsymbol (cadddr !*init!-stats!*)))
-   % (prin2 "Heap used:      ")
-   % (prin2t (difference (cadr !*init!-stats!*) (gtheap nil)))
-   % (prin2 "BPS used:       ")
-   % (prin2t (difference (caddr !*init!-stats!*) (free-bps)))
-   % (prin2 "Heap left:      ")
-   % (prin2t (gtheap nil))
-   % (prin2 "BPS left:       ")
-   % (prin2t (free-bps))
-  (setq !*init!-stats!* nil))
+   (prin2 "Heap used: ")
+   (prin2t (difference (cadr !*init!-stats!*) (gtheap)))
+   (prin2t " bytes")
+   (prin2 "Heap left: ")
+   (prin2t (gtheap))
+   (prin2t " bytes")
+   (setq !*init!-stats!* nil))
 
 % (savesystem "REDUCE" "$fasl/reduce" (quote ((read-init-file "reduce"))))
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
@@ -110,7 +147,7 @@ sbcl --noinform << XXX &> log/reduce.blg
 XXX
 
 echo 'Errors:'
-grep  --exclude=bootstrap.blg '\*\*\*\*\*\|\<error\>' log/*.blg
+grep --exclude=bootstrap.blg '\*\*\*\*\*\|\<error\>' log/*.blg
 
 echo $'\a'
 
