@@ -64,7 +64,7 @@ All core test files run to completion without any catastrophic errors,
 although some fail trying to load non-core packages and some are not
 completely consistent with the reference output.
 
-poly, polydiv, alg OK.
+alg, poly, polydiv OK.
 
 arith.tst runs correctly and displays less numerical error than the
 reference output, arith.rlg!
@@ -77,6 +77,8 @@ might be temporarily unstable, so I will ignore these errors for now.
 
 matrix OK.
 
+rlisp88.tst shows major problems.
+
 solve.tst has some errors and fails to load groebner and odesolve (why
 odesolve?).
 
@@ -86,11 +88,32 @@ ineq.tst fails to load roots2.
 
 modsr, rsolve OK.
 
+algint.tst is much like int.tst.
+
+arnum OK.
+
 assist.tst shows minor (?) differences from the reference output,
 mostly affecting sort order.
 
-algint.tst is much like int.tst.
+dummy OK.
 
+cantens.tst shows some problems.
+
+atensor, avector, invbase OK.
+
+misc.tst shows some problems.
+
+boolean.tst shows some problems.
+
+cali.tst shows some problems.
+
+camal, changevr OK.
+
+compact.tst shows some problems.
+
+dfpart.tst fails to load taylor.
+
+lie OK.
 
 To do
 =====
