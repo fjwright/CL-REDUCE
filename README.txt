@@ -103,7 +103,7 @@ atensor, avector, invbase OK.
 
 misc.tst shows some problems.
 
-boolean.tst shows some problems.
+boolean OK.
 
 cali.tst shows some problems.
 

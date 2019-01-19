@@ -1710,11 +1710,17 @@ EXPR PROCEDURE PRINT(U);
 	 finally (return (coerce (nreverse newu) 'string))))
 
 (defun %%prin1-string-to-string (u)
-  "Change the escape convention in string U from Common to Standard Lisp.
-That is, replace backslashes with double quotes."
-  (cl:map 'string
-		  #'(lambda (x) (if (char= x #\\) #\" x))
-		  (prin1-to-string u)))
+  "Add delimiting \"s and escape internal \"s as \"\" in string U."
+  (loop with p = 0 and q and v = (list "\"")
+	 ;; v must be a new cons to allow destructive reverse
+	 do
+	   (setq q (position #\" u :start p))
+	   (if q (incf q))
+	   (setq v (cons "\"" (cons (subseq u p q) v))
+			 p q)
+	 while q
+	 finally (return
+			   (cl:apply #'concatenate 'string (nreverse v)))))
 
 (defun prin1 (u)
   "PRIN1(U:any):any eval, spread
