@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-# Build a bootstrapping version of REDUCE on Common Lisp.
+# Build a bootstrap version of REDUCE on Common Lisp.
 # Based on "psl/bootstrap.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
@@ -16,9 +16,8 @@ mkdir -p log				 # -p avoids complaint if directory exists
 echo ++++++ Build bootstrap REDUCE ++++++
 
 sbcl << XXX &> log/bootstrap.blg
-
-; (declaim (optimize debug)				; same as (debug 3)
-;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+(declaim (optimize debug)				; same as (debug 3)
+		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (load "sl-on-cl")
 (standard-lisp)
@@ -29,11 +28,11 @@ sbcl << XXX &> log/bootstrap.blg
 
 (setq !*verboseload t)
 
-(defparameter !*init!-time!* (time))
+(cl:defparameter !*init!-time!* (time))
 
-(defvar !*argnochk t)
-(defvar !*int nil)  % Prevents input buffer being saved.
-(defvar !*msg nil)
+(cl:defvar !*argnochk t)
+(cl:defvar !*int nil)  % Prevents input buffer being saved.
+(cl:defvar !*msg nil)
 % (setq !*comp t)  % It's faster in some lisps if we compile.
 
 % Do not use fasl version of "boot.sl": the CL compiler may optimize
@@ -42,7 +41,7 @@ sbcl << XXX &> log/bootstrap.blg
 
 (load "boot.sl")
 
-(defvar xxx)
+(cl:defvar xxx)
 (begin2)
 rds(xxx := open("build.red",'input));
 (close xxx)
@@ -58,11 +57,11 @@ rds(xxx := open("build.red",'input));
 
 (setq !*comp nil)
 
-(load "compiler")
+% (load "compiler")
 
 (prog nil
    (terpri)
-   (prin2 "Time to build bootstrapping REDUCE: ")
+   (prin2 "Time to build bootstrap REDUCE: ")
    (prin2 (quotient (difference (time) !*init!-time!*) 1000.0))
    (prin2t " secs")
    (prin2 "Heap left: ")
@@ -70,7 +69,7 @@ rds(xxx := open("build.red",'input));
 
 (initreduce)
 (setq date!* (date))
-(setq version!* "Bootstrapping REDUCE")
+(setq version!* "Bootstrap REDUCE")
 
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
 % save!-lisp!-and!-die("bootstrap", !:executable, t, !:toplevel, (lambda () (standard-lisp) (begin)))

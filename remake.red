@@ -18,8 +18,8 @@ global '(loaded!-modules!*);
 symbolic procedure olderfaslp(u,v);
    % Return t if file u does not exist or is older than file v.
    % (Return nil if file v does not exist, but this should not happen!)
-   not probe!-file u or
-	  (probe!-file v and file!-write!-date u < file!-write!-date v);
+   not filep u or
+	  (filep v and file!-write!-date u < file!-write!-date v);
 
 % Support for packages directory.
 

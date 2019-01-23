@@ -1,6 +1,6 @@
 ;;; sl-on-cl.lisp --- Standard Lisp on Common Lisp
 
-;; Copyright (C) 2018 Francis J. Wright
+;; Copyright (C) 2018, 2019 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 ;; Created: 4 November 2018
@@ -12,24 +12,24 @@
 ;; REPL and is intended primarily for running REDUCE (which provides
 ;; its own REPL) on Common Lisp.
 
-(declaim (optimize debug)				; same as (debug 3)
-		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+(declaim (optimize debug))				; same as (debug 3)
+;; (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (defpackage :standard-lisp
   (:nicknames :sl)
   (:documentation "Standard Lisp on Common Lisp")
-  (:use :common-lisp)
+  (:use :common-lisp)					; unused at end of file
 
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
   (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
-		   :intern :get :remprop :error :expt :float :map :mapc
-		   :mapcan :mapcar :mapcon :maplist :append :assoc :delete
-		   :length :member :sublis :subst :apply :eval :close :open
-		   :princ :print :prin1 :prin2 :read :terpri :compile-file
-		   :load :time :char-downcase :char-upcase :string-downcase
-		   :rassoc)
+  		   :intern :get :remprop :error :expt :float :map :mapc
+  		   :mapcan :mapcar :mapcon :maplist :append :assoc :delete
+  		   :length :member :sublis :subst :apply :eval :close :open
+  		   :princ :print :prin1 :prin2 :read :terpri :compile-file
+  		   :load :time :char-downcase :char-upcase :string-downcase
+  		   :rassoc)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
   #+CLISP (:import-from :ext :exit :quit :bye :getenv)
@@ -37,15 +37,8 @@
 
 (in-package :standard-lisp)
 
-(defun eval (u)
-  "Redefined below, but required now!"
-  (cl:eval u))
-
 ;; The following definitions roughly follow the order in the Standard
-;; Lisp Report.  Symbols not explicitly defined, or described only in
-;; a comment, are inherited from Common Lisp.  In particular, nil and
-;; t are inherited.
-
+;; Lisp Report.
 
 ;;; System GLOBAL Variables
 ;;; =======================
@@ -73,17 +66,27 @@ The value of !$EOL!$ is returned by READCH when it reaches the
 end of a logical input record. Likewise PRINC will terminate its
 current line (like a call to TERPRI) when !$EOL!$ is its argument.")
 
-(defvar *gc nil						; currently ignored!
+(defvar *gc nil							; currently ignored!
   "*GC = NIL global
 !*GC controls the printing of garbage collector messages. If NIL
 no indication of garbage collection may occur. If non-NIL various
 system dependent messages may be displayed.")
+
+(import '(cl:nil))						; this list form is necessary!
+;; NIL = NIL global
+;; NIL is a special global variable. It is protected from being modifed
+;; by SET or SETQ.
 
 (defvar *raise t
   "*RAISE = NIL global
 If !*RAISE is non-NIL all characters input through Standard LISP
 input/output functions will be raised to upper case. If !*RAISE is
 NIL characters will be input as is.")
+
+(import 'cl:t)
+;; T = T global
+;; T is a special global variable. It is protected from being modifed by
+;; SET or SETQ.
 
 ;; Not Standard LISP but PSL and assumed by REDUCE:
 
@@ -118,6 +121,7 @@ determined by DEFINITION.  The return value is undefined."
 ;;; Elementary Predicates
 ;;; =====================
 
+(import 'cl:atom)
 ;; ATOM(U:any):boolean eval, spread
 ;; Returns T if U is not a pair.
 ;; EXPR PROCEDURE ATOM(U);
@@ -134,6 +138,7 @@ EXPR PROCEDURE CONSTANTP(U);
    NULL OR(PAIRP U, IDP U);"
   (null (or (consp u) (symbolp u))))
 
+(import 'cl:eq)
 ;; EQ(U:any, V:any):boolean eval, spread
 ;; Returns T if U points to the same object as V. EQ is not a reliable
 ;; comparison between numeric arguments.
@@ -163,6 +168,7 @@ pointers must have EQ values. Other atoms must be EQN equal."
   "FIXP(U:any):boolean eval, spread
 Returns T if U is an integer (a fixed number).")
 
+(import 'cl:floatp)
 ;; FLOATP(U:any):boolean eval, spread
 ;; Returns T if U is a floating point number.
 
@@ -178,11 +184,13 @@ EXPR PROCEDURE MINUSP(U);
    IF NUMBERP U THEN LESSP(U, 0) ELSE NIL;"
   (and (realp u) (cl:minusp u)))
 
+(import 'cl:null)
 ;; NULL(U:any):boolean eval, spread
 ;; Returns T if U is NIL.
 ;; EXPR PROCEDURE NULL(U);
 ;;    U EQ NIL;
 
+(import 'cl:numberp)
 ;; NUMBERP(U:any):boolean eval, spread
 ;; Returns T if U is a number (integer or floating).
 ;; EXPR PROCEDURE NUMBERP(U);
@@ -200,6 +208,7 @@ EXPR PROCEDURE ONEP(U);
   "PAIRP(U:any):boolean eval, spread
 Returns T if U is a dotted-pair.")
 
+(import 'cl:stringp)
 ;; STRINGP(U:any):boolean eval, spread
 ;; Returns T if U is a string.
 
@@ -222,37 +231,48 @@ EXPR PROCEDURE ZEROP(U);
 ;;; Functions on Dotted-Pairs
 ;;; =========================
 
+(import 'cl:car)
 ;; CAR(U:dotted-pair):any eval, spread
 ;; CAR(CONS(a, b)) --> a. The left part of U is returned. The type
 ;; mismatch error occurs if U is not a dotted-pair.
 
+(import 'cl:cdr)
 ;; CDR(U:dotted-pair):any eval, spread
 ;; CDR(CONS(a, b)) --> b. The right part of U is returned. The type
 ;; mismatch error occurs if U is not a dotted-pair.
 
-;; The composites of CAR and CDR are supported up to 4 levels.
+;; The composites of CAR and CDR are supported up to 4 levels:
+(import '(cl:caar cl:cadr cl:cdar cl:cddr cl:caaar cl:caadr cl:cadar
+		  cl:caddr cl:cdaar cl:cdadr cl:cddar cl:cdddr cl:caaaar
+		  cl:caaadr cl:caadar cl:caaddr cl:cadaar cl:cadadr cl:caddar
+		  cl:cadddr cl:cdaaar cl:cdaadr cl:cdadar cl:cdaddr cl:cddaar
+		  cl:cddadr cl:cdddar cl:cddddr))
 
+(import 'cl:cons)
 ;; CONS(U:any, V:any):dotted-pair eval, spread
 ;; Returns a dotted-pair which is not EQ to anything and has U as its
 ;; CAR part and V as its CDR part.
 
+(import 'cl:list)
 ;; LIST([U:any]):list noeval, nospread, or macro
 ;; A list of the evaluation of each element of U is returned. The order of
 ;; evaluation need not be first to last as the following definition implies.
 ;; FEXPR PROCEDURE LIST(U);
 ;;    EVLIS U;
 
+(import 'cl:rplaca)
 ;; RPLACA(U:pair, V:any):pair eval, spread
 ;; The car of the pair U is replaced by V and the modified pair U is
 ;; returned.  A type mismatch error occurs if U is not a pair.
 
+(import 'cl:rplacd)
 ;; RPLACD(U:pair, V:any):pair eval, spread
 ;; The cdr of the pair U is replaced by V and the modified pair U is
 ;; returned.  A type mismatch error occurs if U is not a pair.
 
-;; PSL functions
+;; PSL functions:
 
-;; first, second, third, fourth, rest are all defined in CL.
+(import '(cl:first cl:second cl:third cl:fourth cl:rest))
 
 (defalias 'lastpair 'cl:last
   "(lastpair L:pair): any expr
@@ -284,7 +304,7 @@ fewer than N elements, an out of range error occurs.
 Note that this definition is not compatible with Common LISP. The
 Common LISP definition reverses the arguments and defines the car
 of a list to be the \"zeroth\" element."
-  (nth (1- n) l))
+  (cl:nth (1- n) l))
 
 (defun pnth (l n)						; should be inlined
   "(pnth L:list N:integer): any expr
@@ -376,6 +396,7 @@ string, or function-pointer."
 				  (push e ss)
 				  finally (return (nreverse ss)))))))
 
+(import 'cl:gensym)
 ;; GENSYM():identifier eval, spread
 ;; Creates an identifier which is not interned on the OBLIST and
 ;; consequently not EQ to anything else.
@@ -600,8 +621,15 @@ is returned."
 			  ;; Try the null environment (nil) initially.
 			  ;; (The parameter x should perhaps be a gensym.)
 			  (cons 'macro
-					(eval `(lambda (x)
-							 (funcall ,(macro-function fname) x nil)))))
+			  		(eval `(lambda (x)
+			  				 (funcall ,(macro-function fname) x nil)))))
+			 ;; The following breaks the call of while in
+			 ;; rlisp/statmisc.red and so is clearly not right!
+
+			  ;; (cons 'macro
+			  ;; 		(eval `(lambda (&rest r)
+			  ;; 				 (apply ,(macro-function fname) r)))))
+
 			 (t
 			  (cons 'expr (symbol-function fname))))))
 
@@ -666,7 +694,7 @@ the name may be used subsequently as a variable."
 		(warn "GLOBAL ~a cannot be changed to FLUID" x)
 	  (progn
 		;; defvar is a macro, so ...
-		(eval `(defvar ,x nil "Standard LISP fluid variable."))
+		(cl:eval `(defvar ,x nil "Standard LISP fluid variable."))
 		(put x 'fluid t)))))
 
 (defmacro fluid (idlist)
@@ -684,7 +712,7 @@ from GLOBAL to FLUID is not permissible and results in the error:
 			(cons nil
 				  (cl:mapcan
 				   #'(lambda (x) `((%%fluid ',x)))
-				   (eval idlist))))
+				   (cl:eval idlist))))
 	;; Assume a run-time call.
 	`(prog1 nil
 	   (cl:mapc #'%%fluid ,idlist))))
@@ -703,7 +731,7 @@ otherwise NIL is returned."
 	  (progn
 		;; defvar is a macro, so ...
 		(unless (cl:constantp x)		; nil, t, $eol$, $eof$, etc.
-		  (eval `(defvar ,x nil "Standard LISP global variable.")))
+		  (cl:eval `(defvar ,x nil "Standard LISP global variable.")))
 		(put x 'global t)))))
 
 (defmacro global (idlist)
@@ -722,7 +750,7 @@ results in the error:
 			(cons nil
 				  (cl:mapcan
 				   #'(lambda (x) `((%%global ',x)))
-				   (eval idlist))))
+				   (cl:eval idlist))))
 	;; Assume a run-time call.
 	`(prog1 nil
 	   (cl:mapc #'%%global ,idlist))))
@@ -733,6 +761,7 @@ If U has been declared GLOBAL or is the name of a defined function,
 T is returned, else NIL is returned."
   (or (get u 'global) (fboundp u)))
 
+(import 'cl:set)
 ;; Auto fluid not implemented!
 ;; SET(EXP:id, VALUE:any):any eval, spread
 ;; EXP must be an identifier or a type mismatch error occurs. The
@@ -744,6 +773,7 @@ T is returned, else NIL is returned."
 ;; EXP must not evaluate to T or NIL or an error occurs:
 ;; ***** Cannot change T or NIL
 
+(import 'cl:setq)
 ;; Auto fluid not implemented!
 ;; SETQ(VARIABLE:id, VALUE:any):any noeval, nospread
 ;; If VARIABLE is not local or GLOBAL it is by default declared
@@ -779,6 +809,7 @@ in interpreted functions are automatically considered fluid."
 ;; prog probably needs modification as for EL.
 ;; **********************************************************************
 
+(import 'cl:go)
 ;; GO(LABEL:id) noeval, nospread
 ;; GO alters the normal flow of control within a PROG function. The
 ;; next statement of a PROG function to be evaluated is immediately
@@ -802,6 +833,7 @@ in interpreted functions are automatically considered fluid."
 ;; another error is detected:
 ;; ***** Illegal use of GO to LABEL
 
+(import 'cl:prog)
 ;; PROG(VARS:id-list, [PROGRAM:{id, any}]):any noeval, nospread
 ;; VARS is a list of ids which are considered fluid when the PROG is
 ;; interpreted and local when compiled. The PROGs variables are
@@ -814,15 +846,18 @@ in interpreted functions are automatically considered fluid."
 ;; determined by a RETURN function or NIL if the PROG "falls
 ;; through".
 
+(import 'cl:progn)
 ;; PROGN([U:any]):any noeval, nospread
 ;; U is a set of expressions which are executed sequentially. The
 ;; value returned is the value of the last expression.
 
+(import 'cl:prog2)
 ;; PROG2(A:any, B:any)any eval, spread
 ;; Returns the value of B.
 ;; EXPR PROCEDURE PROG2(A, B);
 ;;    B;
 
+(import 'cl:return)
 ;; RETURN(U:any) eval, spread
 ;; Within a PROG, RETURN terminates the evaluation of a PROG
 ;; and returns U as the value of the PROG. The restrictions on the
@@ -940,6 +975,7 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;;; Boolean Functions and Conditionals
 ;;; ==================================
 
+(import 'cl:and)
 ;; AND([U:any]):extra-boolean noeval, nospread
 ;; AND evaluates each U until a value of NIL is found or the end of the
 ;; list is encountered. If a non-NIL value is the last value it is returned,
@@ -953,6 +989,7 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;;    GO LOOP
 ;; END;
 
+(import 'cl:cond)
 ;; COND([U:cond-form]):any noeval, nospread
 ;; The antecedents of all U's are evaluated in order of their
 ;; appearance until a non-NIL value is encountered. The consequent
@@ -965,11 +1002,13 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;; error is detected if a U is improperly formed:
 ;; ***** Improper cond-form as argument of COND
 
+(import 'cl:not)
 ;; NOT(U:any):boolean eval, spread
 ;; If U is NIL, return T else return NIL (same as function NULL).
 ;; EXPR PROCEDURE NOT(U);
 ;;    U EQ NIL;
 
+(import 'cl:or)
 ;; OR([U:any]):extra-boolean noeval, nospread
 ;; U is any number of expressions which are evaluated in order of their
 ;; appearance. When one is found to be non-NIL it is returned as the
@@ -988,6 +1027,7 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 
 ;; Use double precision floats.
 
+(import 'cl:abs)
 ;; ABS(U:number):number eval, spread
 ;; Returns the absolute value of its argument.
 ;; EXPR PROCEDURE ABS(U);
@@ -1069,6 +1109,7 @@ Returns T if U is strictly less than V, otherwise returns NIL.")
 (defalias 'geq 'cl:>=)
 (defalias 'leq 'cl:<=)
 
+(import 'cl:max)
 ;; MAX([U:number]):number noeval, nospread, or macro
 ;; Returns the largest of the values in U. If two or more values are the
 ;; same the first is returned.
@@ -1082,6 +1123,7 @@ returned (U and V might be of different types).
 EXPR PROCEDURE MAX2(U, V);
    IF LESSP(U, V) THEN V ELSE U;")
 
+(import 'cl:min)
 ;; MIN([U:number]):number noeval, nospread, or macro
 ;; Returns the smallest of the values in U. If two or more values are the
 ;; same the first of these is returned.
@@ -1216,7 +1258,7 @@ Returns the product of U and V.")
 ;;; MAP Composite Functions
 ;;; =======================
 
-;; These definitions cause a compilation error!
+;; These definitions cause a compilation error! (???)
 
 (defun map (x fn)
   "MAP(X:list, FN:function):any eval, spread
@@ -1381,6 +1423,7 @@ EXPR PROCEDURE MEMQ(A, B);
       ELSE MEMQ(A, CDR B);"
   (cl:member a b :test #'eq))
 
+(import 'cl:nconc)
 ;; NCONC(U:list, V:list):list eval, spread
 ;; Concatenates V to U without copying U. The last CDR of U is
 ;; modified to point to V.
@@ -1410,6 +1453,7 @@ EXPR PROCEDURE PAIR(U, V);
   (cond ((and u v) (cons (cons (car u) (car v)) (pair (cdr u) (cdr v))))
 		((or u v) (cl:error "000 Different length lists in PAIR"))))
 
+(import 'cl:reverse)
 ;; REVERSE(U:list):list eval, spread
 ;; Returns a copy of the top level of U in reverse order.
 ;; EXPR PROCEDURE REVERSE(U);
@@ -1457,6 +1501,14 @@ EXPR PROCEDURE SUBST(U, V, W);
       ELSE IF ATOM W THEN W
       ELSE SUBST(U, V, CAR W) . SUBST(U, V, CDR W);"
   (cl:subst u v w :test #'equal))
+
+;; This function is used in several places in REDUCE, but I can't find
+;; a reference to it anywhere!  The documentation string below is
+;; based on that in Emacs Lisp:
+(defun rassoc (key list)
+  "Return non-nil if KEY is equal to the cdr of an element of LIST.
+The value is actually the first element of LIST whose cdr equals KEY."
+  (cl:rassoc key list :test #'equal))
 
 
 ;;; The Interpreter
@@ -1565,12 +1617,14 @@ EXPR PROCEDURE EXPAND(L,FN);
 	  (car l)
 	(list fn (car l) (expand (cdr l) fn))))
 
+(import 'cl:function)
 ;; FUNCTION(FN:function):function noeval, nospread
 ;; The function FN is to be passed to another function. If FN is to have
 ;; side effects its free variables must be fluid or global. FUNCTION is
 ;; like QUOTE but its argument may be affected by compilation. We
 ;; do not consider FUNARGs in this report.
 
+(import 'cl:quote)
 ;; QUOTE(U:any):any noeval, nospread
 ;; Stops evaluation and returns U unevaluated.
 ;; FEXPR PROCEDURE QUOTE(U);
@@ -1936,8 +1990,8 @@ selected output file.
 	(setq *standard-output* (or filehandle +default-standard-output+))))
 
 
-;;; PSL/CSL functions and some other useful functions
-;;; =================================================
+;;; PSL/CSL functions and some other required functions
+;;; ===================================================
 
 ;; In the Standard Lisp world, "character" means either a symbol whose
 ;; name is one character long or an ASCII character code.
@@ -2110,14 +2164,6 @@ order.
 
 (defalias 'filep 'probe-file)			; PSL
 
-;; This function is used in several places in REDUCE, but I can't find
-;; a reference to it anywhere!  The documentation string below is
-;; based on that in Emacs Lisp:
-(defun rassoc (key list)
-  "Return non-nil if KEY is ‘equal’ to the cdr of an element of LIST.
-The value is actually the first element of LIST whose cdr equals KEY."
-  (cl:rassoc key list :test #'equal))
-
 (defalias 'copy 'copy-tree				; PSL
   "(copy X:any): any expr
 This function returns a copy of X. While each pair is copied, atomic
@@ -2182,19 +2228,96 @@ to down-case the E in floats."
 ;;   (rds (setf oldchan* (open name 'input))))
 
 
-;;; Common Lisp functions that are redefined in REDUCE
-;;; ==================================================
+;;; Faslout/faslend interface
+;;; =========================
 
-;; Allow this for now by shadowing the symbols in the STANDARD-LISP
-;; package.  Later, it might be better to use the Common Lisp
-;; functions, but their compatibility needs checking!
+(defvar *writingfaslfile nil
+  "REDUCE variable set to t by FASLOUT and reset to nil by FASLEND.")
+(defvar *int)
+(defvar *msg)
+(defvar %%msg nil
+  "The saved global value of the msg switch.
+It is turned off during faslout.")
+(defvar %%verboseload nil
+  "The saved global value of the verboseload switch.
+It is turned off during faslout.")
 
-(shadow '(arrayp listp subsetp identity clrhash gethash *print-array*
-		  *print-length* *print-level* remf lcm realp conjugate remove
-		  random sort stable-sort boundp let isqrt sqrt floor ceiling
-		  round log atan sin tan exp cos asin acos sinh cosh tanh
-		  asinh acosh atanh symbol vector array adjoin class merge
-		  copy-tree reduce mod defstruct describe))
+(defvar %%faslout-filehandle)
+(defvar %%faslout-name.lisp)
+
+(defun prettyprint (u)
+  "Default print function, required for bootstrapping.
+Redefined later."
+  (print u))
+
+(defun faslout (name)
+  "Compile subsequent input into Common Lisp FASL file \"NAME.fasl\".
+NAME should be an identifier or string.  (The actual extension of fasl
+files depends on the version of Common Lisp.)"
+  ;; Output subsequent code as Standard Lisp to a temporary file until
+  ;; FASLEND evaluated.
+  (setq name (string-downcase name))
+  (if *int
+	  (format t "FASLOUT ~a: IN files$ or type in expressions.
+(Note that IN must be terminated by \"$\", not \";\"!)
+When all done, execute FASLEND;~2%" name))
+  (out_non_empty_list ; defined in rlisp/io -- used to avoid compiling prompt!
+   (list (setq %%faslout-name.lisp (concat2 name ".sl"))))
+  ;; If out_non_empty_list does not throw an error then...
+  (setq *defn t
+		*writingfaslfile t
+		%%msg *msg
+		*msg nil
+		%%verboseload *verboseload
+		*verboseload nil))
+
+(flag '(faslout) 'opfn)
+(flag '(faslout) 'noval)
+
+;; SBCL outputs more detailed and useful messages than those that I
+;; have therefore temporarily commented out below.  Delete them unless
+;; they prove useful with other versions of Common Lisp.
+
+(defun faslend ()
+  "Terminate a previous FASLOUT and generate the compiled file."
+  (unless *writingfaslfile
+  	(cl:error "FASLEND is only allowed after a previous FASLOUT"))
+  ;; First, tidy up after the call of FASLOUT:
+  (shut_non_empty_list ; defined in rlisp/io -- used to avoid compiling prompt!
+   (list %%faslout-name.lisp))
+  (setq *verboseload %%verboseload
+		*msg %%msg
+		*writingfaslfile nil
+		*defn nil) ; necessary here if faslend not input as a statement
+  ;; Now compile the Lisp output generated by FASLOUT:
+  ;; (format t  "Compiling ~a..." %%faslout-name.lisp)
+  ;; (if
+  (compile-file %%faslout-name.lisp)
+  ;; 	  ;; (progn
+  ;; 	  ;; (delete-file %%faslout-name.lisp) ; keep to aid debugging ???
+  ;; 	  (format t "Compiling ~a...done" %%faslout-name.lisp)
+  ;; 	  ;; nil)
+  ;; 	  (cl:error "Error compiling ~a" %%faslout-name.lisp))
+  )
+
+(defvar cursym*)
+
+(defun faslendstat ()
+  "Terminate reading faslend and turn defn off."
+  ;; Modelled on endstat in rlisp/parser.
+  (cl:let ((x cursym*))
+	(setq *defn nil)					; must do this ASAP!
+    (comm1 'end)
+    (list x)))
+
+(put 'faslend 'stat 'faslendstat)		; cf. endstat
+(flag '(faslendstat) 'endstatfn)		; ditto
+
+(flag '(faslend) 'ignore)				; to stop it getting compiled!
+
+
+;;; User interface
+;;; ==============
 
 (defun standard-lisp ()
   "Switch to STANDARD LISP mode."
@@ -2218,5 +2341,17 @@ to down-case the E in floats."
   (setq *readtable* (copy-readtable nil)))
 
 (pushnew :standard-lisp *features*)
+
+;; CL symbols used in REDUCE source code:
+(import '(cl:lambda cl:unwind-protect cl:*features*
+		  cl:evenp cl:oddp cl:union cl:intersection
+		  cl:string-not-greaterp cl:symbol-name ; used in clprolo
+		  cl:format cl:force-output ; used in clrend
+		  cl:file-write-date ; used in remake
+		  ))
+
+;; Cease inheriting the external symbols of :common-lisp except for
+;; those that have been explicitly imported:
+(unuse-package :common-lisp)
 
 ;;; sl-on-cl.lisp ends here

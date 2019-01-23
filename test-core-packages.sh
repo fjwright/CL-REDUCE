@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 
-# Run all core test files in CL REDUCE.
+# Run all core test files in CL REDUCE and check the test logs against
+# the reference logs.
 
 # Author: Francis J. Wright
 # Based on code by Anthony C. Hearn.
@@ -12,6 +13,12 @@ mkdir -p log
 
 hostname > log/testcore.log
 date >> log/testcore.log
+
+rm -f log/checkcore.log
+
+# sep is used in check-one-test.sh:
+export sep
+for (( i=80 ; i-- ; )); do sep=$sep+; done
 
 packages="$(< fasl/core-packages.dat)"
 

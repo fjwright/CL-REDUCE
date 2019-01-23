@@ -1,9 +1,10 @@
 #!/usr/bin/bash
 
-# Run one test file in CL REDUCE.
+# Run one test file in CL REDUCE and check its test log against the
+# reference log.
 
 # Author: Francis J. Wright
-# Based on code by Anthony C. Hearn et al.
+# Based (loosely) on code by Anthony C. Hearn.
 
 # Usage: ./test-one-package.sh package
 
@@ -13,9 +14,16 @@
 # Create log directory if necessary:
 mkdir -p log
 
-testfile=$(find -L packages -name $1.tst)
+testfile=packages/$1/$1.tst		# most likely location
+if [ ! -e $testfile ]
+then
+	# Find the .red file, which must exist, then stop looking:
+	testfile=$(find -L packages -name $1.red -print -and -quit)
+	# Change the filename to .tst:
+	testfile=${testfile%%.red}.tst
+fi
 
-if [ ! "$testfile" ]; then exit; fi
+if [ ! -e $testfile ]; then exit; fi
 
 sbcl --core reduce.img --noinform << EOF &> /dev/null # log/$1-errors.rlg
 (start-reduce)
@@ -49,3 +57,9 @@ shut "log/$1.rlg";
 
 bye;
 EOF
+
+reflog=${testfile%%.tst}.rlg
+
+( echo $'\nChecking' $1 $'...\n'
+diff --strip-trailing-cr log/$1.rlg $reflog
+if [ "$sep" ]; then echo -e '\f'; echo $sep; fi ) >> log/checkcore.log

@@ -59,7 +59,7 @@ bye;
 XXX
 
 # Compile the "core" modules, each in a separate invocation of
-# bootstrapping REDUCE to avoid adverse interactions:
+# bootstrap REDUCE to avoid adverse interactions:
 
 for p in $(< fasl/core-packages.dat)
 do
@@ -95,13 +95,16 @@ echo ++++++ Now create the REDUCE image file ++++++
 # compile the non-core modules.
 
 sbcl --noinform << XXX &> log/reduce.blg
+(declaim (optimize debug)				; same as (debug 3)
+		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+
 (load "sl-on-cl")
 (standard-lisp)
 
-(defparameter !*init!-stats!* (list (time) (gtheap)))
+(cl:defparameter !*init!-stats!* (list (time) (gtheap)))
 
 (setq !*verboseload t)
-(defvar !*argnochk t)           % Check argument count.
+(cl:defvar !*argnochk t)           % Check argument count.
 
 % Load is expected to be a macro but isn't; does that matter?
 
