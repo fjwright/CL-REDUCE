@@ -25,7 +25,7 @@ fi
 
 if [ ! -e $testfile ]; then exit; fi
 
-sbcl --core reduce.img --noinform << EOF &> /dev/null # log/$1-errors.rlg
+sbcl --noinform --core reduce.img << EOF &> /dev/null # log/$1-errors.rlg #
 (start-reduce)
 
 symbolic begin

@@ -84,10 +84,13 @@ symbolic procedure seprp u;
 procedure setpchar c;
    % Set prompt, return old one.
    begin scalar oldprompt;
-    oldprompt := promptstring!*;
-    promptstring!* := if stringp c then c
-                      else if idp c then id2string c
-                      else format(nil, "~a", c);
+      oldprompt := promptstring!*;
+      promptstring!* := if stringp c then c
+	  else if idp c then id2string c
+	  % FJW: I don't really want to import the CL format function just
+	  % to use it here.  Is this line actually used?
+	  else error(0, "Unexpected prompt in setpchar");
+	  % else format(nil, "~a", c);
     return oldprompt
    end;
 

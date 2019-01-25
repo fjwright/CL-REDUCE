@@ -13,7 +13,7 @@
 ;; its own REPL) on Common Lisp.
 
 (declaim (optimize debug))				; same as (debug 3)
-;; (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+(declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (defpackage :standard-lisp
   (:nicknames :sl)
@@ -24,12 +24,12 @@
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
   (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
-  		   :intern :get :remprop :error :expt :float :map :mapc
-  		   :mapcan :mapcar :mapcon :maplist :append :assoc :delete
-  		   :length :member :sublis :subst :apply :eval :close :open
-  		   :princ :print :prin1 :prin2 :read :terpri :compile-file
-  		   :load :time :char-downcase :char-upcase :string-downcase
-  		   :rassoc)
+		   :intern :get :remprop :error :expt :float :map :mapc
+		   :mapcan :mapcar :mapcon :maplist :append :assoc :delete
+		   :length :member :sublis :subst :rassoc :apply :eval :close
+		   :open :princ :print :prin1 :prin2 :read :terpri :complexp
+  		   :compile-file :load :time :char-downcase :char-upcase
+  		   :string-downcase)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
   #+CLISP (:import-from :ext :exit :quit :bye :getenv)
@@ -2169,6 +2169,10 @@ order.
 This function returns a copy of X. While each pair is copied, atomic
 elements (for example ids, strings, and vectors) are not.")
 
+;; REDUCE needs complexp in various places but also needs to be able
+;; to overwrite it, as in rlisp88.tst:
+(defalias 'complexp 'cl:complexp)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun compile-file (input-file &rest other-args)
@@ -2343,15 +2347,25 @@ When all done, execute FASLEND;~2%" name))
 (pushnew :standard-lisp *features*)
 
 ;; CL symbols used in REDUCE source code:
-(import '(cl:lambda cl:unwind-protect cl:*features*
-		  cl:evenp cl:oddp cl:union cl:intersection
-		  cl:string-not-greaterp cl:symbol-name ; used in clprolo
-		  cl:format cl:force-output ; used in clrend
-		  cl:file-write-date ; used in remake
-		  ))
+(import
+ '(cl:lambda cl:warning cl:trace
+   cl:unwind-protect cl:*features*
+   cl:evenp cl:oddp cl:union cl:intersection
+   cl:string-not-greaterp cl:symbol-name cl:y-or-n-p ; used in clprolo
+   cl:force-output ; used in clrend
+   cl:file-write-date ; used in remake
+   ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for
 ;; those that have been explicitly imported:
-(unuse-package :common-lisp)
+;; (unuse-package :common-lisp)
+
+;; Unfortunately, the above does not work in reduce.img.  So try
+;; shadowing all external CL symbols:
+(do-external-symbols (s :cl)
+  (multiple-value-bind (symbol status)
+	  (find-symbol (symbol-name s))
+	;; (if (eq status :internal) (print symbol))
+	(if (eq status :inherited) (shadow symbol))))
 
 ;;; sl-on-cl.lisp ends here

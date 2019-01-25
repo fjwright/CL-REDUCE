@@ -16,7 +16,7 @@ mkdir -p log				 # -p avoids complaint if directory exists
 mkdir -p fasl
 
 # First, compile fasl files for non-package source files:
-sbcl --core bootstrap.img --noinform << XXX &> log/build.blg
+sbcl --noinform --core bootstrap.img << XXX &> log/build.blg
 (standard-lisp)
 (begin)
 symbolic;
@@ -66,7 +66,7 @@ do
 echo ++++++ About to remake $p ++++++
 
 # ${p,,} below converts $p to lower case.
-sbcl --core bootstrap.img --noinform << XXX &> log/${p,,}.blg
+sbcl --noinform --core bootstrap.img << XXX &> log/${p,,}.blg
 (standard-lisp)
 (begin)
 symbolic;
@@ -122,12 +122,12 @@ sbcl --noinform << XXX &> log/reduce.blg
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
 
 (setq date!* (date))
-(setq version!* (format nil "REDUCE (Free SBCL version, revision ~a)" revision!*))
+(setq version!* (cl:format nil "REDUCE (Free SBCL version, revision ~a)" revision!*))
 (initreduce)
 
 (setq !*verboseload nil)           % Inhibit loading messages.
 
-(setf sb-ext:*muffled-warnings* 'warning)
+(setq sb-ext:*muffled-warnings* 'warning)
 
 (prog nil
    (terpri)
@@ -135,10 +135,10 @@ sbcl --noinform << XXX &> log/reduce.blg
    (prin2 (quotient (difference (time) (car !*init!-stats!*)) 1000.0))
    (prin2t " secs")
    (prin2 "Heap used: ")
-   (prin2t (difference (cadr !*init!-stats!*) (gtheap)))
+   (prin2 (difference (cadr !*init!-stats!*) (gtheap)))
    (prin2t " bytes")
    (prin2 "Heap left: ")
-   (prin2t (gtheap))
+   (prin2 (gtheap))
    (prin2t " bytes")
    (setq !*init!-stats!* nil))
 

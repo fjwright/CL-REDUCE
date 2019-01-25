@@ -65,7 +65,8 @@ rds(xxx := open("build.red",'input));
    (prin2 (quotient (difference (time) !*init!-time!*) 1000.0))
    (prin2t " secs")
    (prin2 "Heap left: ")
-   (prin2t (gtheap)))
+   (prin2 (gtheap))
+   (prin2t " bytes"))
 
 (initreduce)
 (setq date!* (date))
