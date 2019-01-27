@@ -7,7 +7,13 @@
 
 # Compile all required fasl files and save a final REDUCE image.
 
-# Usage: ./build.sh
+# Usage: ./build.sh [-c]
+
+# Option -c ensures a clean build by deleting any previous build.
+if getopts c clean
+then
+	rm -rf fasl log bootstrap.img reduce.img
+fi
 
 # Build an initial bootstrap REDUCE image if necessary:
 if [ ! -e bootstrap.img ]; then ./bootstrap.sh; fi
@@ -25,6 +31,7 @@ package!-remake2('clprolo, nil);
 package!-remake2('revision, 'support);
 package!-remake2('clrend, nil);
 package!-remake2('entry, 'support);
+package!-remake2('remake, nil);	% for building noncore packages
 
 % Create .dat files that list core and non-core modules to build:
 
@@ -58,15 +65,14 @@ end;
 bye;
 XXX
 
-# Compile the "core" modules, each in a separate invocation of
+# Compile the "core" packages, each in a separate invocation of
 # bootstrap REDUCE to avoid adverse interactions:
 
 for p in $(< fasl/core-packages.dat)
 do
-echo ++++++ About to remake $p ++++++
+echo ++++++ Remaking core package $p ++++++
 
-# ${p,,} below converts $p to lower case.
-sbcl --noinform --core bootstrap.img << XXX &> log/${p,,}.blg
+sbcl --noinform --core bootstrap.img << XXX &> log/$p.blg
 (standard-lisp)
 (begin)
 symbolic;
@@ -88,7 +94,7 @@ XXX
 
 done
 
-echo ++++++ Now create the REDUCE image file ++++++
+echo ++++++ Creating the REDUCE image file ++++++
 
 # Start a new invocation of Lisp and load the key modules compiled
 # above.  Then save a final REDUCE image that wil be used below to
@@ -149,34 +155,22 @@ sbcl --noinform << XXX &> log/reduce.blg
 
 XXX
 
-echo 'Errors:'
-grep --exclude=bootstrap.blg '\*\*\*\*\*\|\<error\>' log/*.blg
+# Finally, compile the "noncore" packages using reduce.img rather than
+# bootstrap.img:
 
-echo $'\a'
-
-exit
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-# Now I can re-build the remaining packages using the genuine
-# final reduce.img rather than just the bootstrap one
-
-for p in `$catcmd < $cfasl/noncore-packages.dat`
+for p in $(< fasl/noncore-packages.dat)
 do
-echo ++++++ About to make noncore $p ++++++
+echo ++++++ Remaking noncore package $p ++++++
 
-psl/bpsl -td $STORE -f red/reduce.img <<XXX > log/$p.blg
-
+sbcl --noinform --core reduce.img << XXX &> log/$p.blg
+(standard-lisp)
+(begin)
 symbolic;
 
-load compiler;
-errorset('(load compat),nil,nil); % PSL compiler support.
+%load compiler;
 on verboseload;
 
-% Specific package loads to avoid BPS problems.
-if '$p eq 'susy2 then flag('(susy2),'lap)
-else if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
+if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
 else if '$p eq 'mrvlimit then load_package taylor;
 
 load remake;
@@ -185,7 +179,7 @@ load remake;
 
 begin
   scalar w, i, s;
-  i := open("$reduce/packages/package.map", 'input);
+  i := open("packages/package.map", 'input);
   s := rds i;
   w := read();
   rds s;
@@ -199,3 +193,8 @@ bye;
 XXX
 
 done
+
+echo 'Errors:'
+grep --ignore-case --exclude=bootstrap.blg '\*\*\*\*\*\|\<error\>' log/*.blg
+
+echo $'\a'

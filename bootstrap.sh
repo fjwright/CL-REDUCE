@@ -13,7 +13,7 @@
 
 mkdir -p log				 # -p avoids complaint if directory exists
 
-echo ++++++ Build bootstrap REDUCE ++++++
+echo ++++++ Building bootstrap REDUCE ++++++
 
 sbcl << XXX &> log/bootstrap.blg
 (declaim (optimize debug)				; same as (debug 3)
@@ -81,6 +81,6 @@ XXX
 echo ++++++ Bootstrap REDUCE built ++++++
 
 echo 'Errors:'
-grep '\*\*\*\*\*\|\<error\>' log/bootstrap.blg
+grep --ignore-case '\*\*\*\*\*\|\<error\>' log/bootstrap.blg
 
 echo $'\a'

@@ -32,6 +32,7 @@
   		   :string-downcase)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
+
   #+CLISP (:import-from :ext :exit :quit :bye :getenv)
   )
 
@@ -400,6 +401,9 @@ string, or function-pointer."
 ;; GENSYM():identifier eval, spread
 ;; Creates an identifier which is not interned on the OBLIST and
 ;; consequently not EQ to anything else.
+
+(defun gensymp (u)						; from pslrend
+  (and (symbolp u) (not (find-symbol (symbol-name u)))))
 
 (defun intern (u)
   "INTERN(U:{id,string}):id eval, spread
@@ -2172,6 +2176,23 @@ elements (for example ids, strings, and vectors) are not.")
 ;; REDUCE needs complexp in various places but also needs to be able
 ;; to overwrite it, as in rlisp88.tst:
 (defalias 'complexp 'cl:complexp)
+
+(defalias 'getenv 'sb-ext:posix-getenv)
+
+;; The next three PSL definitions are based on those at the end of
+;; support/csl.red:
+
+(defmacro bothtimes (u)					; PSL
+  "Evaluate the expression U at both compile time and load time."
+  `(eval-when (:compile-toplevel :load-toplevel :execute) ,u))
+
+(defmacro compiletime (u)				; PSL
+  "Evaluate the expression U at compile time only."
+  `(eval-when (:compile-toplevel :execute) ,u))
+
+(defmacro loadtime (u)					; PSL
+  "Evaluate the expression U at load time only."
+  `(eval-when (:load-toplevel :execute) ,u))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

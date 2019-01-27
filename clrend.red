@@ -275,8 +275,20 @@ deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
 
 % flag('(find!!minnorm), 'lose);
 
-symbolic procedure gensymp u;			% from pslrend
-   idp u and not find!-symbol symbol!-name u;
+
+% Some CSL compatibility, taken from support/psl.red:
+
+% symbolic inline procedure princ x; prin2 x;
+
+% princ is defined in rlisp/rsupport.red, but the above inline
+% definition would be better!
+
+symbolic inline procedure prin x;  prin1 x;
+
+% symbolic inline procedure printc x; << prin2 x; terpri(); x >>;
+
+% printc is defined in int/int.red to be prin2t, but the above inline
+% definition would be better!
 
 endmodule;
 
