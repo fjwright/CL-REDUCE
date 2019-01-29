@@ -193,10 +193,6 @@ symbolic procedure initreduce;
 
 % flag('(load),'opfn); % unnecessary ? -- see rlisp/module.red
 
-% The next one is added since it is a familiar name for this operation.
-
-symbolic procedure prop u; symbol!-plist u;
-
 % A machine independent traceset.
 
 symbolic procedure traceset1 u;
@@ -276,7 +272,7 @@ deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
 % flag('(find!!minnorm), 'lose);
 
 
-% Some CSL compatibility, taken from support/psl.red:
+% Some CSL compatibility, taken from support/psl{,rend}.red:
 
 % symbolic inline procedure princ x; prin2 x;
 
@@ -289,6 +285,8 @@ symbolic inline procedure prin x;  prin1 x;
 
 % printc is defined in int/int.red to be prin2t, but the above inline
 % definition would be better!
+
+symbolic inline procedure explodec x; explode2 x;
 
 endmodule;
 

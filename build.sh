@@ -21,6 +21,11 @@ if [ ! -e bootstrap.img ]; then ./bootstrap.sh; fi
 mkdir -p log				 # -p avoids complaint if directory exists
 mkdir -p fasl
 
+shopt -s expand_aliases
+
+alias grep_errors=\
+"grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/\$p.blg | uniq"
+
 # First, compile fasl files for non-package source files:
 sbcl --noinform --core bootstrap.img << XXX &> log/build.blg
 (standard-lisp)
@@ -70,7 +75,7 @@ XXX
 
 for p in $(< fasl/core-packages.dat)
 do
-echo ++++++ Remaking core package $p ++++++
+echo +++++ Remaking core package $p
 
 sbcl --noinform --core bootstrap.img << XXX &> log/$p.blg
 (standard-lisp)
@@ -92,9 +97,11 @@ package!-remake '$p;
 bye;
 XXX
 
+grep_errors
+
 done
 
-echo ++++++ Creating the REDUCE image file ++++++
+echo +++++ Creating the REDUCE image file
 
 # Start a new invocation of Lisp and load the key modules compiled
 # above.  Then save a final REDUCE image that wil be used below to
@@ -160,7 +167,7 @@ XXX
 
 for p in $(< fasl/noncore-packages.dat)
 do
-echo ++++++ Remaking noncore package $p ++++++
+echo +++++ Remaking noncore package $p
 
 sbcl --noinform --core reduce.img << XXX &> log/$p.blg
 (standard-lisp)
@@ -192,9 +199,8 @@ package!-remake '$p;
 bye;
 XXX
 
-done
+grep_errors
 
-echo 'Errors:'
-grep --ignore-case --exclude=bootstrap.blg '\*\*\*\*\*\|\<error\>' log/*.blg
+done
 
 echo $'\a'
