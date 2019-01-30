@@ -281,10 +281,12 @@ deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
 
 symbolic inline procedure prin x;  prin1 x;
 
-% symbolic inline procedure printc x; << prin2 x; terpri(); x >>;
+symbolic inline procedure printc x; << prin2 x; terpri(); x >>;
 
 % printc is defined in int/int.red to be prin2t, but the above inline
-% definition would be better!
+% definition is better!
+
+flag('(printc), 'lose);
 
 symbolic inline procedure explodec x; explode2 x;
 

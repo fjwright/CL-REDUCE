@@ -37,14 +37,20 @@ symbolic procedure evload l;
 % These functions are already defined in Common Lisp (and union is
 % needed in the build process before it is defined in the rlisp
 % module):
-
-flag('(first second third rest evenp oddp union intersection),'lose);
+flag('(first second third rest evenp oddp union intersection
+   symbol!-name),'lose);
 
 % These two functions are defined in arith/smlbflot.red, but
 % smallcompress is re-implemented in sl-on-cl.lisp and smallsplit is
 % used only in smallcompress, so is no longer required:
-
 flag('(smallcompress smallsplit),'lose);
+
+% These functions are defined in rlisp/tok.red, but I have
+% re-implemented them in sl-on-cl.lisp:
+flag('(list2widestring widestring2list
+   % The following are only used by the above:
+   string!-store1 string!-store2 string!-store3 string!-store4
+	  moan!-if!-not!-follower moan!-if!-truncated),'lose);
 
 % Common Lisp provides integer functions gcd and lcm, which I could use.
 

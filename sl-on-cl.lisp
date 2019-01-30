@@ -2060,10 +2060,10 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
   "Concatenates its two string arguments, returning the newly created string."
   (concatenate 'string s1 s2))
 
-(defalias 'allocate-string 'cl:make-string ; PSL
-  "(allocate-string SIZE:integer): string expr
-Constructs and returns a string with SIZE characters. The contents of
-the string are not initialized.")
+;; (defalias 'allocate-string 'cl:make-string ; PSL
+;;   "(allocate-string SIZE:integer): string expr
+;; Constructs and returns a string with SIZE characters. The contents of
+;; the string are not initialized.")
 
 (defun string2list (s)					; PSL
   "(string2list S:string): inum-list expr
@@ -2095,10 +2095,30 @@ lisp> (list2string '(83 84 82 73 78 71))
 \"STRING\""
   (cl:map 'string #'%%character l))
 
-(defun string-store (s i x)				; PSL
-  "(string-store S:string I:integer X:char): None Returned expr
-Stores into a PSL string. String indexes start with 0."
-  (setf (aref s i) (%%character x)))
+(defun list2widestring (u)
+  "Take a list U of integers (each in the range 0-0x0010ffff) and turn
+it into a string encoding those using UTF-8.  It will also support use
+of identifiers or strings as well as integers, and will use the first
+character (N.B. not octet) as the code concerned."
+  ;; This is a re-implementation of the procedure in rlisp/tok.red.
+  ;; It must be flagged lose in clprolo.
+  ;; It should make string!-store etc. redundant.
+  (cl:map 'string #'code-char u))
+
+(defun widestring2list (u)
+  "Given a string U that may contain bytes that are over 127, return a
+list of positive integers corresponding to the characters in it if it
+is interpreted as being encoded in UTF-8.  The behaviour if the bytes
+are not valid UTF-8 is to be considered undefined."
+  ;; This is a re-implementation of the procedure in rlisp/tok.red.
+  ;; It must be flagged lose in clprolo.
+  ;; It should make moan!-if!-truncated etc. redundant.
+  (cl:map 'list #'char-code u))
+
+;; (defun string-store (s i x)				; PSL
+;;   "(string-store S:string I:integer X:char): None Returned expr
+;; Stores into a PSL string. String indexes start with 0."
+;;   (setf (aref s i) (%%character x)))
 
 (defalias 'string-length 'cl:length		; PSL
   "(string-length S:string): integer expr
@@ -2385,8 +2405,9 @@ When all done, execute FASLEND;~2%" name))
    cl:unwind-protect cl:*features*
    cl:evenp cl:oddp cl:union cl:intersection
    cl:string-not-greaterp cl:symbol-name cl:y-or-n-p ; used in clprolo
-   cl:force-output ; used in clrend
+   cl:force-output cl:trace cl:untrace ; used in clrend
    cl:file-write-date ; used in remake
+   cl:symbol-name	  ; used in rlisp
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for
