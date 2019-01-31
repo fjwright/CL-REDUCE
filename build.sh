@@ -178,7 +178,11 @@ symbolic;
 on verboseload;
 
 if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
-else if '$p eq 'mrvlimit then load_package taylor;
+else if '$p eq 'mrvlimit then load_package taylor
+% Temporary hack to avoid build errors:
+else if '$p eq 'tmprint then <<
+   lispsystem!* := 'psl . lispsystem!*;
+   switch usermode >>;
 
 load remake;
 
