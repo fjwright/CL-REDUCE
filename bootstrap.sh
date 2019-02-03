@@ -13,11 +13,19 @@
 
 mkdir -p log				 # -p avoids complaint if directory exists
 
+if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
+then
+echo +++++ Compiling sl-on-cl
+sbcl << XXX &> log/sl-on-cl.blg
+(compile-file "sl-on-cl")
+XXX
+fi
+
 echo +++++ Building bootstrap REDUCE
 
 sbcl << XXX &> log/bootstrap.blg
-(declaim (optimize debug)				; same as (debug 3)
-		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+;(declaim (optimize debug)				; same as (debug 3)
+;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (load "sl-on-cl")
 (standard-lisp)
@@ -73,8 +81,8 @@ rds(xxx := open("build.red",'input));
 (setq version!* "Bootstrap REDUCE")
 
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
-% save!-lisp!-and!-die("bootstrap", !:executable, t, !:toplevel, (lambda () (standard-lisp) (begin)))
-(save!-lisp!-and!-die "bootstrap.img")  % better for debugging
+% save!-lisp!-and!-die("fasl/bootstrap", !:executable, t, !:toplevel, (lambda () (standard-lisp) (begin)))
+(save!-lisp!-and!-die "fasl/bootstrap.img")  % better for debugging
 
 XXX
 

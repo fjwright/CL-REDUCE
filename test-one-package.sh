@@ -25,7 +25,7 @@ fi
 
 if [ ! -e $testfile ]; then exit; fi
 
-sbcl --noinform --core reduce.img << EOF &> /dev/null # log/$1-errors.rlg #
+sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # log/$1-errors.rlg #
 (start-reduce)
 
 symbolic begin
@@ -43,20 +43,25 @@ load_package $1;
 in "$testfile";
 
 symbolic begin
-  % The +- construct in the following is required to finesse Orthovec's
-  % renaming of -.
-  terpri(); terpri(); prin2 "Time for test: ";
-  prin2 (time()+-!*_xxx_!*); prin2 " ms";
-  if (!*_yyy_!* := gctime()+-!*_yyy_!*)>0 then
-  <<prin2 ", plus GC time: "; prin2 !*_yyy_!*;
-    prin2 " ms">>;
-  terpri();
+   % The use of difference in the following is required to finesse Orthovec's
+   % renaming of -.
+   terpri(); terpri(); prin2 "Time for test: ";
+   prin2 difference(time(), !*_xxx_!*); prin2 " ms";
+   if (!*_yyy_!* := difference(gctime(), !*_yyy_!*)) > 0 then
+      <<prin2 ", plus GC time: "; prin2 !*_yyy_!*; prin2 " ms">>;
+   terpri();
 end;
 
 shut "log/$1.rlg";
 
 bye;
 EOF
+
+# Check for errors:
+
+grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/$1.rlg | uniq
+
+# Check for differences from the reference test log:
 
 reflog=${testfile%%.tst}.rlg
 

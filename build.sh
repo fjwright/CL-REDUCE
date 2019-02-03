@@ -12,11 +12,11 @@
 # Option -c ensures a clean build by deleting any previous build.
 if getopts c clean
 then
-	rm -rf fasl log bootstrap.img reduce.img
+	rm -rf fasl log
 fi
 
 # Build an initial bootstrap REDUCE image if necessary:
-if [ ! -e bootstrap.img ]; then ./bootstrap.sh; fi
+if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
 
 mkdir -p log				 # -p avoids complaint if directory exists
 mkdir -p fasl
@@ -27,7 +27,7 @@ alias grep_errors=\
 "grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/\$p.blg | uniq"
 
 # First, compile fasl files for non-package source files:
-sbcl --noinform --core bootstrap.img << XXX &> log/build.blg
+sbcl --noinform --core fasl/bootstrap.img << XXX &> log/build.blg
 (standard-lisp)
 (begin)
 symbolic;
@@ -77,7 +77,7 @@ for p in $(< fasl/core-packages.dat)
 do
 echo +++++ Remaking core package $p
 
-sbcl --noinform --core bootstrap.img << XXX &> log/$p.blg
+sbcl --noinform --core fasl/bootstrap.img << XXX &> log/$p.blg
 (standard-lisp)
 (begin)
 symbolic;
@@ -101,6 +101,14 @@ grep_errors
 
 done
 
+if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
+then
+echo +++++ Compiling sl-on-cl
+sbcl << XXX &> log/sl-on-cl.blg
+(compile-file "sl-on-cl")
+XXX
+fi
+
 echo +++++ Creating the REDUCE image file
 
 # Start a new invocation of Lisp and load the key modules compiled
@@ -108,8 +116,8 @@ echo +++++ Creating the REDUCE image file
 # compile the non-core modules.
 
 sbcl --noinform << XXX &> log/reduce.blg
-(declaim (optimize debug)				; same as (debug 3)
-		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+;(declaim (optimize debug)				; same as (debug 3)
+;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (load "sl-on-cl")
 (standard-lisp)
@@ -153,12 +161,12 @@ sbcl --noinform << XXX &> log/reduce.blg
    (prin2 "Heap left: ")
    (prin2 (gtheap))
    (prin2t " bytes")
-   (setq !*init!-stats!* nil))
+   (cl:makunbound '!*init!-stats!*))
 
 % (savesystem "REDUCE" "$fasl/reduce" (quote ((read-init-file "reduce"))))
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
-% (save!-lisp!-and!-die "reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
-(save!-lisp!-and!-die "reduce.img") % better for debugging
+% (save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
+(save!-lisp!-and!-die "fasl/reduce.img") % better for debugging
 
 XXX
 
@@ -172,7 +180,7 @@ for p in $(< fasl/noncore-packages.dat)
 do
 echo +++++ Remaking noncore package $p
 
-sbcl --noinform --core reduce.img << XXX &> log/$p.blg
+sbcl --noinform --core fasl/reduce.img << XXX &> log/$p.blg
 (standard-lisp)
 (begin)
 symbolic;

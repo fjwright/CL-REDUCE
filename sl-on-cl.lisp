@@ -28,8 +28,8 @@
 		   :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
 		   :delete :length :member :sublis :subst :rassoc :apply :eval
 		   :function :close :open :princ :print :prin1 :prin2 :read
-		   :terpri :complexp :compile-file :load :time :char-downcase
-		   :char-upcase :string-downcase)
+		   :terpri :complexp :union :intersection :compile-file :load
+		   :time :char-downcase :char-upcase :string-downcase)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
 
@@ -2271,6 +2271,16 @@ elements (for example ids, strings, and vectors) are not.")
 
 (defalias 'prop 'cl:symbol-plist)		; PSL
 
+(defun union (x y)						; PSL
+  "(union X:list Y:list): list expr
+Returns the union of sets X and Y."
+  (cl:union x y :test #'equal))
+
+(defun intersection (x y)				; PSL
+  "(intersection U:list V:list): list expr
+Returns the intersection of sets U and V."
+  (cl:intersection x y :test #'equal))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun compile-file (input-file &rest other-args)
@@ -2466,9 +2476,8 @@ When all done, execute FASLEND;~2%" name))
 
 ;; CL symbols used in REDUCE source code:
 (import
- '(cl:lambda cl:warning cl:trace
-   cl:unwind-protect cl:*features*
-   cl:evenp cl:oddp cl:union cl:intersection
+ '(cl:lambda cl:warning cl:*features*
+   cl:unwind-protect cl:evenp cl:oddp
    cl:string-not-greaterp cl:symbol-name cl:y-or-n-p ; used in clprolo
    cl:force-output cl:trace cl:untrace ; used in clrend
    cl:file-write-date ; used in remake

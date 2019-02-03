@@ -30,8 +30,3 @@ do
 done
 
 date >> log/testcore.log
-
-echo 'Errors:'
-cd log
-grep '\*\*\*\*\*\|error[^.]' *.rlg
-cd ..
