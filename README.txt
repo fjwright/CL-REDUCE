@@ -1,14 +1,13 @@
 REDUCE on Common Lisp
 =====================
 
-Francis Wright, January 2019
+Francis Wright, February 2019
 
 The files in this directory are used to build and run the current
-distributed version of REDUCE on Common Lisp.  Some details will
-depend on the implementation of Common Lisp but I try to keep these to
-a minimum.  At present, I support explicitly only the native Windows
-port of SBCL (Steel Bank Common Lisp).  I will try to keep the build
-process as close as possible to that used for PSL.
+distributed version of REDUCE on Common Lisp.  Some details depend on
+the implementation of Common Lisp but I try to keep these to a
+minimum.  At present, I support explicitly only the native Windows
+port of SBCL (Steel Bank Common Lisp).
 
 Files required
 ==============
@@ -27,39 +26,34 @@ from the Subversion repository.
 
 "build.red" is a modified version of "packages/support/build.red".
 
-"clprolo.red" is a modified version of "packages/support/pslprolo.red".
+"clprolo.red" is based on the files "packages/support/*prolo.red".
 
-"clrend.red" is based on the files "packages/support/*prolo.red".
+"clrend.red" is based on the files "packages/support/*rend.red".
 
-"bootstrap.sh" is a modified version of "psl/bootstrap.sh".
-
-["compiler.lisp" implements fasl (fast loading) support, namely the
-REDUCE commands faslout and faslend.  But currently this code is in
-sl-on-cl.lisp.]
+"bootstrap.sh" is based on "psl/bootstrap.sh".
 
 "remake.red" is a modified version of "packages/support/remake.red".
 
-"build.sh" is a modified version of "psl/build.sh".
+"build.sh" is based on "psl/build.sh".
 
 Current status
 ==============
 
-I can process all of "bootstrap.sh" and save a bootstrapping core
-image file (called "bootstrap.img").  I can also process all of
-"build.sh" and save a core REDUCE image file (called "reduce.img"),
-which can be run like this:
+I can build all of REDUCE without any obvious errors by running
+"build.sh".  REDUCE can be run like this:
 
-shell> sbcl --core reduce.img --noinform
+shell> sbcl --noinform --core reduce.img
 sbcl> (start-reduce)
 
-Then interrupt (^C) invokes the SBCL debugger and aborts to Lisp,
-which is very useful!
+The interrupt (^C) invokes the SBCL debugger and aborts to Lisp, which
+is very useful!
 
-Or an executable bootstrapping REDUCE (called "bootstrap.exe"), which
-can be run directly from File Explorer.
+[Or an executable REDUCE (called "reduce.exe") can be run directly from
+File Explorer.
 
 Then interrupt (^C) invokes the SBCL debugger, with currently no
-restart.
+restart.]
+
 
 All core test files run to completion without any catastrophic errors,
 although some fail trying to load non-core packages and some are not
@@ -137,19 +131,10 @@ Make faslout/faslend more robust by using a single function that calls
 begin internally (cf. infile) and make faslend generate a throw.  See
 also the old mkfasl code.
 
-Build all non-core packages and test them.
+Test the packages.
 
 Implement a proper Lisp init function and dump an executable file.
 
 Make stream handling more robust; see bootstrap.sh.
 
 Replace shell scripts with Common Lisp code to build REDUCE portably?
-
-Problems
-========
-
-The eds package does not build because eds.red defines the macro
-edscall, which invokes `function edsprotect', but edsprotect is
-defined in edseval.red, i.e. not when eds is loaded to remake the rest
-of the package.  I'm not sure how to resolve this, so leave it for
-now.

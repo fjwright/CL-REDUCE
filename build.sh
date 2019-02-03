@@ -163,7 +163,10 @@ sbcl --noinform << XXX &> log/reduce.blg
 XXX
 
 # Finally, compile the "noncore" packages using reduce.img rather than
-# bootstrap.img:
+# bootstrap.img.
+
+# Needed by redfront and rubi_red:
+export reduce='d:/Source Code/reduce-algebra-code'
 
 for p in $(< fasl/noncore-packages.dat)
 do

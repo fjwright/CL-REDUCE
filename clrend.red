@@ -291,6 +291,23 @@ flag('(printc), 'lose);
 
 symbolic inline procedure explodec x; explode2 x;
 
+% This function is called in redlog but only defined for PSL or CSL
+% specifically.  Otherwise, it only gets an autoload definition that
+% causes infinite recursion when called.  This stub is an attempt to
+% avoid this error, but nothing more.  It will need attention later!
+
+remflag('(systo_get!-resource!-directory), 'lose);
+
+procedure systo_get!-resource!-directory; "";
+
+flag('(systo_get!-resource!-directory), 'lose);
+
+% This function is called in tmprint and apparently defined in PSL.
+% This stub is an attempt to avoid an error, but nothing more.  It
+% will need attention later!
+
+procedure compute!-prompt!-string(count,level); "";
+
 endmodule;
 
 end;

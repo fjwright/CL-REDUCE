@@ -113,7 +113,7 @@ is printed whenever a function is redefined by PUTD.")
 The optional third argument DOCSTRING specifies the documentation string
 for SYMBOL; if it is omitted or nil, SYMBOL uses the documentation string
 determined by DEFINITION.  The return value is undefined."
-  `(setf ,@(if docstring `((documentation ,symbol 'function) ,docstring))
+  `(setf ,@(if docstring `((documentation ,symbol 'cl:function) ,docstring))
 		 (symbol-function ,symbol) (symbol-function ,definition)))
 
 
@@ -1690,6 +1690,28 @@ Returns the number of lines printed on the current page. At the top
 of a page, 0 is returned."
   0)
 
+(defun substitute-in-file-name (filename)
+  "Return a copy of FILENAME with all environment variables expanded.
+Replace every substring of the form `$name' terminated by a
+non-alphanumeric character by its value.  Called by `open'."
+  ;; A simplified version of the Elisp function.
+  (loop
+	 with beg and end = 0 and l
+	 while
+	   (and end (setq beg (position #\$ filename :start end)))
+	 do
+	   (push (subseq filename end beg) l)
+	   (setq end (position-if-not #'alphanumericp filename :start (1+ beg)))
+	   (push (getenv (subseq filename (1+ beg) end)) l)
+	 finally
+	   (return (if l
+				   (cl:apply #'concatenate 'string
+							 (nreverse
+							  (if end
+								  (push (subseq filename end) l)
+								  l)))
+				   filename))))
+
 (defun open (file how)
   "OPEN(FILE:any, HOW:id):any eval, spread
 Open the file with the system dependent name FILE for output if
@@ -1700,6 +1722,9 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
+  ;; sb-ext:native-pathname seems necessary to preserve odd characters
+  ;; such as ^ in a filename:
+  (setq file (sb-ext:native-pathname (substitute-in-file-name file)))
   (cond ((eq how 'input)
 		 (cl:open file :direction :input))
 		((eq how 'output)
@@ -2008,18 +2033,35 @@ selected output file.
 ;; In the Standard Lisp world, "character" means either a symbol whose
 ;; name is one character long or an ASCII character code.
 
+(defconstant +short-day-names+
+  #("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")
+  "A vector of names of the days abbreviated to 3 letters.")
+
+(defconstant +short-month-names+
+  #("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
+  "A vector of names of the months abbreviated to 3 letters.")
+
+(defun date-and-time ()					; CSL
+  "Return a string of the form \"Fri Feb 01 18:38:36 2019\"."
+  (multiple-value-bind
+		(second minute hour date month year day)
+	  (get-decoded-time)
+    (format nil "~a ~a ~2,'0d ~2,'0d:~2,'0d:~2,'0d ~d"
+			(aref +short-day-names+ day)
+			(aref +short-month-names+ (1- month))
+			date hour minute second year)))
+
 (defun date ()							; PSL
   "(date): string expr
 The date in the form \"day-month-year\"
 1 lisp> (date)
 \"21-Jan-1997\""
-  (let ((months '("Jan" "Feb" "Mar" "Apr" "May" "Jun"
-				  "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")))
-	(multiple-value-bind
-		  (second minute hour date month year)
-		(get-decoded-time)
-	  (declare (ignore second minute hour))
-      (format nil "~2,'0d-~a-~d" date (cl:nth (1- month) months) year))))
+  (multiple-value-bind
+		(second minute hour date month year)
+	  (get-decoded-time)
+	(declare (ignore second minute hour))
+    (format nil "~2,'0d-~a-~d"
+			date (aref +short-month-names+ (1- month)) year)))
 
 (defconstant +milliseconds-per-internal-time-unit+
   (/ 1000 internal-time-units-per-second)
@@ -2149,6 +2191,11 @@ id NIL is always found by (int2id 128)."
   ;; This may not be correct for i >= 128.
   (cl:intern (string (code-char i))))
 
+(defun id2int (d)						; PSL
+  "(id2int D:id): integer expr
+Returns the id space position of D as a LISP integer."
+  (char-code (character d)))
+
 (defalias 'id2string 'cl:symbol-name	; PSL
   "(id2string D:id): string expr
 Get name from id space. Id2string returns the print name of its argument
@@ -2244,6 +2291,10 @@ and when the loading of a file is complete. Since *redefmsg is set to
 the value of *verboseload, a non-nil value will also cause a message
 to be printed whenever a function is redefined during a load.")
 
+(defvar options* nil
+  "A list of loaded `modules', which are loaded only once.
+These are files referenced by symbols rather than strings.")
+
 (defun load (file)			   ; currently only supports a single file
   "(load [FILE:{string, id}]): nil macro
 For each argument FILE, an attempt is made to locate a corresponding
@@ -2260,7 +2311,10 @@ Load a \".sl\" file using Standard Lisp read syntax."
   (let ((*readtable* (copy-readtable nil)) ; normal CL syntax
 		(*load-verbose* *verboseload))
 	(if (symbolp file)
-		(setq file (cl:string-downcase (symbol-name file)))
+		(progn
+		  (if (cl:member file options*) (return-from load)) ; already loaded
+		  (push file options*)
+		  (setq file (cl:string-downcase (symbol-name file))))
 		(if (string-equal (pathname-type file) "sl")
 			(setq *readtable* *sl-readtable*)))
 	;; Look in "." and "./fasl" and if not found then throw an error:
