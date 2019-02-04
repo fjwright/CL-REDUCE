@@ -19,7 +19,6 @@ fi
 if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
 
 mkdir -p log				 # -p avoids complaint if directory exists
-mkdir -p fasl
 
 shopt -s expand_aliases
 

@@ -12,6 +12,7 @@
 # Usage: ./bootstrap.sh
 
 mkdir -p log				 # -p avoids complaint if directory exists
+mkdir -p fasl
 
 if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
 then

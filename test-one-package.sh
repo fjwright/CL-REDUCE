@@ -59,7 +59,7 @@ EOF
 
 # Check for errors:
 
-grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/$1.rlg | uniq
+grep --color --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/$1.rlg | uniq
 
 # Check for differences from the reference test log:
 

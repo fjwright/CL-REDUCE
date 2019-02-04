@@ -34,11 +34,8 @@ symbolic procedure evload l;
    % "rlisp/module.red".  Might be better defined in "sl-on-cl.lisp".
    while l do << apply(function load, list car l); l := cdr l >>;
 
-% These functions are already defined in Common Lisp (and union is
-% needed in the build process before it is defined in the rlisp
-% module):
-flag('(first second third rest evenp oddp union intersection
-   symbol!-name),'lose);
+% These functions are already defined in Common Lisp:
+flag('(first second third rest evenp oddp symbol!-name),'lose);
 
 % These two functions are defined in arith/smlbflot.red, but
 % smallcompress is re-implemented in sl-on-cl.lisp and smallsplit is

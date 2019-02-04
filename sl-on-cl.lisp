@@ -2271,15 +2271,22 @@ elements (for example ids, strings, and vectors) are not.")
 
 (defalias 'prop 'cl:symbol-plist)		; PSL
 
+;; CL union and intersection return different orderings that those in
+;; the REDUCE source, which leads to different (although probably not
+;; incorrect) results, so don't use them.  However, union is needed in
+;; the build process before it is defined in the rlisp module, so
+;; define an initial version here, which will be replaced when
+;; building rlisp:
+
 (defun union (x y)						; PSL
   "(union X:list Y:list): list expr
 Returns the union of sets X and Y."
   (cl:union x y :test #'equal))
 
-(defun intersection (x y)				; PSL
-  "(intersection U:list V:list): list expr
-Returns the intersection of sets U and V."
-  (cl:intersection x y :test #'equal))
+;; (defun intersection (x y)				; PSL
+;;   "(intersection U:list V:list): list expr
+;; Returns the intersection of sets U and V."
+;;   (cl:intersection x y :test #'equal))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
