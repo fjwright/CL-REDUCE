@@ -28,8 +28,8 @@
 		   :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
 		   :delete :length :member :sublis :subst :rassoc :apply :eval
 		   :function :close :open :princ :print :prin1 :prin2 :read
-		   :terpri :complexp :union :intersection :compile-file :load
-		   :time :char-downcase :char-upcase :string-downcase)
+		   :terpri :complexp :union :compile-file :load :time
+		   :char-downcase :char-upcase :string-downcase)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
 
@@ -1783,9 +1783,37 @@ EXPR PROCEDURE PRINT(U);
   (terpri)
   u)
 
-(defun %%princ-to-string (u)
-  "Print identifier U to a lower-case string without any escapes."
-  (write-to-string u :case :downcase :escape nil :readably nil))
+(defun prin1 (u)
+  "PRIN1(U:any):any eval, spread
+U is displayed in a READ readable form. The format of display is the
+result of EXPLODE expansion; special characters are prefixed with the
+escape character !, and strings are enclosed in \"...\".  Lists are
+displayed in list-notation and vectors in vector-notation.  The value
+of U is returned."
+  (cond ((symbolp u) (%%prin-string (%%prin1-id-to-string u)))
+		((stringp u) (%%prin-string (%%prin1-string-to-string u)))
+		((floatp u) (%%prin-string (%%prin-float-to-string u)))
+		((vectorp u) (%%prin-vector u #'prin1))
+		((atom u) (%%prin-string (prin1-to-string u)))
+		((eq (car u) 'quote) (%%prin-string "'") (prin1 (cadr u)))
+		(t (%%prin-cons u #'prin1)))
+  u)
+
+(defun prin2 (u)
+  "PRIN2(U:any):any eval, spread
+U is displayed upon the currently selected print device but output is
+not READ readable.  The value of U is returned. Items are displayed as
+described in the EXPLODE function with the exceptions that the escape
+character does not prefix special characters and strings are not
+enclosed in \"...\".  Lists are displayed in list-notation and vectors
+in vector-notation.  The value of U is returned."
+  (cond ((symbolp u) (%%prin-string (%%prin2-id-to-string u)))
+		((floatp u) (%%prin-string (%%prin-float-to-string u)))
+		((vectorp u) (%%prin-vector u #'prin2))
+		((atom u) (%%prin-string (princ-to-string u)))
+		((eq (car u) 'quote) (%%prin-string "'") (prin2 (cadr u)))
+		(t (%%prin-cons u #'prin2)))
+  u)
 
 (defun %%prin1-id-to-string (u)
   "Convert identifier U to a lower-case string including appropriate `!' escapes."
@@ -1800,6 +1828,15 @@ EXPR PROCEDURE PRINT(U);
 	   (push c newu)
 	 finally (return (coerce (nreverse newu) 'string))))
 
+(defun %%princ-to-string (u)
+  "Print identifier U to a lower-case string without any escapes."
+  (write-to-string u :case :downcase :escape nil :readably nil))
+
+(defun %%prin2-id-to-string (u)
+  "Convert identifier U to a lower-case string excluding inappropriate `!' escapes."
+  (setf u (%%princ-to-string u))
+  (if (string= "!:" u :end2 1) (subseq u 1) u))
+
 (defun %%prin1-string-to-string (u)
   "Add delimiting \"s and escape internal \"s as \"\" in string U."
   (loop with p = 0 and q and v = (list "\"")
@@ -1812,44 +1849,6 @@ EXPR PROCEDURE PRINT(U);
 	 while q
 	 finally (return
 			   (cl:apply #'concatenate 'string (nreverse v)))))
-
-(defun prin1 (u)
-  "PRIN1(U:any):any eval, spread
-U is displayed in a READ readable form. The format of display is
-the result of EXPLODE expansion; special characters are prefixed
-with the escape character !, and strings are enclosed in \"...\". Lists
-are displayed in list-notation and vectors in vector-notation."
-  (cond ((symbolp u) (%%prin-string (%%prin1-id-to-string u)))
-		((stringp u) (%%prin-string (%%prin1-string-to-string u)))
-		((atom u) (%%prin-string (prin1-to-string u)))
-		(t (%%prin-string "(")
-		   (prin1 (car u))
-		   (%%prin1-cdr (cdr u))
-		   (%%prin-string ")")))
-  u)
-
-(defun %%prin-space-maybe ()
-  "Print a space unless at the end of a line."
-  (if (< %%posn (1- %%linelength))
-	  (%%prin-string " ")
-	(terpri)))
-
-(defun %%prin1-cdr (u)
-  "If U is non-nil then print it or its elements spaced appropriately.
-U is the cdr of a cons cell: nil, an atom or a cons cell.
-Output is suitable for input to read."
-  (cond ((null u))						; do nothing
-		((atom u)
-		 (%%prin-space-maybe) (%%prin-string ".")
-		 (%%prin-space-maybe) (prin1 u))
-		(t (%%prin-space-maybe)
-		   (prin1 (car u))
-		   (%%prin1-cdr (cdr u)))))
-
-(defun %%prin2-id-to-string (u)
-  "Convert identifier U to a lower-case string excluding inappropriate `!' escapes."
-  (setf u (%%princ-to-string u))
-  (if (string= "!:" u :end2 1) (subseq u 1) u))
 
 (defparameter *float-print-precision* 12
   ;; The choice of 12 is somewhat arbitrary.  Algebraic output seems
@@ -1874,34 +1873,38 @@ If nil then floats are printed without any additional rounding.")
 		 (setq u (/ (fround (* u s)) s)))
 	   u)))
 
-(defun prin2 (u)
-  "PRIN2(U:any):any eval, spread
-U is displayed upon the currently selected print device but output is
-not READ readable. The value of U is returned. Items are displayed
-as described in the EXPLODE function with the exceptions that
-the escape character does not prefix special characters and strings
-are not enclosed in \"...\". Lists are displayed in list-notation and
-vectors in vector-notation. The value of U is returned."
-  (cond ((symbolp u) (%%prin-string (%%prin2-id-to-string u)))
-		((floatp u) (%%prin-string (%%prin-float-to-string u)))
-		((atom u) (%%prin-string (princ-to-string u)))
-		(t (%%prin-string "(")
-		   (prin2 (car u))
-		   (%%prin2-cdr (cdr u))
-		   (%%prin-string ")")))
-  u)
+(defun %%prin-vector (u prinfn)
+  "Print vector U delimited by [ and ] using PRINFN to print each element."
+  (loop
+	 initially (%%prin-string "[") (funcall prinfn (aref u 0))
+	 for i from 1 below (cl:length u) do
+	   (%%prin-string " ") (funcall prinfn (aref u i))
+	 finally (%%prin-string "]")))
 
-(defun %%prin2-cdr (u)
+(defun %%prin-cons (u prinfn)
+  "Print cons cell U using PRINFN."
+  (%%prin-string "(")
+  (funcall prinfn (car u))
+  (%%prin-cdr (cdr u) prinfn)
+  (%%prin-string ")"))
+
+(defun %%prin-space-maybe ()
+  "Print a space unless at the end of a line."
+  (if (< %%posn (1- %%linelength))
+	  (%%prin-string " ")
+	(terpri)))
+
+(defun %%prin-cdr (u prinfn)
   "If U is non-nil then print it or its elements spaced appropriately.
-U is the cdr of a cons cell: nil, an atom or a cons cell.
-Output is not suitable for input to read."
+U is the cdr of a cons cell: nil, an atom or another cons cell.
+Cons cell elements are printed using PRINFN."
   (cond ((null u))						; do nothing
 		((atom u)
 		 (%%prin-space-maybe) (%%prin-string ".")
-		 (%%prin-space-maybe) (prin2 u))
+		 (%%prin-space-maybe) (funcall prinfn u))
 		(t (%%prin-space-maybe)
-		   (prin2 (car u))
-		   (%%prin2-cdr (cdr u)))))
+		   (funcall prinfn (car u))
+		   (%%prin-cdr (cdr u) prinfn))))
 
 (defvar %%read-stream *standard-input*)
 
@@ -2283,11 +2286,6 @@ elements (for example ids, strings, and vectors) are not.")
 Returns the union of sets X and Y."
   (cl:union x y :test #'equal))
 
-;; (defun intersection (x y)				; PSL
-;;   "(intersection U:list V:list): list expr
-;; Returns the intersection of sets U and V."
-;;   (cl:intersection x y :test #'equal))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun compile-file (input-file &rest other-args)
@@ -2372,16 +2370,17 @@ Redefined later as an autoload for the real prettyprinter."
 (defun %%faslout-prettyprint (u)
   "The prettyprint function used for faslout generation.
 It prints Common Lisp syntax to %%faslout-stream."
-  (cl:print u %%faslout-stream))
+  (let (*print-gensym*)	; inhibit printing #: prefix for uninterned symbols
+	(cl:print u %%faslout-stream)))
 
 (defvar %%faslout-saved-prettyprint nil
   "The saved current global definition of the function prettyprint.
 It is replaced during faslout.")
 
-(defun %%faslout-gensym ()
-  "The gensym function used for faslout generation.
-Uninterned symbols do not survive serialization, so they must be interned."
-  (cl:intern (cl:symbol-name (cl:gensym))))
+;; (defun %%faslout-gensym ()
+;;   "The gensym function used for faslout generation.
+;; Uninterned symbols do not survive serialization, so they must be interned."
+;;   (cl:intern (cl:symbol-name (cl:gensym))))
 
 (defun faslout (name)
   "Compile subsequent input into Common Lisp FASL file \"NAME.fasl\".
@@ -2402,7 +2401,8 @@ When all done, execute FASLEND;~2%" name))
 
   (setf %%faslout-saved-prettyprint (symbol-function 'prettyprint)
 		(symbol-function 'prettyprint) (symbol-function '%%faslout-prettyprint)
-		(symbol-function 'gensym) (symbol-function '%%faslout-gensym))
+		;; (symbol-function 'gensym) (symbol-function '%%faslout-gensym)
+		)
 
   (setq *defn t
 		*writingfaslfile t))
@@ -2426,7 +2426,8 @@ When all done, execute FASLEND;~2%" name))
 		*defn nil) ; necessary here if faslend not input as a statement
 
   (setf (symbol-function 'prettyprint) %%faslout-saved-prettyprint
-		(symbol-function 'gensym) (symbol-function 'cl:gensym))
+		;; (symbol-function 'gensym) (symbol-function 'cl:gensym)
+		)
 
   ;; Now compile the Lisp output generated by FASLOUT:
   ;; (format t  "Compiling ~a..." %%faslout-name.lisp)
@@ -2480,6 +2481,10 @@ When all done, execute FASLEND;~2%" name))
   (setq *readtable* (copy-readtable nil)))
 
 (pushnew :standard-lisp *features*)
+
+;; Inhibit printing of package prefixes in the debugger:
+
+(setq sb-ext:*debug-print-variable-alist* '((*print-escape* . nil)))
 
 ;; CL symbols used in REDUCE source code:
 (import

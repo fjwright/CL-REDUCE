@@ -32,6 +32,7 @@ symbolic begin
   on errcont;   % So that computation continues after an error.
   linelength 80;
   !*_xxx_!* := time(); !*_yyy_!* := gctime();
+  if '$1 eq 'rlisp88 then !*argnochk := nil;
 end;
 
 out "log/$1.rlg";
@@ -59,7 +60,7 @@ EOF
 
 # Check for errors:
 
-grep --color --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/$1.rlg | uniq
+grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\)\|COMMON-LISP:ERROR' log/$1.rlg | uniq
 
 # Check for differences from the reference test log:
 

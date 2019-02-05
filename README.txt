@@ -40,10 +40,10 @@ Current status
 ==============
 
 I can build all of REDUCE without any obvious errors by running
-"build.sh".  REDUCE can be run like this:
+"build.sh".  REDUCE can be run most easily by running the command file
+"reduce.bat".  It can also be run explicitly like this:
 
-shell> sbcl --noinform --core reduce.img
-sbcl> (start-reduce)
+shell> sbcl --noinform --core fasl/reduce.img --eval (start-reduce)
 
 The interrupt (^C) invokes the SBCL debugger and aborts to Lisp, which
 is very useful!
@@ -55,61 +55,25 @@ Then interrupt (^C) invokes the SBCL debugger, with currently no
 restart.]
 
 
-All core test files run to completion without any catastrophic errors,
-although some fail trying to load non-core packages and some are not
-completely consistent with the reference output.
+All core test files run to completion and are consistent with the
+reference logs except for the following:
 
-alg, poly, polydiv OK.
+arith.tst runs correctly in my view and displays less numerical error
+than the reference output, arith.rlg!
 
-arith.tst runs correctly and displays less numerical error than the
-reference output, arith.rlg!
-
-factor OK.
-
-int.tst runs with some unevaluated integrals.  But int(erf(a + x),x)
+*** int.tst runs with some unevaluated integrals.  But int(erf(a + x),x)
 evaluates whereas in int.rlg it doesn't!  I think the source code
 might be temporarily unstable, so I will ignore these errors for now.
 
-matrix OK.
-
-rlisp88.tst shows major problems.  The main remaining problem is that
+*** rlisp88.tst shows major problems.  The main remaining problem is that
 the for macro fails, probably because it is mishandled by getd/putd,
 which are used to copy for88 to for.
 
-solve.tst has some errors and fails to load groebner and odesolve.
+*** algint.tst is much as int.tst.
 
-desir OK.
+assist.tst shows insignificant differences from the reference output
+due to differences in the REDUCE implementations.
 
-ineq.tst fails to load roots2.
-
-modsr, rsolve OK.
-
-algint.tst is much like int.tst.
-
-arnum OK.
-
-assist.tst shows minor (?) differences from the reference output,
-mostly affecting sort order.
-
-dummy OK.
-
-cantens.tst shows some problems.
-
-atensor, avector, invbase OK.
-
-misc.tst shows some problems.
-
-boolean OK.
-
-cali.tst shows some problems.
-
-camal, changevr OK.
-
-compact.tst shows some differences from the reference output.
-
-dfpart.tst fails to load taylor.
-
-lie OK.
 
 To do
 =====
@@ -131,7 +95,12 @@ Make faslout/faslend more robust by using a single function that calls
 begin internally (cf. infile) and make faslend generate a throw.  See
 also the old mkfasl code.
 
-Test the packages.
+Test the noncore packages.
+
+A better trace facility (that does not display the STANDARD-LISP::
+package prefix).
+
+Better error handling.
 
 Implement a proper Lisp init function and dump an executable file.
 

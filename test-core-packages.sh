@@ -24,7 +24,7 @@ packages="$(< fasl/core-packages.dat)"
 
 for x in $packages
 do
-	echo $x
+	echo +++++ Testing core package $x
 	echo $x >> log/testcore.log
 	./test-one-package.sh $x
 done
