@@ -139,6 +139,8 @@ sbcl --noinform << XXX &> log/reduce.blg
 (load!-package 'alg)
 (load!-package 'mathpr)
 (load!-package 'entry)
+
+(cl:fmakunbound 'prettyprint)	% otherwise defautoload has no effect!
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
 
 (setq date!* (date))
