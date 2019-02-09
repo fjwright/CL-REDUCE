@@ -27,7 +27,7 @@ global '(!*extraecho
 		 seprp!*
 		 symchar!*);
 
-switch break, lower, redefmsg, verboseload, debug;
+switch break, printlower, redefmsg, verboseload, debug;
 
 % This procedure definition taken from "pslrend.red" is required for
 % the factor module:
@@ -307,6 +307,30 @@ flag('(systo_get!-resource!-directory), 'lose);
 % will need attention later!
 
 procedure compute!-prompt!-string(count,level); "";
+
+% Make ON DEFN load the prettyprinter if necessary and
+% OFF DEFN reinstate property lists saved during ON DEFN:
+% put('defn, 'simpfg, '((t (!require '!eslpretty))
+%                       (nil (!esl!-reinstate!-plists))));
+
+% Make the COMP switch control the SBCL evaluation mode:
+put('comp, 'simpfg, '((t (compilation t))
+                      (nil (compilation nil))));
+
+% This procedure is defined in "rlisp88/inspect.red", but it prints
+% all letters as lower case.  This version fixes that:
+
+remflag('(i!&prn), 'lose);
+
+procedure i!&prn x;
+   % I!&PRN(x) -- Display the characters of list x and then terminate
+   % the line.
+   begin scalar !*printlower;
+      for each c in x do prin2 c;
+   	  terpri()
+   end;
+
+flag('(i!&prn), 'lose);
 
 endmodule;
 

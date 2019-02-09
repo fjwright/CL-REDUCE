@@ -84,6 +84,12 @@ If !*RAISE is non-NIL all characters input through Standard LISP
 input/output functions will be raised to upper case. If !*RAISE is
 NIL characters will be input as is.")
 
+(defvar *printlower t
+  ;; Calling this variable *lower causes problems bootstrapping rlisp
+  ;; that I don't understand, but this switch is different from the
+  ;; PSL/CSL lower switch anyway!
+  "If non-nil then all identifiers are printed using lower case.")
+
 (import 'cl:t)
 ;; T = T global
 ;; T is a special global variable. It is protected from being modifed by
@@ -103,7 +109,15 @@ output device. Dskin does not change the value of *echo, so one may say
 If *redefmsg is not nil, the message
 *** Function `FOO' has been redefined
 is printed whenever a function is redefined by PUTD.")
-;; Should this also apply to DE & DM?
+;; Also applies to DE & DM.
+
+(defun %%redefmsg (fname)
+  "Optionally warn about function redefinition."
+  ;; Assume fname is input quoted.
+  (if (and *redefmsg (fboundp fname))
+	  ;; (warn "Function ~a has been redefined" fname)
+	  ;; Warnings are currently suppressed!
+	  (format t "~&*** Function `~(~a~)' has been redefined~%" fname)))
 
 ;;; FUNCTIONS
 ;;; =========
@@ -132,9 +146,10 @@ determined by DEFINITION.  The return value is undefined."
 ;; EXPR PROCEDURE ATOM(U);
 ;;    NULL PAIRP U;
 
-(defalias 'codep 'cl:functionp
+(defalias 'codep 'cl:compiled-function-p
   "CODEP(U:any):boolean eval, spread
 Returns T if U is a function-pointer.")
+;; This means compiled code only!
 
 (defun constantp (u)
   "CONSTANTP(U:any):boolean eval, spread
@@ -579,6 +594,7 @@ compiled. The name of the defined function is returned.
 FEXPR PROCEDURE DE(U);
    PUTD(CAR U, 'EXPR, LIST('LAMBDA, CADR U, CADDR U));"
   `(progn
+	 (%%redefmsg ',fname)
 	 (put ',fname '%%ftype 'expr)
 	 (defun ,fname ,params ,fn)
 	 ;; It makes no sense to include code to compile this function
@@ -607,6 +623,7 @@ is of type MACRO. The name of the macro is returned.
 FEXPR PROCEDURE DM(U);
    PUTD(CAR U, 'MACRO, LIST('LAMBDA, CADR U, CADDR U));"
   `(progn
+	 (%%redefmsg ',mname)
 	 (put ',mname '%%ftype 'macro)
 	 ;; Save the (uncompiled) SL macro form:
 	 ;; (put ',mname '%%macro '(macro lambda ,param ,fn)) ; not currently used
@@ -646,7 +663,11 @@ is returned."
 			  ;; 				 (apply ,(macro-function fname) r)))))
 
 			 (t
-			  (cons 'expr (symbol-function fname))))))
+			  (cons 'expr ;; (symbol-function fname)
+					(if (compiled-function-p (setq fname (symbol-function fname)))
+						fname
+						(function-lambda-expression fname))
+					)))))
 
 (defun putd (fname type body)
   "PUTD(FNAME:id, TYPE:ftype, BODY:function):id eval, spread
@@ -666,24 +687,24 @@ the !*COMP global variable is non-NIL."
   (if (or (cl:get fname 'global)		; only if explicitly declared
 		  (fluidp fname))
 	  (cl:error "~a is a non-local variable" fname))
-  (if (and *redefmsg (fboundp fname))
-	  (warn "~a redefined" fname))
+  (%%redefmsg fname)
   ;; body = (lambda (u) body-form) or function-pointer
-  (cond ((eq type 'expr)
-		 (cond ((and (consp body) (eq (car body) 'lambda))
-				(eval `(de ,fname ,(cadr body) ,@(cddr body))))
-			   ((functionp body)
-				(setf (symbol-function fname) body)
-				(put fname '%%ftype 'expr))
-			   (t (cl:error "Invalid expr body in PUTD"))))
-		((eq type 'macro)
-		 (cond ((and (consp body) (eq (car body) 'lambda))
-				(eval `(dm ,fname ,(cadr body) ,@(cddr body))))
-			   ((functionp body)
-				(setf (macro-function fname) body)
-				(put fname '%%ftype 'macro))
-			   (t (cl:error "Invalid macro body in PUTD"))))
-		(t (cl:error "Invalid type in PUTD")))
+  (let (*redefmsg)					; don't report redefinitions twice
+	(cond ((eq type 'expr)
+		   (cond ((eqcar body 'lambda)
+				  (eval `(de ,fname ,(cadr body) ,@(cddr body))))
+				 ((functionp body)
+				  (setf (symbol-function fname) body)
+				  (put fname '%%ftype 'expr))
+				 (t (cl:error "Invalid expr body in PUTD"))))
+		  ((eq type 'macro)
+		   (cond ((eqcar body 'lambda)
+				  (eval `(dm ,fname ,(cadr body) ,@(cddr body))))
+				 ((functionp body)
+				  (setf (macro-function fname) body)
+				  (put fname '%%ftype 'macro))
+				 (t (cl:error "Invalid macro body in PUTD"))))
+		  (t (cl:error "Invalid type in PUTD"))))
   fname)
 
 (defun remd (fname)
@@ -899,8 +920,19 @@ global variable EMSG!* and the error number becomes the value of
 the surrounding ERRORSET. FLUID variables and local bindings are
 unbound to return to the environment of the ERRORSET. Global
 variables are not affected by the process."
+  (if (consp message)
+	  (setq message
+			(let ((*print-case* :downcase))
+			  (cl:apply #'concatenate 'string
+						(cons (princ-to-string (car message))
+							  (loop
+								 for x in (cdr message)
+								 collect " "
+								 collect (princ-to-string x)))))))
   (setf emsg* message)
-  (cl:error "***** SL error ~a: ~a" number message))
+  ;; (cl:error "***** SL error ~a: ~a" number message)
+  ;; Do not include number in the output:
+  (cl:error "***** ~*~a" number message))
 
 (defun error1 ()
   "This is the simplest error return, without a message printed.
@@ -946,11 +978,15 @@ dependent format."
 			(err)
 		  (let ((fmt (simple-condition-format-control err))
 				(args (simple-condition-format-arguments err)))
-			(if (and msgp (cdr args)) (cl:apply #'format t fmt args))
+			(if (and msgp (cdr args))
+				(progn
+				  (fresh-line)
+				  (cl:apply #'format t fmt args)
+				  (cl:terpri)))
 			(car args)))
 		(cl:error
 			(err)
-		  (if msgp (format t "~%***** CL error: ~a" err))
+		  (if msgp (format t "~&***** CL error: ~a~%" err))
 		  999))))
 
 
@@ -1828,7 +1864,8 @@ in vector-notation.  The value of U is returned."
   u)
 
 (defun %%prin1-id-to-string (u)
-  "Convert identifier U to a lower-case string including appropriate `!' escapes."
+  "Convert identifier U to a string including appropriate `!' escapes.
+Convert to lower case if *printlower is non-nil; otherwise to upper case."
   (setf u (%%princ-to-string u))
   (loop with newu and c
 	 for i below (cl:length u) do
@@ -1840,14 +1877,17 @@ in vector-notation.  The value of U is returned."
 	   (push c newu)
 	 finally (return (coerce (nreverse newu) 'string))))
 
-(defun %%princ-to-string (u)
-  "Print identifier U to a lower-case string without any escapes."
-  (write-to-string u :case :downcase :escape nil :readably nil))
-
 (defun %%prin2-id-to-string (u)
-  "Convert identifier U to a lower-case string excluding inappropriate `!' escapes."
+  "Convert identifier U to a string excluding inappropriate `!' escapes.
+Convert to lower case if *printlower is non-nil; otherwise to upper case."
   (setf u (%%princ-to-string u))
   (if (string= "!:" u :end2 1) (subseq u 1) u))
+
+(defun %%princ-to-string (u)
+  "Print identifier U to a string without any escapes.
+Convert to lower case if *printlower is non-nil; otherwise to upper case."
+  (let ((*print-case* (if *printlower :downcase :upcase)))
+	(cl:princ-to-string u)))
 
 (defun %%prin1-string-to-string (u)
   "Add delimiting \"s and escape internal \"s as \"\" in string U."
@@ -1979,6 +2019,24 @@ No escape characters are defined.")
 ;; sets *echo AFTER open and rds have been called, so cannot use a
 ;; Common Lisp echo stream.
 
+;; But I could open both a non-echoing and a synonymous echoing input
+;; stream and select between them dynamically.  This should facilitate
+;; correct echoing in read.
+
+;; (defun read ()
+;;   "READ():any
+;; The next expression from the file currently selected for
+;; input. Valid input forms are: vector-notation, dot-notation,
+;; list-notation, numbers, function-pointers, strings, and
+;; identifiers with escape characters. Identifiers are interned on
+;; the OBLIST (see the INTERN function in \"Identifiers\"). READ
+;; returns the value of !$EOF!$ when the end of the currently
+;; selected input file is reached."
+;;   (let* ((*readtable* *sl-readtable*)
+;; 		 (exprn (cl:read %%read-stream nil $eof$)))
+;; 	(if *echo (prin1 exprn))
+;; 	exprn))
+
 (defun read ()
   "READ():any
 The next expression from the file currently selected for
@@ -1988,10 +2046,19 @@ identifiers with escape characters. Identifiers are interned on
 the OBLIST (see the INTERN function in \"Identifiers\"). READ
 returns the value of !$EOF!$ when the end of the currently
 selected input file is reached."
-  (let* ((*readtable* *sl-readtable*)
-		 (exprn (cl:read %%read-stream nil $eof$)))
-	(if *echo (prin1 exprn))
-	exprn))
+  ;; Temporary hack until I re-implement an echoing input stream.
+  ;; Compress any whitespace preceding the expression read into a
+  ;; single space.
+  (let* ((*readtable* *sl-readtable*) next-char)
+	(if *echo
+		(progn
+		  (setq next-char (peek-char nil %%read-stream))
+		  (cond ((cl:member next-char '(#\Space #\Tab) :test #'char=)
+				 (%%prin-space-maybe))
+				((char= next-char #\Newline)
+				 (terpri)))
+		  (prin1 (read-preserving-whitespace %%read-stream nil $eof$)))
+		(cl:read %%read-stream nil $eof$))))
 
 (defvar %%readch-escape nil
   "True if the next character to be read by READCH should be escaped.")
@@ -2476,7 +2543,14 @@ When all done, execute FASLEND;~2%" name))
 
 (pushnew :standard-lisp *features*)
 
-;; Inhibit printing of package prefixes in the debugger:
+(defun compilation (on)
+  "Set the SBCL evaluation mode to compile if ON is non-nil and to
+interpret otherwise.  The default is compile."
+  (setq sb-ext:*evaluator-mode*
+		(if on :compile :interpret)))
+
+;; Inhibit printing of package prefixes in the debugger (which doesn't
+;; seem to work):
 
 (setq sb-ext:*debug-print-variable-alist* '((*print-escape* . nil)))
 
