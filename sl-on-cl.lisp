@@ -116,6 +116,12 @@ determined by DEFINITION.  The return value is undefined."
   `(setf ,@(if docstring `((documentation ,symbol 'cl:function) ,docstring))
 		 (symbol-function ,symbol) (symbol-function ,definition)))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; Needed to expand macros fluid and global when compiling.
+  (defun eqcar (u v)
+	"Return true if U is a cons cell and its car is eq to V."
+	(and (consp u) (eq (car u) v))))
+
 
 ;;; Elementary Predicates
 ;;; =====================
@@ -714,7 +720,7 @@ already declared FLUID are ignored. Changing a variable's type
 from GLOBAL to FLUID is not permissible and results in the error:
 ***** ID cannot be changed to FLUID"
   ;; A warning, as for PSL, is more convenient than an error!
-  (if (and (consp idlist) (eq (car idlist) 'quote))
+  (if (eqcar idlist 'quote)
 	  ;; Assume a top-level call that needs to output `defvar' forms
 	  ;; at compile time.
 	  (cons 'prog1
@@ -752,7 +758,7 @@ variables type from FLUID to GLOBAL is not permissible and
 results in the error:
 ***** ID cannot be changed to GLOBAL"
   ;; A warning, as for PSL, is more convenient than an error!
-  (if (and (consp idlist) (eq (car idlist) 'quote))
+  (if (eqcar idlist 'quote)
 	  ;; Assume a top-level call that needs to output `defvar' forms
 	  ;; at compile time.
 	  (cons 'prog1
@@ -1272,14 +1278,16 @@ Returns the product of U and V.")
 ;;; MAP Composite Functions
 ;;; =======================
 
-;; These definitions cause a compilation error! (???)
+(defun %%lam2fn (fn)
+  "Make a lambda expression acceptable as a function by evaluating it."
+  (if (eqcar fn 'lambda) (eval fn) fn))
 
 (defun map (x fn)
   "MAP(X:list, FN:function):any eval, spread
 Applies FN to successive CDR segments of X. NIL is returned.
 EXPR PROCEDURE MAP(X, FN);
    WHILE X DO << FN X; X := CDR X >>;"
-  (cl:mapl fn x)
+  (cl:mapl (%%lam2fn fn) x)
   nil)
 
 (defun mapc (x fn)
@@ -1287,7 +1295,7 @@ EXPR PROCEDURE MAP(X, FN);
 FN is applied to successive CAR segments of list X. NIL is returned.
 EXPR PROCEDURE MAPC(X, FN);
    WHILE X DO << FN CAR X; X := CDR X >>;"
-  (cl:mapc fn x)
+  (cl:mapc (%%lam2fn fn) x)
   nil)
 
 (defun mapcan (x fn)
@@ -1297,7 +1305,7 @@ is returned.
 EXPR PROCEDURE MAPCAN(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN CAR X, MAPCAN(CDR X, FN));"
-  (cl:mapcan fn x))
+  (cl:mapcan (%%lam2fn fn) x))
 
 (defun mapcar (x fn)
   "MAPCAR(X:list, FN:function):any eval, spread
@@ -1305,7 +1313,7 @@ Returned is a constructed list of FN applied to each CAR of list X.
 EXPR PROCEDURE MAPCAR(X, FN);
    IF NULL X THEN NIL
       ELSE FN CAR X . MAPCAR(CDR X, FN);"
-  (cl:mapcar fn x))
+  (cl:mapcar (%%lam2fn fn) x))
 
 (defun mapcon (x fn)
   "MAPCON(X:list, FN:function):any eval, spread
@@ -1314,7 +1322,7 @@ segments of X.
 EXPR PROCEDURE MAPCON(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN X, MAPCON(CDR X, FN));"
-  (cl:mapcon fn x))
+  (cl:mapcon (%%lam2fn fn) x))
 
 (defun maplist (x fn)
   "MAPLIST(X:list, FN:function):any eval, spread
@@ -1323,7 +1331,7 @@ of X.
 EXPR PROCEDURE MAPLIST(X, FN);
    IF NULL X THEN NIL
       ELSE FN X . MAPLIST(CDR X, FN);"
-  (cl:maplist fn x))
+  (cl:maplist (%%lam2fn fn) x))
 
 
 ;;; Composite Functions
@@ -1538,9 +1546,7 @@ The value is actually the first element of LIST whose cdr equals KEY."
 (defun apply (fn args)
   "Treat a lambda expression as an operator.
 Otherwise revert to the Common Lisp apply."
-  (if (and (consp fn) (eq (car fn) 'lambda))
-	  (setq fn (eval fn)))
-  (cl:apply fn args))
+  (cl:apply (%%lam2fn fn) args))
 
 ;; APPLY(FN:{id,function}, ARGS:any-list):any eval, spread
 ;; APPLY returns the value of FN with actual parameters ARGS. The
@@ -2347,15 +2353,6 @@ Load a \".sl\" file using Standard Lisp read syntax."
 Defined and called only in \"arith/smlbflot.red\" and redefined here
 to down-case the E in floats."
   (cl:string-downcase (cl:map 'string #'character li)))
-
-;; (defvar oldchan* nil)
-
-;; (defun dskin (name)
-;;   "(dskin NAME:string): nil, abort expr
-;; The contents of the file NAME are processed as if they were typed in.
-;; Once the input stream has been bound to the channel which
-;; represents the open file, each form is processed."
-;;   (rds (setf oldchan* (open name 'input))))
 
 
 ;;; Faslout/faslend interface

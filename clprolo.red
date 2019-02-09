@@ -34,6 +34,9 @@ symbolic procedure evload l;
    % "rlisp/module.red".  Might be better defined in "sl-on-cl.lisp".
    while l do << apply(function load, list car l); l := cdr l >>;
 
+% This useful utility function is defined in sl-on-cl:
+flag('(eqcar),'lose);
+
 % These functions are already defined in Common Lisp:
 flag('(first second third rest evenp oddp symbol!-name),'lose);
 
