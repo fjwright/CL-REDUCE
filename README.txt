@@ -65,9 +65,9 @@ than the reference output, arith.rlg!
 evaluates whereas in int.rlg it doesn't!  I think the source code
 might be temporarily unstable, so I will ignore these errors for now.
 
-*** rlisp88.tst shows major problems.  The main remaining problem is that
-the for macro fails, probably because it is mishandled by getd/putd,
-which are used to copy for88 to for.
+*** rlisp88.tst shows a major problem that the `for', `repeat' and
+`while' macros fail, probably because they are mishandled by
+getd/putd, which are used by copyd in the rlisp88 switch code.
 
 *** algint.tst is much as int.tst.
 

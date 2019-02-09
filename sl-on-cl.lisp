@@ -1703,7 +1703,13 @@ the value of FILEHANDLE. An error occurs if the file can not be
 closed.
 ***** FILEHANDLE could not be closed"
   ;; A null filehandle represents standard IO; ignore it.
-  (if filehandle (cl:close filehandle))
+  (if filehandle
+	  (if (consp filehandle)
+		  ;; Input filehandle -- close echo stream then input stream:
+		  (progn (cl:close (cdr filehandle))
+				 (cl:close (car filehandle)))
+		  ;; Output filehandle:
+		  (cl:close filehandle)))
   filehandle)
 
 (defun eject ()
@@ -1774,7 +1780,10 @@ OUTPUT or the file can't be opened.
   ;; such as ^ in a filename:
   (setq file (sb-ext:native-pathname (substitute-in-file-name file)))
   (cond ((eq how 'input)
-		 (cl:open file :direction :input))
+		 (let ((fh (cl:open file :direction :input)))
+		   ;; An input filehandle is a pair of the form
+		   ;; (input-stream . echo-stream):
+		   (cons fh (make-echo-stream fh *standard-output*))))
 		((eq how 'output)
 		 (cl:open file :direction :output
 				  :if-exists :supersede :if-does-not-exist :create))
@@ -1958,10 +1967,18 @@ Cons cell elements are printed using PRINFN."
 		   (funcall prinfn (car u))
 		   (%%prin-cdr (cdr u) prinfn))))
 
-(defvar %%read-stream *standard-input*)
-
 ;; It might be more elegant to handle input and output redirection in
 ;; the same way!  Reconsider this later.
+
+(defconstant %%default-read-stream (cons *standard-input* nil))
+
+(defvar %%read-stream %%default-read-stream
+  "A cons pair of the form (input-stream . echo-stream), where the cdr
+may be nil.")
+
+(defun %%read-stream ()
+  "Return the appropriate input stream depending on the value of *echo."
+  (or (and *echo (cdr %%read-stream)) (car %%read-stream)))
 
 (defun rds (filehandle)
   "RDS(FILEHANDLE:any):any eval, spread
@@ -1976,7 +1993,7 @@ returns the internal name of the previously selected input file.
 ***** FILEHANDLE could not be selected for input"
   (prog1
 	  %%read-stream
-	(setq %%read-stream (or filehandle *standard-input*))))
+	(setq %%read-stream (or filehandle %%default-read-stream))))
 
 (defparameter *sl-readtable* (copy-readtable)
   "Readtable implementing Standard Lisp syntax.
@@ -2015,27 +2032,11 @@ No escape characters are defined.")
 
 (set-macro-character #\" #'%%sl-read-string nil *sl-readtable*)
 
-;; The read functions must handle echoing explicitly because REDUCE
-;; sets *echo AFTER open and rds have been called, so cannot use a
-;; Common Lisp echo stream.
-
-;; But I could open both a non-echoing and a synonymous echoing input
-;; stream and select between them dynamically.  This should facilitate
-;; correct echoing in read.
-
-;; (defun read ()
-;;   "READ():any
-;; The next expression from the file currently selected for
-;; input. Valid input forms are: vector-notation, dot-notation,
-;; list-notation, numbers, function-pointers, strings, and
-;; identifiers with escape characters. Identifiers are interned on
-;; the OBLIST (see the INTERN function in \"Identifiers\"). READ
-;; returns the value of !$EOF!$ when the end of the currently
-;; selected input file is reached."
-;;   (let* ((*readtable* *sl-readtable*)
-;; 		 (exprn (cl:read %%read-stream nil $eof$)))
-;; 	(if *echo (prin1 exprn))
-;; 	exprn))
+;; The read functions (rather than open or rds) must select the echo
+;; stream dynamically because REDUCE sets *echo AFTER open and rds
+;; have been called.  They do this by calling the function
+;; %%read-stream, which returns either the input stream or the echo
+;; stream depending on the value of *echo.
 
 (defun read ()
   "READ():any
@@ -2046,19 +2047,8 @@ identifiers with escape characters. Identifiers are interned on
 the OBLIST (see the INTERN function in \"Identifiers\"). READ
 returns the value of !$EOF!$ when the end of the currently
 selected input file is reached."
-  ;; Temporary hack until I re-implement an echoing input stream.
-  ;; Compress any whitespace preceding the expression read into a
-  ;; single space.
-  (let* ((*readtable* *sl-readtable*) next-char)
-	(if *echo
-		(progn
-		  (setq next-char (peek-char nil %%read-stream))
-		  (cond ((cl:member next-char '(#\Space #\Tab) :test #'char=)
-				 (%%prin-space-maybe))
-				((char= next-char #\Newline)
-				 (terpri)))
-		  (prin1 (read-preserving-whitespace %%read-stream nil $eof$)))
-		(cl:read %%read-stream nil $eof$))))
+  (let* ((*readtable* *sl-readtable*))
+	(cl:read (%%read-stream) nil $eof$)))
 
 (defvar %%readch-escape nil
   "True if the next character to be read by READCH should be escaped.")
@@ -2071,19 +2061,17 @@ record have been read, the value of !$EOL!$ is returned. If the file
 selected for input has all been read the value of !$EOF!$ is returned.
 Comments delimited by % and end-of-line are not transparent to READCH."
   ;; This function must perform any required case change.
-  (let ((c (read-char %%read-stream nil $eof$)))
+  (let ((c (read-char (%%read-stream) nil $eof$)))
 	(if (eq c $eof$)
 		(progn
 		  (setq %%readch-escape nil)
 		  $eof$)
-		(progn
-		  (if *echo (write-char c))
-		  (cond ((eq c #\!)
-				 (setq %%readch-escape (not %%readch-escape)) '!)
-				(%%readch-escape
-				 (setq %%readch-escape nil) (cl:intern (string c)))
-				(*raise (cl:intern (string (cl:char-upcase c))))
-				(t (cl:intern (string c))))))))
+		(cond ((eq c #\!)
+			   (setq %%readch-escape (not %%readch-escape)) '!)
+			  (%%readch-escape
+			   (setq %%readch-escape nil) (cl:intern (string c)))
+			  (*raise (cl:intern (string (cl:char-upcase c))))
+			  (t (cl:intern (string c)))))))
 
 (defun terpri ()
   "TERPRI():NIL
