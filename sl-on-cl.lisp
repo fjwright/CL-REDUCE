@@ -1967,12 +1967,10 @@ Cons cell elements are printed using PRINFN."
 		   (funcall prinfn (car u))
 		   (%%prin-cdr (cdr u) prinfn))))
 
-;; It might be more elegant to handle input and output redirection in
-;; the same way!  Reconsider this later.
+(defconstant +default-read-stream+ (cons *standard-input* nil)
+  "The read stream using the initial value of *standard-input*.")
 
-(defconstant %%default-read-stream (cons *standard-input* nil))
-
-(defvar %%read-stream %%default-read-stream
+(defvar %%read-stream +default-read-stream+
   "A cons pair of the form (input-stream . echo-stream), where the cdr
 may be nil.")
 
@@ -1993,7 +1991,10 @@ returns the internal name of the previously selected input file.
 ***** FILEHANDLE could not be selected for input"
   (prog1
 	  %%read-stream
-	(setq %%read-stream (or filehandle %%default-read-stream))))
+	(setq %%read-stream
+		  (if (and filehandle (open-stream-p (car filehandle)))
+			  filehandle
+			  +default-read-stream+))))
 
 (defparameter *sl-readtable* (copy-readtable)
   "Readtable implementing Standard Lisp syntax.
@@ -2080,8 +2081,8 @@ The current print line is terminated."
   (cl:terpri)
   nil)
 
-(defconstant +default-standard-output+ *standard-output*
-  "The initial value of *standard-output* at load time.")
+(defconstant +default-write-stream+ *standard-output*
+  "The write stream using the initial value of *standard-output*.")
 
 (defun wrs (filehandle)
   "WRS(FILEHANDLE:any):any eval, spread
@@ -2094,7 +2095,10 @@ selected output file.
 ***** FILEHANDLE could not be selected for output"
   (prog1
 	  *standard-output*
-	(setq *standard-output* (or filehandle +default-standard-output+))))
+	(setq *standard-output*
+		  (if (and filehandle (open-stream-p filehandle))
+			  filehandle
+			  +default-write-stream+))))
 
 
 ;;; PSL/CSL functions and some other required functions

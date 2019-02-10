@@ -104,6 +104,4 @@ Better error handling.
 
 Implement a proper Lisp init function and dump an executable file.
 
-Make stream handling more robust; see bootstrap.sh.
-
 Replace shell scripts with Common Lisp code to build REDUCE portably?

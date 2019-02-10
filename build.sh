@@ -53,7 +53,7 @@ begin
   i := open("fasl/core-packages.dat", 'output);
   s := wrs i;
   for each x in reverse core do print car x;
-  wrs s; % ADDED TO AVOID A NASTY CRASH!
+  wrs s;
   close i;
   i := open("fasl/noncore-packages.dat", 'output);
   s := wrs i;
@@ -61,10 +61,6 @@ begin
   wrs s;
   close i;
 end;
-
-% Without above addition, penultimate wrs returns the closed stream
-% for "fasl/core-packages.dat" and then the final wrs tries to switch
-% to the closed stream. This crashes SBCL!
 
 bye;
 XXX
