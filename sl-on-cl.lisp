@@ -67,7 +67,7 @@ The value of !$EOL!$ is returned by READCH when it reaches the
 end of a logical input record. Likewise PRINC will terminate its
 current line (like a call to TERPRI) when !$EOL!$ is its argument.")
 
-(defvar *gc nil							; currently ignored!
+(defvar *gc nil
   "*GC = NIL global
 !*GC controls the printing of garbage collector messages. If NIL
 no indication of garbage collection may occur. If non-NIL various
@@ -658,16 +658,20 @@ is returned."
 			 ;; The following breaks the call of while in
 			 ;; rlisp/statmisc.red and so is clearly not right!
 
-			  ;; (cons 'macro
-			  ;; 		(eval `(lambda (&rest r)
-			  ;; 				 (apply ,(macro-function fname) r)))))
+			 ;; (cons 'macro
+			 ;; 	  (eval `(lambda (&rest r)
+			 ;; 			   (apply ,(macro-function fname) r)))))
 
 			 (t
-			  (cons 'expr ;; (symbol-function fname)
-					(if (compiled-function-p (setq fname (symbol-function fname)))
-						fname
-						(function-lambda-expression fname))
-					)))))
+			  ;; Return a lambda expression if possible, since this is
+			  ;; most useful (although perhaps not most efficient in
+			  ;; some cases):
+			  (let ((f (function-lambda-expression
+						(setq fname (symbol-function fname)))))
+				;; Omit any declarations and documentation string:
+				(if f (setq fname
+							`(lambda ,(cadr f) ,(car (last f))))))
+			  (cons 'expr fname)))))
 
 (defun putd (fname type body)
   "PUTD(FNAME:id, TYPE:ftype, BODY:function):id eval, spread
@@ -2153,6 +2157,28 @@ Elapsed time from some arbitrary initial point in milliseconds."
   ;; Total cpu time spent doing garbage collection (as reported by
   ;; get-internal-run-time.) Initialized to zero on startup.
   (round (* sb-ext:*gc-run-time* +milliseconds-per-internal-time-unit+)))
+
+(defvar gcknt* 0
+  "gcknt* = [Initially: 0] global
+Records the number of times that the garbage collector has been
+invoked.  Gcknt* may be reset to another value to record counts
+incrementally, as desired.")
+
+(defvar *previous-gc-run-time* 0
+  "Total (internal) GC time up to previous garbage collection.")
+
+(defun %%gc-reporting ()
+  "Increment garbage collection count and optionally output a report.
+A function hung on the garbage collection hook."
+  (incf gcknt*)
+  (if *gc
+	  (format t "*** Garbage collection number ~a completed in ~ams.~%"
+			  gcknt*
+			  (round (* (- sb-ext:*gc-run-time* *previous-gc-run-time*)
+						+milliseconds-per-internal-time-unit+))))
+  (setq *previous-gc-run-time* sb-ext:*gc-run-time*))
+
+(pushnew '%%gc-reporting sb-ext:*after-gc-hooks*)
 
 (defun gtheap ()
   "Size of the free dynamic space in bytes."

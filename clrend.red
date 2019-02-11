@@ -27,7 +27,7 @@ global '(!*extraecho
 		 seprp!*
 		 symchar!*);
 
-switch break, printlower, redefmsg, verboseload, debug;
+switch break, gc, printlower, redefmsg, debug, verboseload;
 
 % This procedure definition taken from "pslrend.red" is required for
 % the factor module:

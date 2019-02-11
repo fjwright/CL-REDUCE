@@ -59,20 +59,27 @@ All core test files run to completion and are consistent with the
 reference logs except for the following:
 
 arith.tst runs correctly in my view and displays less numerical error
-than the reference output, arith.rlg!
+than arith.rlg!
 
-*** int.tst runs with some unevaluated integrals.  But int(erf(a + x),x)
-evaluates whereas in int.rlg it doesn't!  I think the source code
-might be temporarily unstable, so I will ignore these errors for now.
+int.tst shows no significant difference compared to PSL/CSL, although
+int.rlg is different!
 
 *** rlisp88.tst shows a major problem that the `for', `repeat' and
 `while' macros fail, probably because they are mishandled by
 getd/putd, which are used by copyd in the rlisp88 switch code.
 
-*** algint.tst is much as int.tst.
+algint.tst shows minor differences compared to PSL/CSL, although
+algint.rlg is different!  The CL REDUCE results are slightly better
+than the PSL/CSL results (but I don't know why!) and PSL crashes
+towards the end of the test!
 
 assist.tst shows insignificant differences from the reference output
-due to differences in the REDUCE implementations.
+due to implementation differences.
+
+
+CL REDUCE is currently about 3 times slower than PSL/CSL, but note
+that it is currently built for comfort (of debugging) rather than
+speed!
 
 
 To do
@@ -98,10 +105,15 @@ also the old mkfasl code.
 Test the noncore packages.
 
 A better trace facility (that does not display the STANDARD-LISP::
-package prefix).
+package prefix) -- use the rtrace package.
 
 Better error handling.
 
 Implement a proper Lisp init function and dump an executable file.
 
 Replace shell scripts with Common Lisp code to build REDUCE portably?
+
+Make Standard Lisp lower case and stop downcasing in the print
+functions.  (Internal functions could remain upper case.)  This would
+solve the problem that prettyprinted strings are downcased and avoid
+the need for a couple of ugly print-case related hacks.
