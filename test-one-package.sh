@@ -31,8 +31,11 @@ sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # log/$1-errors.rlg #
 symbolic begin
   on errcont;   % So that computation continues after an error.
   linelength 80;
+  if '$1 eq 'rlisp88 then
+    !*float!-print!-precision!* := 6
+  else
+    off redefmsg;
   !*_xxx_!* := time(); !*_yyy_!* := gctime();
-  if '$1 eq 'rlisp88 then !*argnochk := nil;
 end;
 
 out "log/$1.rlg";

@@ -64,9 +64,8 @@ than arith.rlg!
 int.tst shows no significant difference compared to PSL/CSL, although
 int.rlg is different!
 
-*** rlisp88.tst shows a major problem that the `for', `repeat' and
-`while' macros fail, probably because they are mishandled by
-getd/putd, which are used by copyd in the rlisp88 switch code.
+rlisp88.tst shows minor differences compared to PSL/CSL, although
+rlisp88.rlg is different!
 
 algint.tst shows minor differences compared to PSL/CSL, although
 algint.rlg is different!  The CL REDUCE results are slightly better

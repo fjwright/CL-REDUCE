@@ -36,6 +36,7 @@ sbcl << XXX &> log/bootstrap.blg
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 (setq !*verboseload t)
+(setq !*redefmsg nil)			% Just duplicates CL warnings!
 
 (cl:defparameter !*init!-time!* (time))
 

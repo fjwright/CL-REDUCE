@@ -653,15 +653,8 @@ is returned."
 			  ;; Try the null environment (nil) initially.
 			  ;; (The parameter x should perhaps be a gensym.)
 			  (cons 'macro
-			  		(eval `(lambda (x)
-			  				 (funcall ,(macro-function fname) x nil)))))
-			 ;; The following breaks the call of while in
-			 ;; rlisp/statmisc.red and so is clearly not right!
-
-			 ;; (cons 'macro
-			 ;; 	  (eval `(lambda (&rest r)
-			 ;; 			   (apply ,(macro-function fname) r)))))
-
+			  		`(lambda (x)
+			  		   (funcall ,(macro-function fname) x nil))))
 			 (t
 			  ;; Return a lambda expression if possible, since this is
 			  ;; most useful (although perhaps not most efficient in
@@ -703,10 +696,16 @@ the !*COMP global variable is non-NIL."
 				 (t (cl:error "Invalid expr body in PUTD"))))
 		  ((eq type 'macro)
 		   (cond ((eqcar body 'lambda)
-				  (eval `(dm ,fname ,(cadr body) ,@(cddr body))))
-				 ((functionp body)
-				  (setf (macro-function fname) body)
-				  (put fname '%%ftype 'macro))
+				  (if (eq (car (caddr body)) 'funcall)
+					  ;; This "hybrid form" is returned by getd.
+					  (progn
+						(setf (macro-function fname) (cadr (caddr body)))
+						(put fname '%%ftype 'macro))
+					  ;; This "pure source form" is used in "rlisp/block.red".
+					  (eval `(dm ,fname ,(cadr body) ,@(cddr body)))))
+				 ;; ((functionp body)		; This case should not happen!
+				 ;;  (setf (macro-function fname) body)
+				 ;;  (put fname '%%ftype 'macro))
 				 (t (cl:error "Invalid macro body in PUTD"))))
 		  (t (cl:error "Invalid type in PUTD"))))
   fname)
@@ -1943,7 +1942,7 @@ If nil then floats are printed without any additional rounding.")
   (loop
 	 initially (%%prin-string "[") (funcall prinfn (aref u 0))
 	 for i from 1 below (cl:length u) do
-	   (%%prin-string " ") (funcall prinfn (aref u i))
+	   (%%prin-space-maybe) (funcall prinfn (aref u i))
 	 finally (%%prin-string "]")))
 
 (defun %%prin-cons (u prinfn)
