@@ -14,16 +14,16 @@
 # Create log directory if necessary:
 mkdir -p log
 
-testfile=packages/$1/$1.tst		# most likely location
-if [ ! -e $testfile ]
+testfile=${reduce:-.}/packages/$1/$1.tst # most likely location
+if [ ! -e "$testfile" ]
 then
 	# Find the .red file, which must exist, then stop looking:
-	testfile=$(find -L packages -name $1.red -print -and -quit)
+	testfile=$(find -L "${reduce:-.}/packages" -name $1.red -print -and -quit)
 	# Change the filename to .tst:
 	testfile=${testfile%%.red}.tst
 fi
 
-if [ ! -e $testfile ]; then exit; fi
+if [ ! -e "$testfile" ]; then exit; fi
 
 sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # log/$1-errors.rlg #
 (start-reduce)
@@ -70,5 +70,5 @@ grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\
 reflog=${testfile%%.tst}.rlg
 
 ( echo $'\nChecking' $1 $'...\n'
-diff --strip-trailing-cr log/$1.rlg $reflog
+diff --strip-trailing-cr log/$1.rlg "$reflog"
 if [ "$sep" ]; then echo -e '\f'; echo $sep; fi ) >> log/checkcore.log

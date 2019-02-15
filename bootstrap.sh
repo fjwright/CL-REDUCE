@@ -11,6 +11,8 @@
 
 # Usage: ./bootstrap.sh
 
+if [ ! "$reduce" ]; then export reduce=.; fi
+
 mkdir -p log				 # -p avoids complaint if directory exists
 mkdir -p fasl
 

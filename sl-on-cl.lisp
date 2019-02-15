@@ -8,9 +8,10 @@
 ;; Current target is Windows SBCL (Steel Bank Common Lisp) 1.4.14.
 
 ;; This file implements a superset of Standard Lisp that is a subset
-;; of the union of PSL and CSL.  It does not provide a Standard Lisp
-;; REPL and is intended primarily for running REDUCE (which provides
-;; its own REPL) on Common Lisp.
+;; of the union of PSL and CSL in a package called STANDARD-LISP with
+;; nickname SL.  It does not provide a Standard Lisp REPL and is
+;; intended primarily for running REDUCE (which provides its own REPL)
+;; on Common Lisp.
 
 (declaim (optimize debug))				; same as (debug 3)
 (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))

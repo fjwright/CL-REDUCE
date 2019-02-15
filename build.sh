@@ -15,6 +15,8 @@ then
 	rm -rf fasl log
 fi
 
+if [ ! "$reduce" ]; then export reduce=.; fi
+
 # Build an initial bootstrap REDUCE image if necessary:
 if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
 
@@ -41,7 +43,7 @@ package!-remake2('remake, nil);	% for building noncore packages
 
 begin
   scalar w, i, s, core, noncore;
-  i := open("packages/package.map", 'input);
+  i := open("$reduce/packages/package.map", 'input);
   s := rds i;
   w := read();
   rds s;
@@ -79,7 +81,7 @@ symbolic;
 
 begin
   scalar w, i, s;
-  i := open("packages/package.map", 'input);
+  i := open("$reduce/packages/package.map", 'input);
   s := rds i;
   w := read();
   rds s;
@@ -170,9 +172,6 @@ XXX
 # Finally, compile the "noncore" packages using reduce.img rather than
 # bootstrap.img.
 
-# Needed by redfront and rubi_red:
-export reduce='d:/Source Code/reduce-algebra-code'
-
 for p in $(< fasl/noncore-packages.dat)
 do
 echo +++++ Remaking noncore package $p
@@ -198,7 +197,7 @@ load remake;
 
 begin
   scalar w, i, s;
-  i := open("packages/package.map", 'input);
+  i := open("$reduce/packages/package.map", 'input);
   s := rds i;
   w := read();
   rds s;
