@@ -1723,10 +1723,12 @@ The function FN is to be passed to another function. If FN is to have
 side effects its free variables must be fluid or global. FUNCTION is
 like QUOTE but its argument may be affected by compilation. We
 do not consider FUNARGs in this report."
-  ;; In Common Lisp, fn must have a function definition, so...
-  (if (fboundp 'fn)
-	  `(cl:function ,fn)
-	  `(cl:quote ,fn)))
+  ;; In Common Lisp, fn must be a *defined* function or a lambda
+  ;; expression.  The symbol car satisfies fboundp and (lambda ...)
+  ;; satisfies functionp, so
+  `(if (if (symbolp ',fn) (fboundp ',fn) (functionp ,fn))
+	   (cl:function ,fn)
+	   (cl:quote ,fn)))
 
 (import 'cl:quote)
 ;; QUOTE(U:any):any noeval, nospread

@@ -1,7 +1,6 @@
 #!/usr/bin/bash
 
-# Run one test file in CL REDUCE and check its test log against the
-# reference log.
+# Run one test file in CL REDUCE and check its test log against CSL.
 
 # Author: Francis J. Wright
 # Based (loosely) on code by Anthony C. Hearn.
@@ -12,7 +11,7 @@
 # This script is normally run by test-core/noncore-packages.sh.
 
 # Create log directory if necessary:
-mkdir -p log
+mkdir -p testlog
 
 testfile=${reduce:-.}/packages/$1/$1.tst # most likely location
 if [ ! -e "$testfile" ]
@@ -25,22 +24,18 @@ fi
 
 if [ ! -e "$testfile" ]; then exit; fi
 
-sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # log/$1-errors.rlg #
+sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # testlog/$1-errors.rlg #
 (start-reduce)
 
 symbolic begin
   on errcont;   % So that computation continues after an error.
+  off redefmsg;
   linelength 80;
-  if '$1 eq 'rlisp88 then
-    !*float!-print!-precision!* := 6
-  else
-    off redefmsg;
+  if '$1 eq 'rlisp88 then !*float!-print!-precision!* := 6;
   !*_xxx_!* := time(); !*_yyy_!* := gctime();
 end;
 
-out "log/$1.rlg";
-
-"$testfile";  % to facilitate interactively finding the .rlg file
+out "testlog/$1.rlg";
 
 load_package $1;
 
@@ -56,19 +51,17 @@ symbolic begin
    terpri();
 end;
 
-shut "log/$1.rlg";
+shut "testlog/$1.rlg";
 
 bye;
 EOF
 
 # Check for errors:
 
-grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\)\|COMMON-LISP:ERROR' log/$1.rlg | uniq
+grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\)\|COMMON-LISP:ERROR' testlog/$1.rlg | uniq
 
-# Check for differences from the reference test log:
-
-reflog=${testfile%%.tst}.rlg
+# Check for differences from CSL:
 
 ( echo $'\nChecking' $1 $'...\n'
-diff --strip-trailing-cr log/$1.rlg "$reflog"
-if [ "$sep" ]; then echo -e '\f'; echo $sep; fi ) >> log/checkcore.log
+diff --strip-trailing-cr testlog/$1.rlg csltestlog/$1.rlg
+if [ "$sep" ]; then echo -e '\f'; echo $sep; fi ) >> testlog/checkcore.log

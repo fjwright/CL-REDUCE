@@ -9,12 +9,12 @@
 # Assume this script is run in the top-level CL REDUCE directory.
 
 # Create log directory if necessary:
-mkdir -p log
+mkdir -p testlog
 
-hostname > log/testcore.log
-date >> log/testcore.log
+hostname > testlog/testcore.log
+date >> testlog/testcore.log
 
-rm -f log/checkcore.log
+rm -f testlog/checkcore.log
 
 # sep is used in check-one-test.sh:
 export sep
@@ -25,8 +25,8 @@ packages="$(< fasl/core-packages.dat)"
 for x in $packages
 do
 	echo +++++ Testing core package $x
-	echo $x >> log/testcore.log
+	echo $x >> testlog/testcore.log
 	./test-one-package.sh $x
 done
 
-date >> log/testcore.log
+date >> testlog/testcore.log
