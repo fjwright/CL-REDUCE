@@ -13,6 +13,7 @@
 ;; intended primarily for running REDUCE (which provides its own REPL)
 ;; on Common Lisp.
 
+;; (declaim (optimize (speed 3) (safety 0)))
 (declaim (optimize debug))				; same as (debug 3)
 (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
@@ -296,26 +297,30 @@ EXPR PROCEDURE ZEROP(U);
 
 (import '(cl:first cl:second cl:third cl:fourth cl:rest))
 
-(defalias 'lastpair 'cl:last
-  "(lastpair L:pair): any expr
-Returns the last pair of a L. It is often useful to think of this
-as a pointer to the last element for use with destructive
-functions such as rplaca. If L is not a pair then a type mismatch
-error occurs.
-\(de lastpair (l)
-	(if (or (atom l) (atom (cdr l)))
-		l
-	  (lastpair (cdr l))))")
+(declaim (inline lastpair lastcar nth pnth))
 
-(defun lastcar (l)						; should be inlined
+(defun lastpair (l)
+  "(lastpair L:pair): any expr
+Returns the last pair of a L. It is often useful to think of this as a
+pointer to the last element for use with destructive functions such as
+rplaca. If L is not a pair then a type mismatch error occurs.
+\(de lastpair (l)
+  (if (or (atom l) (atom (cdr l)))
+    l
+    (lastpair (cdr l))))"
+  ;; The inconsistent description above is from the PSL manual!
+  (if (atom l) l (cl:last l)))
+
+(defun lastcar (l)						; inlined
   "(lastcar L:pair): any expr
-Returns the last element of the pair L. A type mismatch error
-results if L is not a pair."
-  ;; This inconsistent description above and code below are from the
-  ;; PSL manual!
+Returns the last element of the pair L. A type mismatch error results
+if L is not a pair.
+\(de lastcar (l)
+  (if (atom l) l (car (lastpair l))))"
+  ;; The inconsistent description above is from the PSL manual!
   (if (atom l) l (car (cl:last l))))
 
-(defun nth (l n)						; should be inlined
+(defun nth (l n)						; inlined
   "(nth L:pair N:integer): any expr
 Returns the Nth element of the list L. If L is atomic or contains
 fewer than N elements, an out of range error occurs.
@@ -328,7 +333,7 @@ Common LISP definition reverses the arguments and defines the car
 of a list to be the \"zeroth\" element."
   (cl:nth (1- n) l))
 
-(defun pnth (l n)						; should be inlined
+(defun pnth (l n)						; inlined
   "(pnth L:list N:integer): any expr
 Returns a list starting with the nth element of the list L. Note
 that the result is a pointer to the nth element of L, a
@@ -1255,38 +1260,73 @@ MACRO PROCEDURE TIMES(U);
   "TIMES2(U:number, V:number):number eval, spread
 Returns the product of U and V.")
 
-;; Fast built-in small integer (inum) arithmetic:
+;; Small integer (fixnum) arithmetic operators defined in
+;; alg/farith.red:
 
-;; (defalias 'IPLUS '+)
-;; (defalias 'ITIMES '*)
+(defun iplus2 (u v)
+  (declare (fixnum u v))
+  (the fixnum (+ u v)))
 
-;; (defun iplus2 (u v)
-;;   "PLUS2(U:number, V:number):number eval, spread
-;; Returns the sum of U and V."
-;;   (declare (optimize (speed 3) (safety 0)))
+(defun itimes2 (u v)
+  (declare (fixnum u v))
+  (the fixnum (* u v)))
+
+(defun isub1 (u)
+  (declare (fixnum u))
+  (the fixnum (1- u)))
+
+(defun iadd1 (u)
+  (declare (fixnum u))
+  (the fixnum (1+ u)))
+
+(defun iminus (u)
+  (declare (fixnum u))
+  (the fixnum (- u)))
+
+(defun idifference (u v)
+  (declare (fixnum u v))
+  (the fixnum (- u v)))
+
+(defun iquotient (u v)
+  (declare (fixnum u v))
+  (the fixnum (truncate u v)))
+
+(defun iremainder (u v)
+  (declare (fixnum u v))
+  (the fixnum (rem u v)))
+
+(defun igreaterp (u v)
+  (declare (fixnum u v))
+  (> u v))
+
+(defun ilessp (u v)
+  (declare (fixnum u v))
+  (< u v))
+
+(defun iminusp (u)
+  (declare (fixnum u))
+  (cl:minusp u))
+
+;; (defun iequal (u v)
 ;;   (declare (fixnum u v))
-;;   (the fixnum (+ u v)))
+;;   (eql u v))
 
-;; (defalias 'ITIMES2 '*)
-;; (defalias 'IADD1 '1+)
-;; (defalias 'ISUB1 '1-)
-(defalias 'iminus '-)				 ; used early in rlisp
-;; (defalias 'IMINUSP 'cl-minusp)
-;; (defalias 'IDIFFERENCE '-)
-;; (defalias 'IQUOTIENT '/)
-;; (defalias 'IREMAINDER '%)
-;; (defalias 'ILESSP '<)
-;; (defalias 'IGREATERP '>)
-;; (defalias 'ILEQ '<=)
-;; (defalias 'IGEQ '>=)
+;; iequal is defined in CSL (but not PSL).  It is called with a list
+;; as its first argument in sqrt2top in int/df2q.red, so it does not
+;; always have integer arguments!  But I assume it will not be called
+;; with float arguments.
 
-;; (defmacro IZEROP (number)
-;;   "Return t if NUMBER is zero."
-;;   `(= ,number 0))
+(defalias 'iequal 'eql)
 
-;; (defmacro IONEP (number)
-;;   "Return t if NUMBER is one."
-;;   `(= ,number 1))
+;; Small integer (fixnum) arithmetic operators required but not defined:
+
+(defun itimes (u v)		  ; used as a binary operator in dipoly/torder
+  (declare (fixnum u v))
+  (the fixnum (* u v)))
+
+(defun izerop (u)						; used in plot/plotexp3
+  (declare (fixnum u))
+  (cl:zerop u))
 
 ;; Fast built-in floating point functions:
 
@@ -2382,6 +2422,10 @@ elements (for example ids, strings, and vectors) are not.")
   "(union X:list Y:list): list expr
 Returns the union of sets X and Y."
   (cl:union x y :test #'equal))
+
+(defalias 'gcdn 'cl:gcd)
+(defalias 'lcmn 'cl:lcm)
+(defalias 'yesp1 'cl:y-or-n-p)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
