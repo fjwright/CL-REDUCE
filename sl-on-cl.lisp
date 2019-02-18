@@ -1367,7 +1367,7 @@ Returns the product of U and V.")
 Applies FN to successive CDR segments of X. NIL is returned.
 EXPR PROCEDURE MAP(X, FN);
    WHILE X DO << FN X; X := CDR X >>;"
-  (cl:mapl (%%lam2fn fn) x)
+  (cl:mapl fn x)
   nil)
 
 (defun mapc (x fn)
@@ -1375,7 +1375,7 @@ EXPR PROCEDURE MAP(X, FN);
 FN is applied to successive CAR segments of list X. NIL is returned.
 EXPR PROCEDURE MAPC(X, FN);
    WHILE X DO << FN CAR X; X := CDR X >>;"
-  (cl:mapc (%%lam2fn fn) x)
+  (cl:mapc fn x)
   nil)
 
 (defun mapcan (x fn)
@@ -1385,7 +1385,7 @@ is returned.
 EXPR PROCEDURE MAPCAN(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN CAR X, MAPCAN(CDR X, FN));"
-  (cl:mapcan (%%lam2fn fn) x))
+  (cl:mapcan fn x))
 
 (defun mapcar (x fn)
   "MAPCAR(X:list, FN:function):any eval, spread
@@ -1393,7 +1393,7 @@ Returned is a constructed list of FN applied to each CAR of list X.
 EXPR PROCEDURE MAPCAR(X, FN);
    IF NULL X THEN NIL
       ELSE FN CAR X . MAPCAR(CDR X, FN);"
-  (cl:mapcar (%%lam2fn fn) x))
+  (cl:mapcar fn x))
 
 (defun mapcon (x fn)
   "MAPCON(X:list, FN:function):any eval, spread
@@ -1402,7 +1402,7 @@ segments of X.
 EXPR PROCEDURE MAPCON(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN X, MAPCON(CDR X, FN));"
-  (cl:mapcon (%%lam2fn fn) x))
+  (cl:mapcon fn x))
 
 (defun maplist (x fn)
   "MAPLIST(X:list, FN:function):any eval, spread
@@ -1411,7 +1411,7 @@ of X.
 EXPR PROCEDURE MAPLIST(X, FN);
    IF NULL X THEN NIL
       ELSE FN X . MAPLIST(CDR X, FN);"
-  (cl:maplist (%%lam2fn fn) x))
+  (cl:maplist fn x))
 
 
 ;;; Composite Functions
