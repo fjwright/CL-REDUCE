@@ -60,17 +60,10 @@ Current status
 
 The process described above should build all of REDUCE without any obvious errors.  I have tested all the core packages (that have a test file, including Rlisp88) but none of the noncore packages.  (Given the temporary hacks I used to build some of the noncore packages I'm pretty sure they won't run correctly!)  So far, I have avoided the need to customise the main REDUCE source code.
 
-All core test files run to completion and are consistent with the reference logs except for the following:
+All core test files run to completion and agree with CSL except for timings and the following:
 
-`arith.tst` runs correctly in my view and displays less numerical error than `arith.rlg`.
-
-`int.tst` shows no significant differences compared to PSL/CSL, although `int.rlg` is different.
-
-`rlisp88.tst` shows no significant differences compared to PSL/CSL, although `rlisp88.rlg` is different.
-
-`algint.tst` shows minor differences compared to PSL/CSL, although `algint.rlg` is different.  The CL REDUCE results are slightly better than the PSL/CSL results (but I don't know why!) and PSL currently crashes for me towards the end of the test file.
-
-`assist.tst` shows insignificant differences from the reference log due to implementation differences.
+* `arith.tst` displays less numerical error;
+* `rlisp88.tst` and `assist.tst` show insignificant differences due to implementation differences.
 
 Timings
 -------
@@ -79,10 +72,10 @@ I estimate that SBCL REDUCE is about 3 times slower than PSL/CSL REDUCE, but not
 
 Operation                           | Previous Time | Latest Time
 ------------------------------------|---------------|------------
-Build bootstrap REDUCE image        | 3.8 secs      | 3.9 secs
-Build final REDUCE image            | 0.5 secs      | 0.5 secs
-Run alg.tst                         | 297 ms        | 281 ms
-Run (and check) all core test files | 2 min 35 secs | 2 min 30 secs
+Build bootstrap REDUCE image        | 3.8 secs      | 3.8 secs
+Build final REDUCE image            | 0.5 secs      | 0.4 secs
+Run alg.tst                         | 297 ms        | 250 ms
+Run (and check) all core test files | 2 min 35 secs | 45 secs
 
 Most of the time building REDUCE goes in compiling the packages, which takes a couple of minutes, but I don't currently have any precise timings for this.
 
@@ -115,3 +108,5 @@ Implement a proper Lisp init function and dump an executable file.
 Replace shell scripts with Common Lisp code to build REDUCE portably?
 
 Make SL-on-CL lower case and stop downcasing in the print functions.  (Internal functions could remain upper case.)  This would solve the problem that prettyprinted strings are downcased and avoid the need for a couple of ugly print-case related hacks.  With SBCL, this will probably cause problems with a few key symbols, such as NIL, T, LAMBDA, QUOTE, as it does with Emacs Lisp, so I'm not too eager to try it.  (Could translate nil to '().)  However, this should be straightforward with CLISP, which provides a lower-case "modern" version of Common Lisp.
+
+Better handling of printing to avoid trailing spaces.

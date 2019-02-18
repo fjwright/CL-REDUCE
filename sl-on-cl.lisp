@@ -1726,7 +1726,12 @@ do not consider FUNARGs in this report."
   ;; In Common Lisp, fn must be a *defined* function or a lambda
   ;; expression.  The symbol car satisfies fboundp and (lambda ...)
   ;; satisfies functionp, so
-  (if (or (eqcar fn 'lambda) (fboundp `,fn))
+  ;; (if (or (eqcar fn 'lambda) (fboundp `,fn))
+  ;; But with the test above, the eds package will not build because
+  ;; (function list) evaluates to #<FUNCTION LIST>, which cannot be
+  ;; serialized so faslout fails.  At least temporarily, this should
+  ;; work:
+  (if (eqcar fn 'lambda)
   	  `(cl:function ,fn)
 	  `(cl:quote ,fn)))
 
