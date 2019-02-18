@@ -1726,9 +1726,9 @@ do not consider FUNARGs in this report."
   ;; In Common Lisp, fn must be a *defined* function or a lambda
   ;; expression.  The symbol car satisfies fboundp and (lambda ...)
   ;; satisfies functionp, so
-  `(if (if (symbolp ',fn) (fboundp ',fn) (functionp ,fn))
-	   (cl:function ,fn)
-	   (cl:quote ,fn)))
+  (if (or (eqcar fn 'lambda) (fboundp `,fn))
+  	  `(cl:function ,fn)
+	  `(cl:quote ,fn)))
 
 (import 'cl:quote)
 ;; QUOTE(U:any):any noeval, nospread
