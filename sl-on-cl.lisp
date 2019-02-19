@@ -1861,14 +1861,28 @@ Returns the number of characters in the output buffer. When the
 buffer is empty, 0 is returned."
   %%posn)
 
+(defvar %%prin-space-maybe nil
+  "True if there is a pending space to print.")
+
+(defun %%prin-space-maybe ()
+  "Record that a space should be printed unless at the beginning or
+end of a line."
+  (if (> %%posn 0)
+	  (setq %%prin-space-maybe t)))
+
 (defun %%prin-string (s)
-  "Print string S preceded by a newline if necessary.
-Check and update `%%posn' to keep it <= `%%linelength'."
+  "Print string S preceded by a space or newline if necessary.
+Check and update `%%posn' to keep it <= `%%linelength'.
+This is the only function that actually produces graphical output."
   (let ((len (cl:length s)))
-	(incf %%posn len)
-	(when (> %%posn %%linelength)
-	  (setq %%posn len)
-	  (cl:terpri))
+	(if %%prin-space-maybe (incf %%posn))
+	(incf %%posn len)					; posn after printing s
+	(if (> %%posn %%linelength)
+		(progn
+		  (cl:terpri)
+		  (setq %%posn len))			; posn after printing s
+		(if %%prin-space-maybe (cl:princ #\Space)))
+	(setq %%prin-space-maybe nil)
 	(cl:princ s)))
 
 (defun princ (u)
@@ -2000,12 +2014,6 @@ If nil then floats are printed without any additional rounding.")
   (%%prin-cdr (cdr u) prinfn)
   (%%prin-string ")"))
 
-(defun %%prin-space-maybe ()
-  "Print a space unless at the end of a line."
-  (if (< %%posn (1- %%linelength))
-	  (%%prin-string " ")
-	(terpri)))
-
 (defun %%prin-cdr (u prinfn)
   "If U is non-nil then print it or its elements spaced appropriately.
 U is the cdr of a cons cell: nil, an atom or another cons cell.
@@ -2100,7 +2108,11 @@ the OBLIST (see the INTERN function in \"Identifiers\"). READ
 returns the value of !$EOF!$ when the end of the currently
 selected input file is reached."
   (let* ((*readtable* *sl-readtable*))
-	(cl:read (%%read-stream) nil $eof$)))
+	;; Using read-preserving-whitespace rather than read seems to be
+	;; more consistent with PSL and CSL: it leaves the EOL to be read
+	;; by REDUCE, which counts input lines in each file into the value
+	;; of curline* and this is used in rlisp88.tst.
+	(cl:read-preserving-whitespace (%%read-stream) nil $eof$)))
 
 (defvar %%readch-escape nil
   "True if the next character to be read by READCH should be escaped.")

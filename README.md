@@ -109,4 +109,4 @@ Replace shell scripts with Common Lisp code to build REDUCE portably?
 
 Make SL-on-CL lower case and stop downcasing in the print functions.  (Internal functions could remain upper case.)  This would solve the problem that prettyprinted strings are downcased and avoid the need for a couple of ugly print-case related hacks.  With SBCL, this will probably cause problems with a few key symbols, such as NIL, T, LAMBDA, QUOTE, as it does with Emacs Lisp, so I'm not too eager to try it.  (Could translate nil to '().)  However, this should be straightforward with CLISP, which provides a lower-case "modern" version of Common Lisp.
 
-Better handling of printing to avoid trailing spaces.
+Allow REDUCE to be run with a current directory other than the build directory.
