@@ -5,10 +5,10 @@
 # Author: Francis J. Wright
 # Based (loosely) on code by Anthony C. Hearn.
 
-# Usage: ./test-one-package.sh package
+# Usage: ./test-one-package.sh package core/noncore
 
 # Assume this script is run in the top-level CL REDUCE directory.
-# This script is normally run by test-core/noncore-packages.sh.
+# This script is normally run by test-packages.sh.
 
 # Create log directory if necessary:
 mkdir -p testlog
@@ -64,4 +64,4 @@ grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\
 
 ( echo $'\nChecking' $1 $'...\n'
 diff --strip-trailing-cr testlog/$1.rlg csltestlog/$1.rlg
-if [ "$sep" ]; then echo -e '\f'; echo $sep; fi ) >> testlog/checkcore.log
+if [ "$sep" ]; then echo -e '\f'; echo $sep; fi ) >> testlog/check$2.log

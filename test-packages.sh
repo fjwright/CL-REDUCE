@@ -1,0 +1,39 @@
+#!/usr/bin/bash
+
+# Run all core and/or noncore test files in CL REDUCE and check each
+# test log against CSL.
+
+# Author: Francis J. Wright
+# Based on code by Anthony C. Hearn.
+
+# Usage: ./test-packages.sh core &/or noncore
+
+# The parameters default to 'core noncore' if not specified.
+
+# Assume this script is run in the top-level CL REDUCE directory.
+
+# Create log directory if necessary:
+mkdir -p testlog
+
+# The variable sep is used in test-one-package.sh:
+export sep
+for (( i=80 ; i-- ; )); do sep=$sep+; done
+
+for which in ${*:-'core noncore'}
+do
+	hostname > testlog/test$which.log
+	date >> testlog/test$which.log
+
+	rm -f testlog/check$which.log
+
+	packages="$(< fasl/$which-packages.dat)"
+
+	for x in $packages
+	do
+		echo +++++ Testing $which package $x
+		echo $x >> testlog/test$which.log
+		./test-one-package.sh $x $which
+	done
+
+	date >> testlog/test$which.log
+done
