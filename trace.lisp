@@ -9,12 +9,13 @@
 ;; tracing code in "package/rtrace/rtrace.red".  But this is a
 ;; completely independent Common Lisp implementation.
 
-(in-package :common-lisp-user)
+(cl:in-package :common-lisp-user)
 
 (defpackage :standard-lisp-trace
   (:nicknames :sl-trace)
   (:documentation "Standard Lisp on Common Lisp trace facilities")
   (:use :common-lisp)
+  (:import-from :sl :eqcar :put)
   (:export :tr :untr :trst :untrst))
 
 (in-package :standard-lisp-trace)
@@ -53,7 +54,7 @@ Untrace(set) all traced functions if no functions are specified."
 (defun trace1 (name)
   "Trace or traceset function NAME.
 NAME must be quoted when called!"
-  (let ((defn (sl::getd name)) params sl::*redefmsg)
+  (let ((defn (sl::getd name)) params)
     (unless defn
 	  (format *trace-output*
 			  "***** ~a not yet defined.~%" name)
@@ -64,16 +65,20 @@ NAME must be quoted when called!"
 			  "Portable tracing does not work reliably with the"
 			  "switch `comp' on, so it has been turned off.")
 	  (sl::compilation (setq sl::*comp nil)))
-    (if (and (sl::eqcar defn 'sl::expr) (sl::eqcar (cdr defn) 'lambda))
-		;; defn = (expr lambda params body)
-        (if (sl::eqcar (cadddr defn) 'run-traced-function)
-            (return-from trace1
-              (if (eq (get name 'traced-setq) *trace-setq*)
-				  ;; i.e. both true or both false
-				  (format *trace-output*
-						  "*** ~a already traced.~%" name)
-                  (re-trace1 name)))
-			(setq params (caddr defn)))
+    (if (and (eqcar defn 'sl::expr) (eqcar (cdr defn) 'lambda))
+        (progn
+		  ;; Note that in CL the body is wrapped in a block by defun,
+		  ;; i.e. defn = (expr lambda params (block name body))
+		  (setf (cadddr defn) (caddr (cadddr defn)))
+		  ;; Now  defn = (expr lambda params body)
+		  (if (eqcar (cadddr defn) 'run-traced-function)
+              (return-from trace1
+				(if (eq (get name 'traced-setq) *trace-setq*)
+					;; i.e. both true or both false
+					(format *trace-output*
+							"*** ~a already traced.~%" name)
+					(re-trace1 name)))
+			  (setq params (caddr defn))))
         (progn
           (when *trace-setq*
             (format *trace-output*
@@ -87,7 +92,7 @@ NAME must be quoted when called!"
                 (setq params
 					  (loop
 						 for i from 1 upto params collect
-						   (intern (make-symbol (format nil "Arg~d" i)))))
+						   (intern (format nil "Arg~d" i))))
                 (format *trace-output*
 						"*** ~a is compiled: ~a~%"
 						name
@@ -101,10 +106,10 @@ NAME must be quoted when called!"
 	(if *trace-setq*
         (progn
 		  (setq defn (subst 'traced-setq 'setq defn))
-		  (sl::put name 'traced-setq t))
+		  (put name 'traced-setq t))
 		;; in case function has been redefined:
 		(remprop name 'traced-setq))
-	(sl::put name 'traced-function defn)
+	(put name 'traced-function defn)
 	(eval `(defun ,name ,params
 			 (run-traced-function ',name ',params (list . ,params))))))
 
@@ -115,22 +120,23 @@ NAME must be quoted when called!"
     (if *trace-setq*
 		(progn
           (setq defn (subst 'traced-setq 'setq defn))
-          (sl::put name 'traced-setq t))
+          (put name 'traced-setq t))
 		(progn
           (setq defn (subst 'setq 'traced-setq defn))
           (remprop name 'traced-setq)))
-    (sl::put name 'traced-function defn)
+    (put name 'traced-function defn)
     (format *trace-output* "*** Trace mode of ~a changed.~%" name)
     name))
 
 (defun untrace1 (name)
   "Remove all tracing for function NAME.
 NAME must be quoted when called!"
-  (let ((defn (get name 'traced-function)) sl::*redefmsg)
+  (let ((defn (get name 'traced-function)))
+	;; defn = (expr lambda params body)
 	(remprop name 'traced-function)
     (when defn
       (setq defn (subst 'setq 'traced-setq defn))
-      (sl::putd name (car defn) (cdr defn)))
+	  (eval `(defun ,name ,(caddr defn) ,(cadddr defn))))
     (remprop name 'traced-setq)
 	(setq *traced-functions* (remove name *traced-functions*))
     name))
@@ -156,9 +162,11 @@ NAME must be quoted when called!"
 Must avoid evaluating the lhs of the assignment, and evaluate
 the rhs only once in case of side effects (such as a gensym)."
   `(progn (format *trace-output* "~a := " ',left)
-		  ,(if (sl::eqcar right 'traced-setq)
+		  ,(if (eqcar right 'traced-setq)
 			   `(setq ,left ,right)
 			   `(prog1 (prin1 (setq ,left ,right) *trace-output*)
 				  (terpri *trace-output*)))))
+
+(shadowing-import '(tr untr trst untrst) :sl)
 
 ;;; trace.lisp ends here
