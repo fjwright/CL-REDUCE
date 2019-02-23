@@ -46,7 +46,7 @@ Untrace(set) all traced functions if no functions are specified."
   `(let ((*trace-setq* t))
 	 (cl:mapcar #'trace1 ',fns)))
 
-(setf (symbol-function 'untrst) (symbol-function 'untr))
+(setf (macro-function 'untrst) (macro-function 'untr))
 
 (defun trace1 (name)
   "Trace or traceset function NAME.
@@ -69,10 +69,12 @@ NAME must be quoted when called!"
 
     (if (setq defn (function-lambda-expression defn)) ; source form?
         (progn
-		  ;; Note that in CL the body is wrapped in a block by defun,
-		  ;; i.e. defn = (lambda params (block name body))
-		  (setf (caddr defn) (caddr (caddr defn)))
-		  ;; Now  defn = (lambda params body)
+		  ;; Note that a CL function definition may contain
+		  ;; declarations and a documentation string, and the body is
+		  ;; wrapped in a block form,
+		  ;; i.e. defn = (lambda params [decls] [doc] (block name body))
+		  (setf (caddr defn) (caddr (lastcar defn)))
+		  ;;  Now defn = (lambda params body)
 		  (if (eqcar (cadddr defn) 'run-traced-function)
               (return-from trace1
 				(if (eq (get name 'traced-setq) *trace-setq*)
@@ -80,7 +82,7 @@ NAME must be quoted when called!"
 					(format *trace-output*
 							"*** ~a already traced.~%" name)
 					(re-trace1 name)))
-			  (setq params (caddr defn))))
+			  (setq params (cadr defn))))
         (progn
 		  (setq defn olddefn)
           (when *trace-setq*
@@ -147,7 +149,7 @@ NAME must be quoted when called!"
 
 (defun run-traced-function (name params args)
   (let ((trace-depth (1+ trace-depth))
-		(result (cdr (get name 'traced-function))))
+		(result (get name 'traced-function)))
     (format *trace-output* "Enter (~a) ~a~%" trace-depth name)
 	(loop for param in params for arg in args do
 		 (format *trace-output* "   ~a:  ~s~%" param arg))
