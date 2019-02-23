@@ -46,31 +46,33 @@ Untrace(set) all traced functions if no functions are specified."
   `(let ((*trace-setq* t))
 	 (cl:mapcar #'trace1 ',fns)))
 
-(defmacro untrst (&rest fns)
-  "Untrace(set) the functions specified.
-Untrace(set) all traced functions if no functions are specified."
-  `(cl:mapcar #'untrace1 ',(or fns *traced-functions*)))
+(setf (symbol-function 'untrst) (symbol-function 'untr))
 
 (defun trace1 (name)
   "Trace or traceset function NAME.
 NAME must be quoted when called!"
-  (let ((defn (sl::getd name)) params)
+  (let* ((defn (and (symbolp name) (fboundp name) (symbol-function name)))
+		 (olddefn defn)					; saved for reliable untracing
+		 params)
+
     (unless defn
 	  (format *trace-output*
 			  "***** ~a not yet defined.~%" name)
       (return-from trace1))
+
     (when sl::*comp
       (format *trace-output*
 			  "~a ~a~%"
 			  "Portable tracing does not work reliably with the"
 			  "switch `comp' on, so it has been turned off.")
 	  (sl::compilation (setq sl::*comp nil)))
-    (if (and (eqcar defn 'sl::expr) (eqcar (cdr defn) 'lambda))
+
+    (if (setq defn (function-lambda-expression defn)) ; source form?
         (progn
 		  ;; Note that in CL the body is wrapped in a block by defun,
-		  ;; i.e. defn = (expr lambda params (block name body))
-		  (setf (cadddr defn) (caddr (cadddr defn)))
-		  ;; Now  defn = (expr lambda params body)
+		  ;; i.e. defn = (lambda params (block name body))
+		  (setf (caddr defn) (caddr (caddr defn)))
+		  ;; Now  defn = (lambda params body)
 		  (if (eqcar (cadddr defn) 'run-traced-function)
               (return-from trace1
 				(if (eq (get name 'traced-setq) *trace-setq*)
@@ -80,6 +82,7 @@ NAME must be quoted when called!"
 					(re-trace1 name)))
 			  (setq params (caddr defn))))
         (progn
+		  (setq defn olddefn)
           (when *trace-setq*
             (format *trace-output*
 					"*** ~a ~a~%~a~%"
@@ -103,12 +106,13 @@ NAME must be quoted when called!"
 						name)
                 (return-from trace1)))))
 	(pushnew name *traced-functions*)
-	(if *trace-setq*
+	(if *trace-setq*		 ; but no point doing this unless lambda form!!!
         (progn
 		  (setq defn (subst 'traced-setq 'setq defn))
 		  (put name 'traced-setq t))
 		;; in case function has been redefined:
 		(remprop name 'traced-setq))
+	(put name 'untraced-function olddefn)
 	(put name 'traced-function defn)
 	(eval `(defun ,name ,params
 			 (run-traced-function ',name ',params (list . ,params))))))
@@ -131,12 +135,10 @@ NAME must be quoted when called!"
 (defun untrace1 (name)
   "Remove all tracing for function NAME.
 NAME must be quoted when called!"
-  (let ((defn (get name 'traced-function)))
-	;; defn = (expr lambda params body)
-	(remprop name 'traced-function)
-    (when defn
-      (setq defn (subst 'setq 'traced-setq defn))
-	  (eval `(defun ,name ,(caddr defn) ,(cadddr defn))))
+  (let ((olddefn (get name 'untraced-function)))
+	(if olddefn (setf (symbol-function name) olddefn))
+    (remprop name 'untraced-function)
+    (remprop name 'traced-function)
     (remprop name 'traced-setq)
 	(setq *traced-functions* (remove name *traced-functions*))
     name))
@@ -148,13 +150,13 @@ NAME must be quoted when called!"
 		(result (cdr (get name 'traced-function))))
     (format *trace-output* "Enter (~a) ~a~%" trace-depth name)
 	(loop for param in params for arg in args do
-		 (format *trace-output* "   ~a:  ~a~%" param arg))
+		 (format *trace-output* "   ~a:  ~s~%" param arg))
     (setq result
           (sl::errorset `(apply ,(eval result) ',args) nil nil))
     (if (or (atom result) (cdr result))	; errorp result
 		(sl::error 0 sl::emsg*)
         (setq result (car result)))
-	(format *trace-output* "Leave (~a) ~a = ~a~%" trace-depth name result)
+	(format *trace-output* "Leave (~a) ~a = ~s~%" trace-depth name result)
     result))
 
 (defmacro traced-setq (left right)
