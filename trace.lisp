@@ -73,7 +73,7 @@ NAME must be quoted when called!"
 		  ;; declarations and a documentation string, and the body is
 		  ;; wrapped in a block form,
 		  ;; i.e. defn = (lambda params [decls] [doc] (block name body))
-		  (setf (caddr defn) (caddr (lastcar defn)))
+		  (setf (caddr defn) (caddar (last defn)))
 		  ;;  Now defn = (lambda params body)
 		  (if (eqcar (cadddr defn) 'run-traced-function)
               (return-from trace1
@@ -108,7 +108,7 @@ NAME must be quoted when called!"
 						name)
                 (return-from trace1)))))
 	(pushnew name *traced-functions*)
-	(if *trace-setq*		 ; but no point doing this unless lambda form!!!
+	(if *trace-setq*   ; but no point doing this unless lambda form!!!
         (progn
 		  (setq defn (subst 'traced-setq 'setq defn))
 		  (put name 'traced-setq t))
@@ -124,9 +124,16 @@ NAME must be quoted when called!"
 NAME must be quoted when called!"
   (let ((defn (get name 'traced-function)))
     (if *trace-setq*
-		(progn
-          (setq defn (subst 'traced-setq 'setq defn))
-          (put name 'traced-setq t))
+		(if (consp defn)
+			(progn
+			  (setq defn (subst 'traced-setq 'setq defn))
+			  (put name 'traced-setq t))
+			(return-from re-trace1
+			  (format *trace-output*
+					  "*** ~a ~a~%~a~%"
+					  name
+					  "must be interpreted for portable assignment tracing."
+					  "*** Tracing arguments and return value only.")))
 		(progn
           (setq defn (subst 'setq 'traced-setq defn))
           (remprop name 'traced-setq)))
