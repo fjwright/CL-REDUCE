@@ -85,28 +85,35 @@ NAME must be quoted when called!"
 			  (setq params (cadr defn))))
         (progn
 		  (setq defn olddefn)
-          (when *trace-setq*
-            (format *trace-output*
-					"*** ~a ~a~%~a~%"
-					name
-					"must be interpreted for portable assignment tracing."
-					"*** Tracing arguments and return value only.")
-            (setq *trace-setq* nil))
-          (if (setq params (get name 'sl::number-of-args))
-              (progn
-                (setq params
-					  (loop
-						 for i from 1 upto params collect
-						   (intern (format nil "Arg~d" i))))
-                (format *trace-output*
-						"*** ~a is compiled: ~a~%"
-						name
-						"portable tracing may not show recursive calls."))
-			  (progn
-                (format *trace-output*
-						"***** ~a must be interpreted for portable tracing.~%"
-						name)
-                (return-from trace1)))))
+          (if *trace-setq*
+			  (if (setq defn (get-fasl-source name))
+				  (progn
+					(setq defn (cons 'lambda (cddr defn)))
+					(setq params (cadr defn)))
+				  (progn
+					(setq defn olddefn)
+					(format *trace-output*
+							"*** ~a ~a~%~a~%"
+							name
+							"must be interpreted for portable assignment tracing."
+							"*** Tracing arguments and return value only.")
+					(setq *trace-setq* nil))))
+          (unless params
+			(if (setq params (get name 'sl::number-of-args))
+				(progn
+                  (setq params
+						(loop
+						   for i from 1 upto params collect
+							 (intern (format nil "Arg~d" i))))
+                  (format *trace-output*
+						  "*** ~a is compiled: ~a~%"
+						  name
+						  "portable tracing may not show recursive calls."))
+				(progn
+                  (format *trace-output*
+						  "***** ~a must be interpreted for portable tracing.~%"
+						  name)
+                  (return-from trace1))))))
 	(pushnew name *traced-functions*)
 	(if *trace-setq*   ; but no point doing this unless lambda form!!!
         (progn
@@ -177,6 +184,24 @@ the rhs only once in case of side effects (such as a gensym)."
 			   `(setq ,left ,right)
 			   `(prog1 (prin1 (setq ,left ,right) *trace-output*)
 				  (terpri *trace-output*)))))
+
+(defun get-fasl-source (name)
+  "Get DE form for function NAME from \"fasl/modulename.lisp\"."
+  (let (file pos stream form)
+	(when (and
+		   (setq file (get name 'sl::defined-in-file)) ; of form "pgk/mod.red"
+		   (setq pos (position #\/ (setq file (symbol-name file))))) ; 3
+	  (setq file (subseq file (1+ pos) (- (length file) 4))) ; "mod"
+	  (setq file (concatenate 'string "fasl/" file ".lisp")) ; "fasl/mod.lisp"
+	  (when (setq stream (open file :external-format :UTF-8))
+		(loop
+		   do
+			 (setq form (read stream nil sl::$eof$))
+		   until
+			 (or (and (eqcar form 'sl::de) (eq (cadr form) name))
+				 (eq form sl::$eof$)))
+		(close stream)
+		(unless (eq form sl::$eof$) form)))))
 
 (shadowing-import '(tr untr trst untrst) :sl)
 
