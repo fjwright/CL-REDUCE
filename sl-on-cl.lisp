@@ -116,10 +116,12 @@ is printed whenever a function is redefined by PUTD.")
 (defun %%redefmsg (fname)
   "Optionally warn about function redefinition."
   ;; Assume fname is input quoted.
-  (if (and *redefmsg (fboundp fname))
-	  ;; (warn "Function ~a has been redefined" fname)
-	  ;; Warnings are currently suppressed!
-	  (format t "~&*** Function `~(~a~)' has been redefined~%" fname)))
+  (when (and *redefmsg (fboundp fname))
+	;; (warn "Function ~a has been redefined" fname)
+	;; Warnings are currently suppressed!
+	;; (format t "~&*** Function `~(~a~)' has been redefined~%" fname)
+	(format t "~&*** Function `~a' has been redefined~%"
+			(%%prin1-id-to-string fname))))
 
 ;;; FUNCTIONS
 ;;; =========
@@ -2429,6 +2431,7 @@ elements (for example ids, strings, and vectors) are not.")
   `(eval-when (:load-toplevel :execute) ,u))
 
 (defalias 'prop 'cl:symbol-plist)		; PSL
+(defalias 'plist 'cl:symbol-plist)		; CSL
 
 ;; CL union and intersection return different orderings that those in
 ;; the REDUCE source, which leads to different (although probably not

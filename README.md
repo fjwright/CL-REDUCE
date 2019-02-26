@@ -58,17 +58,22 @@ Interrupting REDUCE (with Control-C) invokes the SBCL debugger and aborting that
 Current status
 --------------
 
-The process described above should build all of REDUCE without any obvious errors.  I have tested all the core packages (that have a test file, including Rlisp88) but none of the noncore packages.  (Given the temporary hacks I used to build some of the noncore packages I'm pretty sure they won't run correctly!)  So far, I have avoided the need to customise the main REDUCE source code.
+The process described above should build all of REDUCE without any obvious errors.  So far, I have avoided the need to customise the main REDUCE source code.
 
-All core test files run to completion and agree with CSL except for timings and the following:
+All core test files run to completion and the output agrees with CSL except for timings and the following:
 
 * `arith.tst` displays less numerical error;
 * `rlisp88.tst` and `assist.tst` show insignificant differences due to implementation differences.
 
+All noncore test files except `pm` and `rtrace` appear to run to completion, and the test output agrees with CSL except for timings and insignificant numerical and/or letter case differences for 52/86 = 60% of them.
+
+* `pm.tst` hangs loading the `pmrules` module.
+* `rtrace.tst` fails with a segmentation error.
+
 Timings
 -------
 
-I estimate that SBCL REDUCE is about 3 times slower than PSL/CSL REDUCE, but note that it is currently built for comfort (of debugging) rather than speed!
+I estimate that SBCL REDUCE is 3 or 4 times slower than PSL/CSL REDUCE, but note that it is currently built for comfort (of debugging) rather than speed!
 
 Operation                           | Previous Time | Latest Time
 ------------------------------------|---------------|------------
@@ -97,10 +102,6 @@ Make faslout/faslend more robust by using a single function that calls begin int
 
 Turn on use of smacro/inline declarations in REDUCE (which I turned off to avoid a problem that is now fixed) and optimise SL-on-CL to improve its speed.
 
-Test the noncore packages.
-
-A better trace facility (that does not display the `STANDARD-LISP::` package prefix) -- use the `rtrace` package?
-
 Better error handling.
 
 Implement a proper Lisp init function and dump an executable file.
@@ -110,3 +111,8 @@ Replace shell scripts with Common Lisp code to build REDUCE portably?
 Make SL-on-CL lower case and stop downcasing in the print functions.  (Internal functions could remain upper case.)  This would solve the problem that prettyprinted strings are downcased and avoid the need for a couple of ugly print-case related hacks.  With SBCL, this will probably cause problems with a few key symbols, such as NIL, T, LAMBDA, QUOTE, as it does with Emacs Lisp, so I'm not too eager to try it.  (Could translate nil to '().)  However, this should be straightforward with CLISP, which provides a lower-case "modern" version of Common Lisp.
 
 Allow REDUCE to be run with a current directory other than the build directory.
+
+
+Improve performance for the noncore packages -- **work currently in progress**.
+
+A better trace facility that does not display the `STANDARD-LISP::` package prefix -- **work currently in progress**.

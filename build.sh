@@ -51,7 +51,7 @@ begin
   rds s;
   close i;
   for each x in w do
-     if member('psl, x) then <<
+     if member('csl, x) and member('psl, x) then <<
         if member('core, x) then core := x . core
         else noncore := x . noncore >>;
   i := open("fasl/core-packages.dat", 'output);

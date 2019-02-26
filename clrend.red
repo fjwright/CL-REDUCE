@@ -216,46 +216,12 @@ symbolic procedure initreduce;
 
 % flag('(load),'opfn); % unnecessary ? -- see rlisp/module.red
 
-% A machine independent traceset.
 
-symbolic procedure traceset1 u;
-   if atom u then u
-    else if car u eq 'setq
-     then list('progn,
-               list('prin2,mkquote cadr u),
-               '(prin2 " := "),
-               u,
-               list('prin2t,cadr u))
-    else traceset1 car u . traceset1 cdr u;
-
-symbolic procedure traceset u;
-   if get(u,'original!-defn) then lprim list(u,"already traceset")
-    else (if not x or not(eqcar(cdr x,'lambda)
-                       or eqcar(cdr x,'lambda!-closure))
-            then lprim list(u,"has wrong form for traceset")
-           else <<put(u,'original!-defn,x);
-                  remd u;   % To prevent spurious messages.
-                  putd(u,car x,traceset1 cdr x)>>)
-          where x=getd u;
-
-symbolic procedure untraceset u;
-   (if x
-      then <<remprop(u,'original!-defn);
-             remd u;   % To prevent spurious messages.
-             putd(u,car x,cdr x)>>
-     else lprim list(u,"not traceset"))
-    where x=get(u,'original!-defn);
-
-symbolic procedure trst u; for each x in u do traceset x;
-
-symbolic procedure untrst u; for each x in u do untraceset x;
-
-% Tr and untr are essentially new names for the CL trace and untrace
-% macros:
-symbolic procedure tr u; eval('trace . u);
-symbolic procedure untr u; eval('untrace . u);
-
+% tr etc. are defined as macros in "trace.lisp".
+% The following two declarations are from pslrend/cslrend:
+flag('(tr untr trst untrst),'noform);
 deflist('((tr rlis) (untr rlis) (trst rlis) (untrst rlis)),'stat);
+
 
 % The following function is necessary in Common Lisp startup sequence,
 % since initial packages are not loaded with load-package.
@@ -312,6 +278,8 @@ symbolic inline procedure printc x; << prin2 x; terpri(); x >>;
 
 flag('(printc), 'lose);
 
+symbolic procedure ttab n;  while posn() < n do prin2 " ";
+
 symbolic inline procedure explodec x; explode2 x;
 
 % This function is called in redlog but only defined for PSL or CSL
@@ -354,6 +322,36 @@ procedure i!&prn x;
    end;
 
 flag('(i!&prn), 'lose);
+
+% These procedures are defined in "misc/rlfi.red" but rlfi then only
+% works with upper-case input, so as a test at least try not changing
+% the raise flag:
+
+remflag('(latexon latexoff), 'lose);
+
+symbolic procedure latexon;
+% Procedure called after ON LATEX
+<<!*!*a2sfn:='TeXaeval;
+  % !*raise:=nil;
+  prin2t "\documentstyle{article}";
+  prin2t "\begin{document}";
+  if !*verbatim then
+      <<prin2t "\begin{verbatim}";
+        prin2t "REDUCE Input:">>;
+  put('TeX,'rtypefn,'(lambda(x) 'TeX)) >>;
+
+symbolic procedure latexoff;
+% Procedure called after OFF LATEX
+<<!*!*a2sfn:='aeval;
+  % !*raise:=t;
+  remprop('TeX,'rtypefn);
+  if !*verbatim then
+      <<terpri();
+        prin2t "\end{verbatim}" >>;
+  prin2t "\end{document}";
+  rmsubs() >>;
+
+flag('(latexon latexoff), 'lose);
 
 endmodule;
 

@@ -39,6 +39,7 @@ out "testlog/$1.rlg";
 
 load_package $1;
 
+if "$1" = "rlfi" then in "rlfi.tst" else % *** UPPER-CASE VERSION ***
 in "$testfile";
 
 symbolic begin

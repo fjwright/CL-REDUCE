@@ -9,6 +9,14 @@
 ;; tracing code in "package/rtrace/rtrace.red".  But this is a
 ;; completely independent Common Lisp implementation.
 
+;; ****************************
+;; Can be loaded into REDUCE by
+;; lisp load trace
+;; or
+;; lisp load "trace.lisp"
+;; etc.
+;; ****************************
+
 (cl:in-package :common-lisp-user)
 
 (defpackage :standard-lisp-trace
@@ -187,7 +195,8 @@ the rhs only once in case of side effects (such as a gensym)."
 
 (defun get-fasl-source (name)
   "Get DE form for function NAME from \"fasl/modulename.lisp\"."
-  (let (file pos stream form)
+  (let ((*readtable* (copy-readtable nil)) ; read CL syntax
+		file pos stream form)
 	(when (and
 		   (setq file (get name 'sl::defined-in-file)) ; of form "pgk/mod.red"
 		   (setq pos (position #\/ (setq file (symbol-name file))))) ; 3
@@ -204,5 +213,9 @@ the rhs only once in case of side effects (such as a gensym)."
 		(unless (eq form sl::$eof$) form)))))
 
 (shadowing-import '(tr untr trst untrst) :sl)
+;; The above import wipes any previous properties, so...
+(sl::flag '(tr untr trst untrst) 'sl::noform)
+(sl::deflist '((tr sl::rlis) (untr sl::rlis) (trst sl::rlis) (untrst sl::rlis))
+	'sl::stat)
 
 ;;; trace.lisp ends here
