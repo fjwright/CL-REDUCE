@@ -31,7 +31,7 @@
 		   :delete :length :member :sublis :subst :rassoc :apply :eval
 		   :function :close :open :princ :print :prin1 :prin2 :read
 		   :terpri :complexp :union :compile-file :load :time
-		   :char-downcase :char-upcase :string-downcase)
+		   :char-downcase :char-upcase :string-downcase :mod)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
 
@@ -1357,7 +1357,7 @@ Returns the product of U and V.")
 ;; arguments are complex so all commented out for now.
 
 
-;;; MAP Composite Functions
+;;; Map Composite Functions
 ;;; =======================
 
 (defun %%lam2fn (fn)
@@ -2202,6 +2202,14 @@ The date in the form \"day-month-year\"
     (format nil "~2,'0d-~a-~d"
 			date (aref +short-month-names+ (1- month)) year)))
 
+(defalias 'datestamp 'get-universal-time
+  "The number of seconds that have elapsed since some epoch.
+This version uses the Common Lisp epoch at the beginning of the year
+1900, whereas the CSL version uses the \"Unix time\" epoch at the
+beginning of the year 1970.  The difference of 70 years is
+70*31,536,000 = 2,207,520,000 seconds.  This function should not be
+used to determine an absolute date or time!")
+
 (defconstant +milliseconds-per-internal-time-unit+
   (/ 1000 internal-time-units-per-second)
   "Multiplier to convert internal time units to milliseconds.")
@@ -2445,6 +2453,7 @@ elements (for example ids, strings, and vectors) are not.")
 Returns the union of sets X and Y."
   (cl:union x y :test #'equal))
 
+(defalias 'mod 'cl:mod)	; not just imported because cali redefines mod
 (defalias 'gcdn 'cl:gcd)
 (defalias 'lcmn 'cl:lcm)
 (defalias 'yesp1 'cl:y-or-n-p)
@@ -2643,9 +2652,9 @@ interpret otherwise.  The default is compile."
  '(cl:lambda cl:warning cl:*features*
    cl:unwind-protect cl:evenp cl:oddp
    cl:string-not-greaterp cl:symbol-name cl:y-or-n-p ; used in clprolo
-   cl:force-output cl:trace cl:untrace ; used in clrend
-   cl:file-write-date ; used in remake
-   cl:symbol-name	  ; used in rlisp
+   cl:force-output									 ; used in clrend
+   cl:file-write-date								 ; used in remake
+   cl:symbol-name									 ; used in rlisp
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for

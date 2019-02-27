@@ -19,7 +19,11 @@ mkdir -p testlog
 export sep
 for (( i=80 ; i-- ; )); do sep=$sep+; done
 
-for which in ${*:-'core noncore'}
+whichdefault='core noncore'
+
+echo 'Packages to test:' ${*:-$whichdefault}
+
+for which in ${*:-$whichdefault}
 do
 	hostname > testlog/test$which.log
 	date >> testlog/test$which.log
@@ -30,6 +34,7 @@ do
 
 	for x in $packages
 	do
+		if [ $x = pm ]; then continue; fi # currently hangs!
 		echo +++++ Testing $which package $x
 		echo $x >> testlog/test$which.log
 		./test-one-package.sh $x $which

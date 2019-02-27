@@ -323,35 +323,14 @@ procedure i!&prn x;
 
 flag('(i!&prn), 'lose);
 
-% These procedures are defined in "misc/rlfi.red" but rlfi then only
-% works with upper-case input, so as a test at least try not changing
-% the raise flag:
+% "crack/crinit.red" defines procedure random_init for PSL or CSL
+% specifically with no generic definition, so here is a CL version.
+% Procedure `random_new_seed' is defined in "rlisp/random.red" to take
+% a single argument, offset, which must be a positive integer.
+% Function `datestamp' is defined in "sl-on-cl" to return the number
+% of seconds that have elapsed since some epoch.
 
-remflag('(latexon latexoff), 'lose);
-
-symbolic procedure latexon;
-% Procedure called after ON LATEX
-<<!*!*a2sfn:='TeXaeval;
-  % !*raise:=nil;
-  prin2t "\documentstyle{article}";
-  prin2t "\begin{document}";
-  if !*verbatim then
-      <<prin2t "\begin{verbatim}";
-        prin2t "REDUCE Input:">>;
-  put('TeX,'rtypefn,'(lambda(x) 'TeX)) >>;
-
-symbolic procedure latexoff;
-% Procedure called after OFF LATEX
-<<!*!*a2sfn:='aeval;
-  % !*raise:=t;
-  remprop('TeX,'rtypefn);
-  if !*verbatim then
-      <<terpri();
-        prin2t "\end{verbatim}" >>;
-  prin2t "\end{document}";
-  rmsubs() >>;
-
-flag('(latexon latexoff), 'lose);
+symbolic procedure random_init(); random_new_seed datestamp();
 
 endmodule;
 
