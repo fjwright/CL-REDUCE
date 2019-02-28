@@ -200,6 +200,7 @@ pointers must have EQ values. Other atoms must be EQN equal."
 	   (if (atom u) (cond ((symbolp u) (eq u v))
 						  ((floatp u) (= u v))
 						  ((numberp u) (eql u v))
+						  ((stringp u) (cl:equal u v))
 						  ((cl:vectorp u) (equalp u v)))
 		   (and (equal (car u) (car v)) (equal (cdr u) (cdr v))))))
 
@@ -2325,6 +2326,16 @@ lisp> (list2string '(83 84 82 73 78 71))
 \"STRING\""
   (cl:map 'string #'%%character l))
 
+;; (defun list2widestring (u)
+;;   "Take a list U of integers (each in the range 0-0x0010ffff) and turn
+;; it into a string encoding those using UTF-8.  It will also support use
+;; of identifiers or strings as well as integers, and will use the first
+;; character (N.B. not octet) as the code concerned."
+;;   ;; This is a re-implementation of the procedure in rlisp/tok.red.
+;;   ;; It must be flagged lose in clprolo.
+;;   ;; It should make string!-store etc. redundant.
+;;   (cl:map 'string #'code-char u))
+
 (defun list2widestring (u)
   "Take a list U of integers (each in the range 0-0x0010ffff) and turn
 it into a string encoding those using UTF-8.  It will also support use
@@ -2333,7 +2344,9 @@ character (N.B. not octet) as the code concerned."
   ;; This is a re-implementation of the procedure in rlisp/tok.red.
   ;; It must be flagged lose in clprolo.
   ;; It should make string!-store etc. redundant.
-  (cl:map 'string #'code-char u))
+  (cl:map 'string
+		  #'(lambda (x) (if (integerp x) (code-char x) (character x)))
+		  u))
 
 (defun widestring2list (u)
   "Given a string U that may contain bytes that are over 127, return a
@@ -2424,8 +2437,6 @@ order.
 \(L I S T)"
   (cl:map 'list #'cl:identity v))
 
-(defalias 'filep 'probe-file)			; PSL
-
 (defalias 'copy 'copy-tree				; PSL
   "(copy X:any): any expr
 This function returns a copy of X. While each pair is copied, atomic
@@ -2434,8 +2445,6 @@ elements (for example ids, strings, and vectors) are not.")
 ;; REDUCE needs complexp in various places but also needs to be able
 ;; to overwrite it, as in rlisp88.tst:
 (defalias 'complexp 'cl:complexp)
-
-(defalias 'getenv 'sb-ext:posix-getenv)	; PSL
 
 ;; The next three PSL definitions are based on those at the end of
 ;; support/csl.red:
@@ -2455,6 +2464,11 @@ elements (for example ids, strings, and vectors) are not.")
 (defalias 'prop 'cl:symbol-plist)		; PSL
 (defalias 'plist 'cl:symbol-plist)		; CSL
 
+(defun setprop (u l)					; PSL
+  "(setprop U:id L:any): L:any expr
+Store item L as the property list of U."
+  (setf (symbol-plist u) l))
+
 ;; CL union and intersection return different orderings that those in
 ;; the REDUCE source, which leads to different (although probably not
 ;; incorrect) results, so don't use them.  However, union is needed in
@@ -2472,7 +2486,38 @@ Returns the union of sets X and Y."
 (defalias 'lcmn 'cl:lcm)
 (defalias 'yesp1 'cl:y-or-n-p)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun smallcompress (li)
+  "Compress list LI to a string representing a number (only).
+Defined and called only in \"arith/smlbflot.red\" and redefined here
+to down-case the E in floats."
+  (cl:string-downcase (cl:map 'string #'character li)))
+
+
+;;; Operating system interface
+;;; ==========================
+
+(defalias 'getenv 'sb-ext:posix-getenv)	; PSL
+
+;; (defun system (command)					; PSL
+;;   "(system COMMAND:string):undefined expr
+;; starts a (system specific) command interpreter and passes the command
+;; to the interpreter."
+;;   (sb-ext:run-program command))
+
+(defalias 'filep 'probe-file)			; PSL
+
+;; 										; PSL
+;; "(pwd):STRING expr
+;; returns the current working directory in system specific format."
+
+;; 										; PSL
+;; "(cd DIR:string):BOOLEAN expr
+;; sets the current working directory to DIR after expanding the filename
+;; according to the rules of the operating system.  If this operation is
+;; not sucessful, the value Nil is returned."
+
+;;; Compile and load
+;;; ================
 
 (defun compile-file (input-file &rest other-args)
   ;; (compile-file input-file &key output-file verbose print
@@ -2521,12 +2566,6 @@ Load a \".sl\" file using Standard Lisp read syntax."
 	;; Look in "." and "./fasl" and if not found then throw an error:
 	(or (cl:load file :if-does-not-exist nil)
 		(cl:load (concat2 "fasl/" file)))))
-
-(defun smallcompress (li)
-  "Compress list LI to a string representing a number (only).
-Defined and called only in \"arith/smlbflot.red\" and redefined here
-to down-case the E in floats."
-  (cl:string-downcase (cl:map 'string #'character li)))
 
 
 ;;; Faslout/faslend interface

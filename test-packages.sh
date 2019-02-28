@@ -34,7 +34,8 @@ do
 
 	for x in $packages
 	do
-		if [ $x = pm ]; then continue; fi # currently hangs!
+		if [[ $x = pm || $x = gnuplot || $x = turtle ]] # currently hang!
+		then continue; fi
 		echo +++++ Testing $which package $x
 		echo $x >> testlog/test$which.log
 		./test-one-package.sh $x $which
