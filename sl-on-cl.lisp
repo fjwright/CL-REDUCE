@@ -176,6 +176,19 @@ the same value and type."				; i.e. the same SL type!
 	  ;;  the same value. = is used to compare mathematical values.
 	  (and (floatp u) (floatp v) (= u v))))
 
+;; (defun equal (u v)
+;;   "EQUAL(U:any, V:any):boolean eval, spread
+;; Returns T if U and V are the same. Dotted-pairs are compared
+;; recursively to the bottom levels of their trees. Vectors must
+;; have identical dimensions and EQUAL values in all
+;; positions. Strings must have identical characters. Function
+;; pointers must have EQ values. Other atoms must be EQN equal."
+;;   (or (cl:equal u v)
+;; 	  ;;  equal may not be true of two floats even when they represent
+;; 	  ;;  the same value. = is used to compare mathematical values.
+;; 	  (and (floatp u) (floatp v) (= u v))
+;; 	  (and (vectorp u) (vectorp v) (equalp u v))))
+
 (defun equal (u v)
   "EQUAL(U:any, V:any):boolean eval, spread
 Returns T if U and V are the same. Dotted-pairs are compared
@@ -183,11 +196,12 @@ recursively to the bottom levels of their trees. Vectors must
 have identical dimensions and EQUAL values in all
 positions. Strings must have identical characters. Function
 pointers must have EQ values. Other atoms must be EQN equal."
-  (or (cl:equal u v)
-	  ;;  equal may not be true of two floats even when they represent
-	  ;;  the same value. = is used to compare mathematical values.
-	  (and (floatp u) (floatp v) (= u v))
-	  (and (vectorp u) (vectorp v) (equalp u v))))
+  (and (cl:equal (type-of u) (type-of v))
+	   (if (atom u) (cond ((symbolp u) (eq u v))
+						  ((floatp u) (= u v))
+						  ((numberp u) (eql u v))
+						  ((cl:vectorp u) (equalp u v)))
+		   (and (equal (car u) (car v)) (equal (cdr u) (cdr v))))))
 
 (defalias 'fixp 'cl:integerp
   "FIXP(U:any):boolean eval, spread
