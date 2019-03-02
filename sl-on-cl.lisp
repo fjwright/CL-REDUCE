@@ -197,10 +197,10 @@ have identical dimensions and EQUAL values in all
 positions. Strings must have identical characters. Function
 pointers must have EQ values. Other atoms must be EQN equal."
   (and (cl:equal (type-of u) (type-of v))
-	   (if (atom u) (cond ((symbolp u) (eq u v))
-						  ((floatp u) (= u v))
-						  ((numberp u) (eql u v))
-						  ((stringp u) (cl:equal u v))
+	   (if (atom u) (cond ((cl:symbolp u) (eq u v))
+						  ((cl:floatp u) (= u v))
+						  ((cl:numberp u) (eql u v))
+						  ((cl:stringp u) (string= u v))
 						  ((cl:vectorp u) (equalp u v)))
 		   (and (equal (car u) (car v)) (equal (cdr u) (cdr v))))))
 
@@ -1523,24 +1523,29 @@ EXPR PROCEDURE LITER(U);
                  \a \b \c \d \e \f \g \h \i \j \k \l \m
                  \n \o \p \q \r \s \t \u \v \w \x \y \z) :test #'eq))
 
-(defun member (a b)
-  "MEMBER(A:any, B:list):extra-boolean eval, spread
-Returns NIL if A is not a member of list B, returns the remainder of
-B whose first element is A.
-EXPR PROCEDURE MEMBER(A, B);
-   IF NULL B THEN NIL
-      ELSE IF A = CAR B THEN B
-      ELSE MEMBER(A, CDR B);"
-  (cl:member a b :test #'equal))
+(defun member (a l)
+  "(member A:any L:any): extra-boolean expr
+Returns nil if A is not equal to some top level element of the list L;
+otherwise it returns the remainder of L whose first element is equal
+to A."
+  ;; This is the PSl definition, which accepts *anything* as its second argument!
+  ;; REDUCE (crack in particular) requires this flexibility.
+  ;; In Common Lisp, the second argument must be a proper list.
+  (cond ((atom l) nil)
+		((equal a (car l)) l)
+		(t (member a (cdr l)))))
 
-(defun memq (a b)
-  "MEMQ(A:any, B:list):extra-boolean eval, spread
-Same as MEMBER but an EQ check is used for comparison.
-EXPR PROCEDURE MEMQ(A, B);
-   IF NULL B THEN NIL
-      ELSE IF A EQ CAR B THEN B
-      ELSE MEMQ(A, CDR B);"
-  (cl:member a b :test #'eq))
+(defun memq (a l)
+  "(memq A:any L:any): extra-boolean expr
+Returns nil if A is not eq to some top level element of the list L;
+otherwise it returns the remainder of L whose first element is equal
+to A."
+  ;; This is the PSl definition, which accepts *anything* as its second argument!
+  ;; REDUCE probably requires this flexibility.
+  ;; In Common Lisp, the second argument must be a proper list.
+  (cond ((atom l) nil)
+		((eq a (car l)) l)
+		(t (member a (cdr l)))))
 
 (import 'cl:nconc)
 ;; NCONC(U:list, V:list):list eval, spread
@@ -2496,19 +2501,27 @@ to down-case the E in floats."
 ;;; Operating system interface
 ;;; ==========================
 
-(defalias 'getenv 'sb-ext:posix-getenv)	; PSL
+(defun system (command)					; PSL
+  "(system COMMAND:string):undefined expr
+Run a (system specific) command interpreter synchronously, pass
+COMMAND to the interpreter and return the process exit code."
+  ;; Split off the arguments:
+  (setq command
+		(loop with beg and end = 0
+		   while end
+		   do (setq beg (position-if #'(lambda (x) (char/= x #\Space))
+									 command :start end))
+			 (unless beg (loop-finish))
+			 (setq end (position #\Space command :start beg))
+		   collect (subseq command beg end)))
+  (sb-ext:process-exit-code
+   (sb-ext:run-program "cmd" (cons "/c" command)
+					   :search t :output t :escape-arguments nil)))
 
-;; (defun system (command)					; PSL
-;;   "(system COMMAND:string):undefined expr
-;; starts a (system specific) command interpreter and passes the command
-;; to the interpreter."
-;;   (sb-ext:run-program command))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require :sb-posix))
 
-(defalias 'filep 'probe-file)			; PSL
-
-;; 										; PSL
-;; "(pwd):STRING expr
-;; returns the current working directory in system specific format."
+(defalias 'pwd 'sb-posix:getcwd)		; PSL
 
 ;; 										; PSL
 ;; "(cd DIR:string):BOOLEAN expr
@@ -2516,6 +2529,13 @@ to down-case the E in floats."
 ;; according to the rules of the operating system.  If this operation is
 ;; not sucessful, the value Nil is returned."
 
+(defalias 'getenv 'sb-posix:getenv)		; PSL (could just import!)
+
+(defalias 'getpid 'sb-posix:getpid)		; PSL (could just import!)
+
+(defalias 'filep 'probe-file)			; PSL
+
+
 ;;; Compile and load
 ;;; ================
 
@@ -2533,9 +2553,10 @@ to down-case the E in floats."
   "*verboseload = [Initially: nil] switch
 If non-nil, a message is displayed when a request is made to load a
 file which has already been loaded, when a file is about to be loaded,
-and when the loading of a file is complete. Since *redefmsg is set to
-the value of *verboseload, a non-nil value will also cause a message
-to be printed whenever a function is redefined during a load.")
+and when the loading of a file is complete.  Since *redefmsg is set to
+the value of *verboseload within `load', a non-nil value will also
+cause a message to be printed whenever a function is redefined during
+a load.")
 
 (defvar options* nil
   "A list of loaded `modules', which are loaded only once.
@@ -2555,7 +2576,8 @@ Load a \".sl\" file using Standard Lisp read syntax."
   ;; filename defaults are taken from *default-pathname-defaults*,
   ;; which defaults to the directory in which SBCL was started.
   (let ((*readtable* (copy-readtable nil)) ; normal CL syntax
-		(*load-verbose* *verboseload))
+		(*load-verbose* *verboseload)
+		(*redefmsg *verboseload))
 	(if (symbolp file)
 		(progn
 		  (if (cl:member file options*) (return-from load)) ; already loaded

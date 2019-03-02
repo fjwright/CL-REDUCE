@@ -147,6 +147,13 @@ flag follows the function name, enclosed in parentheses:
 		    point in milliseconds;
 
 
+% Operating system interface:
+
+flag('(system pwd cd getenv),'opfn);
+
+flag('(system),'noval);
+
+
 Comment There are a number of system constants required for each
 implementation. In systems that don't support inums, the equivalent
 single precision integers should be used;
@@ -331,6 +338,32 @@ flag('(i!&prn), 'lose);
 % of seconds that have elapsed since some epoch.
 
 symbolic procedure random_init(); random_new_seed datestamp();
+
+% "crack/crutil.red" defines this procedure only for PSL.
+% I could probably implement this more directly!
+
+symbolic procedure rename!-file(fromname, toname)$
+   % Rename fromname to toname and return t on success.
+   % (it is defined in csl)
+   system bldmsg("mv %w %w", fromname, toname) = 0;
+
+% From "pslrend.red"; does this also apply to Common Lisp? Not
+% required to run "crack.tst"!
+
+% In the crack code it is essential that subst arranges to share some of
+% its output with its input. The same may be the case for sublist too?
+% The standard implementation of subst in PSL does not do this.
+
+%% symbolic procedure subst(a, b, c);
+%%   if c = b then a
+%%   else if atom c then c
+%%   else begin
+%%     scalar sa, sd;
+%%     sa := subst(a, b, car c);
+%%     sd := subst(a, b, cdr c);
+%%     if sa eq car c and sd eq cdr c then return c
+%%     else return sa . sd
+%%   end;
 
 endmodule;
 
