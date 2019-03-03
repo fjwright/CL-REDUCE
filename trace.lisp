@@ -62,27 +62,32 @@ NAME must be quoted when called!"
   (let* ((defn (and (symbolp name) (fboundp name) (symbol-function name)))
 		 (olddefn defn)					; saved for reliable untracing
 		 params)
-
+	;; Check function is defined:
     (unless defn
 	  (format *trace-output*
 			  "***** ~a not yet defined.~%" name)
       (return-from trace1))
-
-    (when sl::*comp
-      (format *trace-output*
-			  "~a ~a~%"
-			  "Portable tracing does not work reliably with the"
-			  "switch `comp' on, so it has been turned off.")
-	  (sl::compilation (setq sl::*comp nil)))
-
-    (if (setq defn (function-lambda-expression defn)) ; source form?
-        (progn
-		  ;; Note that a CL function definition may contain
-		  ;; declarations and a documentation string, and the body is
-		  ;; wrapped in a block form,
-		  ;; i.e. defn = (lambda params [decls] [doc] (block name body))
-		  (setf (caddr defn) (caddar (last defn)))
-		  ;;  Now defn = (lambda params body)
+	;;
+    ;; (when sl::*comp
+    ;;   (format *trace-output*
+	;; 		  "~a ~a~%"
+	;; 		  "Portable tracing does not work reliably with the"
+	;; 		  "switch `comp' on, so it has been turned off.")
+	;;   (sl::compilation (setq sl::*comp nil)))
+	;;
+	;; Get a lambda expression and extract the parameters if possible:
+	(if (setq defn (function-lambda-expression defn))
+		;; Note that a CL function definition may contain
+		;; declarations and a documentation string, and the body is
+		;; wrapped in a block form,
+		;; i.e. defn = (lambda params [decls] [doc] (block name body))
+		(setf (caddr defn) (caddar (last defn)))
+		(if (and *trace-setq*
+				 (setq defn (get-fasl-source name)))
+			(setq defn (cons 'lambda (cddr defn)))))
+	;;
+	(if defn
+		(progn							; defn = (lambda params body)
 		  (if (eqcar (cadddr defn) 'run-traced-function)
               (return-from trace1
 				(if (eq (get name 'traced-setq) *trace-setq*)
@@ -91,40 +96,37 @@ NAME must be quoted when called!"
 							"*** ~a already traced.~%" name)
 					(re-trace1 name)))
 			  (setq params (cadr defn))))
-        (progn
+        (progn							; defn = compiled form
 		  (setq defn olddefn)
           (if *trace-setq*
-			  (if (setq defn (get-fasl-source name))
-				  (progn
-					(setq defn (cons 'lambda (cddr defn)))
-					(setq params (cadr defn)))
-				  (progn
-					(setq defn olddefn)
-					(format *trace-output*
-							"*** ~a ~a~%~a~%"
-							name
-							"must be interpreted for portable assignment tracing."
-							"*** Tracing arguments and return value only.")
-					(setq *trace-setq* nil))))
-          (unless params
-			(if (setq params (get name 'sl::number-of-args))
-				(progn
-                  (setq params
-						(loop
-						   for i from 1 upto params collect
-							 (intern (format nil "Arg~d" i))))
-                  (format *trace-output*
-						  "*** ~a is compiled: ~a~%"
-						  name
-						  "portable tracing may not show recursive calls."))
-				(progn
-                  (format *trace-output*
-						  "***** ~a must be interpreted for portable tracing.~%"
-						  name)
-                  (return-from trace1))))))
+			  (progn
+				(format *trace-output*
+						"*** ~a ~a~%~a~%"
+						name
+						"must be interpreted for portable assignment tracing."
+						"*** Tracing arguments and return value only.")
+				(setq *trace-setq* nil)))))
+	;;
+    (unless params
+	  (if (setq params (get name 'sl::number-of-args))
+		  (progn
+            (setq params
+				  (loop
+					 for i from 1 upto params collect
+					   (intern (format nil "Arg~d" i))))
+            (format *trace-output*
+					"*** ~a is compiled: ~a~%"
+					name
+					"portable tracing may not show recursive calls."))
+		  (progn
+            (format *trace-output*
+					"***** parameters for ~a unavailable so cannot apply portable tracing.~%"
+					name)
+            (return-from trace1))))
+	;;
 	(pushnew name *traced-functions*)
-	(if *trace-setq*   ; but no point doing this unless lambda form!!!
-        (progn
+	(if *trace-setq*
+		(progn
 		  (setq defn (subst 'traced-setq 'setq defn))
 		  (put name 'traced-setq t))
 		;; in case function has been redefined:
