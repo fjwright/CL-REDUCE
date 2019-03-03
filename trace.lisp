@@ -12,7 +12,7 @@
 ;; ****************************
 ;; Can be loaded into REDUCE by
 ;; lisp load trace
-;; or
+;; (without quotes) or
 ;; lisp load "trace.lisp"
 ;; etc.
 ;; ****************************
@@ -39,8 +39,11 @@
   "List of currently traced functions.")
 
 (defmacro tr (&rest fns)
-  "Trace the functions specified."
-  `(cl:mapcar #'trace1 ',fns))
+  "Trace the functions specified.
+If no functions are specified then list all traced functions."
+  `(if ,fns
+	   (cl:mapcar #'trace1 ',fns)
+	   *traced-functions*))
 
 (defmacro untr (&rest fns)
   "Untrace(set) the functions specified.
@@ -50,9 +53,12 @@ Untrace(set) all traced functions if no functions are specified."
 (defvar *trace-setq* nil)
 
 (defmacro trst (&rest fns)
-  "Traceset the functions specified."
-  `(let ((*trace-setq* t))
-	 (cl:mapcar #'trace1 ',fns)))
+  "Traceset the functions specified.
+If no functions are specified then list all traced functions."
+  `(if ,fns
+	   (let ((*trace-setq* t))
+		 (cl:mapcar #'trace1 ',fns))
+	   *traced-functions*))
 
 (setf (macro-function 'untrst) (macro-function 'untr))
 

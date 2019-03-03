@@ -2505,33 +2505,46 @@ to down-case the E in floats."
 ;;; Operating system interface
 ;;; ==========================
 
+;; (defun system (command)					; PSL
+;;   "(system COMMAND:string):undefined expr
+;; Run a (system specific) command interpreter synchronously, pass
+;; COMMAND to the interpreter and return the process exit code."
+;;   ;; Split off the arguments:
+;;   (setq command
+;; 		(loop with beg and end = 0
+;; 		   while end
+;; 		   do (setq beg (position-if #'(lambda (x) (char/= x #\Space))
+;; 									 command :start end))
+;; 			 (unless beg (loop-finish))
+;; 			 (setq end (position #\Space command :start beg))
+;; 		   collect (subseq command beg end)))
+;;   (sb-ext:process-exit-code
+;;    (sb-ext:run-program "cmd" (cons "/c" command)
+;; 					   :search t :output t :escape-arguments nil)))
+
 (defun system (command)					; PSL
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
 COMMAND to the interpreter and return the process exit code."
-  ;; Split off the arguments:
-  (setq command
-		(loop with beg and end = 0
-		   while end
-		   do (setq beg (position-if #'(lambda (x) (char/= x #\Space))
-									 command :start end))
-			 (unless beg (loop-finish))
-			 (setq end (position #\Space command :start beg))
-		   collect (subseq command beg end)))
   (sb-ext:process-exit-code
-   (sb-ext:run-program "cmd" (cons "/c" command)
+   (sb-ext:run-program "cmd" (list "/c" command)
 					   :search t :output t :escape-arguments nil)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require :sb-posix))
 
-(defalias 'pwd 'sb-posix:getcwd)		; PSL
+(defalias 'getcwd 'sb-posix:getcwd)		; PSL -- temporary
 
-;; 										; PSL
-;; "(cd DIR:string):BOOLEAN expr
-;; sets the current working directory to DIR after expanding the filename
-;; according to the rules of the operating system.  If this operation is
-;; not sucessful, the value Nil is returned."
+(defun pwd ()							; PSL
+  "(pwd):STRING expr
+Return the current working directory in system specific format."
+  (sb-ext:native-namestring *default-pathname-defaults*))
+
+(defun cd (dir)							; PSL
+  "(cd DIR:string):BOOLEAN expr
+Set the current working directory to DIR after expanding the filename
+according to the rules of the operating system.  If this operation is
+not sucessful, the value Nil is returned.")
 
 (defalias 'getenv 'sb-posix:getenv)		; PSL (could just import!)
 

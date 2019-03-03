@@ -1,7 +1,7 @@
 REDUCE on Common Lisp
 =====================
 
-Francis Wright, February 2019
+Francis Wright, March 2019
 
 **This code is currently experimental!**
 
@@ -21,6 +21,7 @@ A minimal Unix-like environment including `bash` and `grep`; I use [Cygwin](http
 The build directory must contain the following files from the common-lisp directory:
 
 * `sl-on-cl.lisp`
+* `trace.lisp`
 * `clprolo.red`
 * `clrend.red`
 * `build.red`
@@ -55,6 +56,17 @@ At present, the current directory when REDUCE is run must be the build directory
 
 Interrupting REDUCE (with Control-C) invokes the SBCL debugger and aborting that enters Lisp, which is very useful for low-level debugging!  Evaluate `(begin)` to get back into REDUCE.
 
+Implementation-specific functionality
+-------------------------------------
+
+The following facilities are modelled on those provided by PSL; please see the PSL manual for further details.
+
+Lisp-level function tracing is provided by the commands `tr` and `trst` after running the command `lisp load trace;`.  (The `trace` module will eventually be autoloaded.)  A command of the form `tr fn1, fn2, ...` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
+
+A preliminary implementation of the `system` function is provided but only for Microsoft Windows at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems (but not yet Common Lisp implementations).
+
+The functions `pwd` and `cd` respectively return and reset the current working directory.  (However, at present REDUCE will not be able to load compiled files if its current working directory is changed, so don't use `cd`!)
+
 Current status
 --------------
 
@@ -63,14 +75,13 @@ The process described above should build all of REDUCE without any obvious error
 All core test files run to completion and the output agrees with CSL except for timings and the following:
 
 * `arith.tst` displays less numerical error;
-* `rlisp88.tst` and `assist.tst` show insignificant differences due to implementation differences.
+* `rlisp88.tst` and `assist.tst` show insignificant implementation differences.
 
-All noncore test files except `pm` and `rtrace` appear to run to completion, and the test output agrees with CSL except for timings and insignificant numerical and/or letter case differences for 52/86 = 60% of them.
+All noncore test files except `pm` and packages that do plotting appear to run to completion, and the test output agrees with CSL except for timings and insignificant numerical, letter case and/or implementation differences for 61/86 = 71% of them.
 
 * `pm.tst` hangs loading the `pmrules` module.
-* `rtrace.tst` fails with a segmentation error.
 
-Timings
+Timings (out of date)
 -------
 
 I estimate that SBCL REDUCE is 3 or 4 times slower than PSL/CSL REDUCE, but note that it is currently built for comfort (of debugging) rather than speed!
@@ -113,6 +124,6 @@ Make SL-on-CL lower case and stop downcasing in the print functions.  (Internal 
 Allow REDUCE to be run with a current directory other than the build directory.
 
 
-Improve performance for the noncore packages -- **work currently in progress**.
+Improve support for the noncore packages -- **work currently in progress**.
 
 A better trace facility that does not display the `STANDARD-LISP::` package prefix -- **work currently in progress**.
