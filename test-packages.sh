@@ -38,7 +38,7 @@ do
 		then continue; fi
 		echo +++++ Testing $which package $x
 		echo $x >> testlog/test$which.log
-		./test-one-package.sh $x $which
+		./test-one-package.sh $x >> testlog/check$which.log
 	done
 
 	date >> testlog/test$which.log

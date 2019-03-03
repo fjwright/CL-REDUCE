@@ -684,9 +684,13 @@ is returned."
 			  ;; some cases):
 			  (let ((f (function-lambda-expression
 						(setq fname (symbol-function fname)))))
-				;; Omit any declarations and documentation string:
+				;; Note that a CL function definition may contain
+				;; declarations and a documentation string, and the
+				;; body is wrapped in a block form, i.e.
+				;; (lambda params [decls] [doc] (block name body))
+				;; Extract the function body:
 				(if f (setq fname
-							`(lambda ,(cadr f) ,(car (last f))))))
+							`(lambda ,(cadr f) ,(caddar (last f))))))
 			  (cons 'expr fname)))))
 
 (defun putd (fname type body)
@@ -1545,7 +1549,7 @@ to A."
   ;; In Common Lisp, the second argument must be a proper list.
   (cond ((atom l) nil)
 		((eq a (car l)) l)
-		(t (member a (cdr l)))))
+		(t (memq a (cdr l)))))
 
 (import 'cl:nconc)
 ;; NCONC(U:list, V:list):list eval, spread

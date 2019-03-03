@@ -5,7 +5,7 @@
 # Author: Francis J. Wright
 # Based (loosely) on code by Anthony C. Hearn.
 
-# Usage: ./test-one-package.sh package core/noncore
+# Usage: ./test-one-package.sh package
 
 # Assume this script is run in the top-level CL REDUCE directory.
 # This script is normally run by test-packages.sh.
@@ -59,10 +59,10 @@ EOF
 
 # Check for errors:
 
-grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\)\|COMMON-LISP:ERROR' testlog/$1.rlg | uniq
+grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\)\|COMMON-LISP:ERROR' testlog/$1.rlg | uniq > /dev/tty
 
 # Check for differences from CSL:
 
-( echo $'\nChecking' $1 $'...\n'
+echo $'\nChecking' $1 $'...\n'
 diff --strip-trailing-cr testlog/$1.rlg csltestlog/$1.rlg
-if [ "$sep" ]; then echo -e '\f'; echo $sep; fi ) >> testlog/check$2.log
+if [ "$sep" ]; then echo -e '\f'; echo $sep; fi
