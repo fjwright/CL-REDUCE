@@ -41,9 +41,9 @@
 (defmacro tr (&rest fns)
   "Trace the functions specified.
 If no functions are specified then list all traced functions."
-  `(if ,fns
-	   (cl:mapcar #'trace1 ',fns)
-	   *traced-functions*))
+  (if fns
+	  `(cl:mapcar #'trace1 ',fns)
+	  '*traced-functions*))
 
 (defmacro untr (&rest fns)
   "Untrace(set) the functions specified.
@@ -55,10 +55,10 @@ Untrace(set) all traced functions if no functions are specified."
 (defmacro trst (&rest fns)
   "Traceset the functions specified.
 If no functions are specified then list all traced functions."
-  `(if ,fns
-	   (let ((*trace-setq* t))
+  (if fns
+	  `(let ((*trace-setq* t))
 		 (cl:mapcar #'trace1 ',fns))
-	   *traced-functions*))
+	  '*traced-functions*))
 
 (setf (macro-function 'untrst) (macro-function 'untr))
 

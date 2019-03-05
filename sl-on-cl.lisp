@@ -1771,6 +1771,10 @@ do not consider FUNARGs in this report."
 ;;; Input and Output
 ;;; ================
 
+(defvar *current-input-file-stack* nil
+  "This stack of input filenames is pushed when an input stream is
+  opened and popped when it is closed.")
+
 (defun close (filehandle)
   "CLOSE(FILEHANDLE:any):any eval, spread
 Closes the file with the internal name FILEHANDLE writing any
@@ -1784,7 +1788,8 @@ closed.
 	  (if (consp filehandle)
 		  ;; Input filehandle -- close echo stream then input stream:
 		  (progn (cl:close (cdr filehandle))
-				 (cl:close (car filehandle)))
+				 (cl:close (car filehandle))
+				 (pop *current-input-file-stack*))
 		  ;; Output filehandle:
 		  (cl:close filehandle)))
   filehandle)
@@ -1821,11 +1826,16 @@ Returns the number of lines printed on the current page. At the top
 of a page, 0 is returned."
   0)
 
-(defun substitute-in-file-name (filename)
+(defun substitute-in-file-name (filename &optional cwd)
   "Return a copy of FILENAME with all environment variables expanded.
 Replace every substring of the form `$name' terminated by a
-non-alphanumeric character by its value.  Called by `open'."
-  ;; A simplified version of the Elisp function.
+non-alphanumeric character by its value.  Called by `open'.
+Also replace a leading `.' by the current working directory and each
+leading `..' its parent, using the directory of the filename CWD
+instead of the Lisp current working directory if it is provided."
+  ;; A simplified combination of the Elisp functions
+  ;; `substitute-in-file-name' and `expand-file-name'.
+  ;; Replace environment variables with their values:
   (loop
 	 with beg and end = 0 and l
 	 while
@@ -1835,13 +1845,37 @@ non-alphanumeric character by its value.  Called by `open'."
 	   (setq end (position-if-not #'alphanumericp filename :start (1+ beg)))
 	   (push (getenv (subseq filename (1+ beg) end)) l)
 	 finally
-	   (return (if l
+	   (if l (setq filename
 				   (cl:apply #'concatenate 'string
 							 (nreverse
 							  (if end
 								  (push (subseq filename end) l)
-								  l)))
-				   filename))))
+								  l))))))
+  ;; sb-ext:native-pathname seems necessary to preserve odd characters
+  ;; such as ^ in a filename:
+  (setq filename (sb-ext:native-pathname filename))
+  (let ((d (pathname-directory filename)))
+	(when (eq (car d) :relative)
+	  ;; Replace a leading "." with the current working directory:
+	  (setq cwd (if cwd
+					(pathname (pathname-directory cwd))
+					*default-pathname-defaults*))
+	  (when (equal (cadr d) ".")
+		(setf (cdr d) (cddr d))			; remove "." component
+		(setq filename (merge-pathnames
+						(make-pathname :directory d :defaults filename)
+						cwd)))
+	  ;; Replace each leading ".." with the parent directory:
+	  (setq cwd (pathname-directory cwd))
+	  (loop
+		 while (cl:member (cadr d) '(".." :up :back))
+		 do
+		   (setf (cdr d) (cddr d))		; remove ".." component
+		   (setq cwd (butlast cwd))
+		   (setq filename (merge-pathnames
+						   (make-pathname :directory d :defaults filename)
+						   (make-pathname :directory cwd))))))
+  filename)
 
 (defun open (file how)
   "OPEN(FILE:any, HOW:id):any eval, spread
@@ -1853,10 +1887,10 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
-  ;; sb-ext:native-pathname seems necessary to preserve odd characters
-  ;; such as ^ in a filename:
-  (setq file (sb-ext:native-pathname (substitute-in-file-name file)))
+  (setq file (substitute-in-file-name
+			  file (car *current-input-file-stack*)))
   (cond ((eq how 'input)
+		 (push file *current-input-file-stack*)
 		 (let ((fh (cl:open file :direction :input)))
 		   ;; An input filehandle is a pair of the form
 		   ;; (input-stream . echo-stream):
@@ -2544,7 +2578,19 @@ Return the current working directory in system specific format."
   "(cd DIR:string):BOOLEAN expr
 Set the current working directory to DIR after expanding the filename
 according to the rules of the operating system.  If this operation is
-not sucessful, the value Nil is returned.")
+not sucessful, the value Nil is returned."
+  (setq dir (pathname dir))
+  ;; Allow dir not to end with a separator:
+  (if (string/= (file-namestring dir) "")
+	  (setq dir (make-pathname :directory
+							   (append (or (pathname-directory dir) '(:relative))
+									   (list (file-namestring dir))))))
+  ;; Expand environment variables, "." and "..":
+  (setq dir (substitute-in-file-name (namestring dir)))
+  (setq dir (merge-pathnames dir))
+  (and (probe-file dir)
+	   (sb-ext:native-namestring	; more useful return value than t!
+		(setq *default-pathname-defaults* dir))))
 
 (defalias 'getenv 'sb-posix:getenv)		; PSL (could just import!)
 
