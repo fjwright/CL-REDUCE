@@ -1858,7 +1858,7 @@ instead of the Lisp current working directory if it is provided."
 	(when (eq (car d) :relative)
 	  ;; Replace a leading "." with the current working directory:
 	  (setq cwd (if cwd
-					(pathname (pathname-directory cwd))
+					(make-pathname :directory (pathname-directory cwd))
 					*default-pathname-defaults*))
 	  (when (equal (cadr d) ".")
 		(setf (cdr d) (cddr d))			; remove "." component

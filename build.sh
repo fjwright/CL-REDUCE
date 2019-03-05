@@ -17,7 +17,11 @@ then
 	elif [ $option = f ]; then force='!*forcecompile := t;'; fi
 fi
 
-if [ ! "$reduce" ]; then export reduce=.; fi
+if [ ! "$reduce" ]
+then
+	reduce=$(cmd /c cd)			 # SBCL is a Windows application
+	export reduce=${reduce:0:-1} # remove trailing ^M
+fi
 
 # Build an initial bootstrap REDUCE image if necessary:
 if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
