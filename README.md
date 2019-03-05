@@ -65,7 +65,9 @@ Lisp-level function tracing is provided by the commands `tr` and `trst` after ru
 
 A preliminary implementation of the `system` function is provided but only for Microsoft Windows at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems (but not yet Common Lisp implementations).
 
-The functions `pwd` and `cd` respectively return and reset the current working directory.  (However, at present REDUCE will not be able to load compiled files if its current working directory is changed, so don't use `cd`!)
+The functions `pwd` and `cd` respectively return and reset (and return) the current working directory.  (However, at present REDUCE will not be able to load compiled files if its current working directory is changed, so don't use `cd`!)
+
+Environment variables, "." and ".." in filenames are expanded by cd and open, in the latter case relative to the current input file if there is one, otherwise the current working directory.
 
 Current status
 --------------

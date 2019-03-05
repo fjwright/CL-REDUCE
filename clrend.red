@@ -330,6 +330,9 @@ procedure i!&prn x;
 
 flag('(i!&prn), 'lose);
 
+% Fixes for the crack suite
+% =========================
+
 % "crack/crinit.red" defines procedure random_init for PSL or CSL
 % specifically with no generic definition, so here is a CL version.
 % Procedure `random_new_seed' is defined in "rlisp/random.red" to take
@@ -340,7 +343,8 @@ flag('(i!&prn), 'lose);
 symbolic procedure random_init(); random_new_seed datestamp();
 
 % "crack/crutil.red" defines this procedure only for PSL.
-% I could probably implement this more directly!
+% Using the CL version directly doesn't work in all cases, so I
+% redefine it here as in crack!
 
 symbolic procedure rename!-file(fromname, toname)$
    % Rename fromname to toname and return t on success.
@@ -364,6 +368,12 @@ symbolic procedure rename!-file(fromname, toname)$
 %%     if sa eq car c and sd eq cdr c then return c
 %%     else return sa . sd
 %%   end;
+
+% Partially fix a problem in sstools caused by using an upper-case
+% Lisp, but the upper-case output is still lost and I can't see an
+% easy way to fix that:
+
+put('d,'prifn,'bigdpri)$				% 'd was '!d
 
 endmodule;
 

@@ -17,6 +17,9 @@
 (declaim (optimize debug))				; same as (debug 3)
 (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
+#+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
+		 (require :sb-posix))
+
 (defpackage :standard-lisp
   (:nicknames :sl)
   (:documentation "Standard Lisp on Common Lisp")
@@ -34,6 +37,7 @@
 		   :char-downcase :char-upcase :string-downcase :mod)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
+  #+SBCL (:import-from :sb-posix :getenv :getpid)
 
   #+CLISP (:import-from :ext :exit :quit :bye :getenv)
   )
@@ -2564,11 +2568,6 @@ COMMAND to the interpreter and return the process exit code."
    (sb-ext:run-program "cmd" (list "/c" command)
 					   :search t :output t :escape-arguments nil)))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require :sb-posix))
-
-(defalias 'getcwd 'sb-posix:getcwd)		; PSL -- temporary
-
 (defun pwd ()							; PSL
   "(pwd):STRING expr
 Return the current working directory in system specific format."
@@ -2591,10 +2590,6 @@ not sucessful, the value Nil is returned."
   (and (probe-file dir)
 	   (sb-ext:native-namestring	; more useful return value than t!
 		(setq *default-pathname-defaults* dir))))
-
-(defalias 'getenv 'sb-posix:getenv)		; PSL (could just import!)
-
-(defalias 'getpid 'sb-posix:getpid)		; PSL (could just import!)
 
 (defalias 'filep 'probe-file)			; PSL
 

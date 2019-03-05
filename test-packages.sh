@@ -34,7 +34,7 @@ do
 
 	for x in $packages
 	do
-		if [[ $x = pm || $x = gnuplot || $x = turtle ]] # currently hang!
+		if [[ $x = pm || $x = gnuplot || $x = turtle || $x = rubi_red ]]
 		then continue; fi
 		echo +++++ Testing $which package $x
 		echo $x >> testlog/test$which.log
