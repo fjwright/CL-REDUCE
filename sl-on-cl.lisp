@@ -34,7 +34,8 @@
 		   :delete :length :member :sublis :subst :rassoc :apply :eval
 		   :function :close :open :princ :print :prin1 :prin2 :read
 		   :terpri :complexp :union :compile-file :load :time
-		   :char-downcase :char-upcase :string-downcase :mod)
+		   :char-downcase :char-upcase :string-downcase :mod
+		   :char-code)
 
   #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
   #+SBCL (:import-from :sb-posix :getenv :getpid)
@@ -1027,15 +1028,14 @@ dependent format."
 ;;; Vectors
 ;;; =======
 
-(defun getv (v index)
+(defalias 'getv 'aref
   "GETV(V:vector, INDEX:integer):any eval, spread
 Returns the value stored at position INDEX of the vector V. The
 type mismatch error may occur. An error occurs if the INDEX does
 not lie within 0...UPBV(V) inclusive:
-***** INDEX subscript is out of range"
-  (aref v index))
+***** INDEX subscript is out of range")
 
-(defalias 'igetv 'getv)
+(defalias 'igetv 'aref)
 
 (defun mkvect (uplim)
   "MKVECT(UPLIM:integer):vector eval, spread
@@ -1060,6 +1060,18 @@ lie in 0...UPBV(V) an error occurs:
   "UPBV(U:any):NIL,integer eval, spread
 Returns the upper limit of U if U is a vector, or NIL if it is not."
   (if (vectorp u) (1- (cl:length u))))
+
+(defun mkvect8 (uplim)					; CSL
+  "Make a vector of 8-bit signed integers, cf. mkvect."
+  (make-array (1+ uplim) :element-type '(signed-byte 8) :initial-element 0))
+(defalias 'getv8 'aref)					; CSL
+(defalias 'putv8 'putv)					; CSL
+
+(defun mkvect16 (uplim)					; CSL
+  "Make a vector of 16-bit signed integers, cf. mkvect."
+  (make-array (1+ uplim) :element-type '(signed-byte 16) :initial-element 0))
+(defalias 'getv16 'aref)				; CSL
+(defalias 'putv16 'putv)				; CSL
 
 
 ;;; Boolean Functions and Conditionals
@@ -2322,8 +2334,15 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 		  #'(lambda (c) (cl:intern (string c)))
 		  (princ-to-string u)))
 
+(defun explode2uc (u)					; defined in "pslrend.red"
+  "Upper-case version of explode2."
+  (let ((*print-case* :upcase))
+	(cl:map 'list
+			#'(lambda (c) (cl:intern (string c)))
+			(princ-to-string u))))
+
 ;; Don't use variable numbers of arguments since it triggers a warning
-;; in REDUCE!
+;; in REDUCE!  (Actually, could flag such functions variadic.)
 
 ;; (defun string-concat (&rest s)			; PSL
 ;;   "(string-concat [S:string]): string macro
@@ -2350,7 +2369,7 @@ characters into small integers.
 lisp> (string2list \"STRING\")
 \(83 84 82 73 78 71)"
   (cl:map 'list
-		  #'(lambda (x) (char-code x))
+		  #'(lambda (x) (cl:char-code x))
 		  s))
 
 (defun %%character (x)
@@ -2403,7 +2422,7 @@ are not valid UTF-8 is to be considered undefined."
   ;; This is a re-implementation of the procedure in rlisp/tok.red.
   ;; It must be flagged lose in clprolo.
   ;; It should make moan!-if!-truncated etc. redundant.
-  (cl:map 'list #'char-code u))
+  (cl:map 'list #'cl:char-code u))
 
 ;; (defun string-store (s i x)				; PSL
 ;;   "(string-store S:string I:integer X:char): None Returned expr
@@ -2437,7 +2456,9 @@ id NIL is always found by (int2id 128)."
 (defun id2int (d)						; PSL
   "(id2int D:id): integer expr
 Returns the id space position of D as a LISP integer."
-  (char-code (character d)))
+  (cl:char-code (character d)))
+
+(defalias 'char-code 'id2int)			; CSL
 
 (defalias 'id2string 'cl:symbol-name	; PSL
   "(id2string D:id): string expr
