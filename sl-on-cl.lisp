@@ -1787,10 +1787,6 @@ do not consider FUNARGs in this report."
 ;;; Input and Output
 ;;; ================
 
-(defvar *current-input-file-stack* nil
-  "This stack of input filenames is pushed when an input stream is
-  opened and popped when it is closed.")
-
 (defun close (filehandle)
   "CLOSE(FILEHANDLE:any):any eval, spread
 Closes the file with the internal name FILEHANDLE writing any
@@ -1804,8 +1800,7 @@ closed.
 	  (if (consp filehandle)
 		  ;; Input filehandle -- close echo stream then input stream:
 		  (progn (cl:close (cdr filehandle))
-				 (cl:close (car filehandle))
-				 (pop *current-input-file-stack*))
+				 (cl:close (car filehandle)))
 		  ;; Output filehandle:
 		  (cl:close filehandle)))
   filehandle)
@@ -1842,13 +1837,12 @@ Returns the number of lines printed on the current page. At the top
 of a page, 0 is returned."
   0)
 
-(defun substitute-in-file-name (filename &optional cwd)
+(defun substitute-in-file-name (filename)
   "Return a copy of FILENAME with all environment variables expanded.
 Replace every substring of the form `$name' terminated by a
 non-alphanumeric character by its value.  Called by `open'.
 Also replace a leading `.' by the current working directory and each
-leading `..' its parent, using the directory of the filename CWD
-instead of the Lisp current working directory if it is provided."
+leading `..' its parent."
   ;; A simplified combination of the Elisp functions
   ;; `substitute-in-file-name' and `expand-file-name'.
   ;; Replace environment variables with their values:
@@ -1873,17 +1867,12 @@ instead of the Lisp current working directory if it is provided."
   (let ((d (pathname-directory filename)))
 	(when (eq (car d) :relative)
 	  ;; Replace a leading "." with the current working directory:
-	  (setq cwd (if cwd
-					(make-pathname :directory (pathname-directory cwd))
-					*default-pathname-defaults*))
 	  (when (equal (cadr d) ".")
 		(setf (cdr d) (cddr d))			; remove "." component
 		(setq filename (merge-pathnames
-						(make-pathname :directory d :defaults filename)
-						cwd)))
+						(make-pathname :directory d :defaults filename))))
 	  ;; Replace each leading ".." with the parent directory:
-	  (setq cwd (pathname-directory cwd))
-	  (loop
+	  (loop with cwd = (pathname-directory *default-pathname-defaults*)
 		 while (cl:member (cadr d) '(".." :up :back))
 		 do
 		   (setf (cdr d) (cddr d))		; remove ".." component
@@ -1903,10 +1892,8 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
-  (setq file (substitute-in-file-name
-			  file (car *current-input-file-stack*)))
+  (setq file (substitute-in-file-name file))
   (cond ((eq how 'input)
-		 (push file *current-input-file-stack*)
 		 (let ((fh (cl:open file :direction :input)))
 		   ;; An input filehandle is a pair of the form
 		   ;; (input-stream . echo-stream):
@@ -2809,6 +2796,7 @@ interpret otherwise.  The default is compile."
    cl:force-output									 ; used in clrend
    cl:file-write-date								 ; used in remake
    cl:symbol-name									 ; used in rlisp
+   cl:catch cl:throw								 ; used in rubi_red
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for

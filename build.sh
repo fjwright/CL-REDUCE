@@ -6,6 +6,7 @@
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 
 # Compile all required fasl files and save a final REDUCE image.
+# Assume this script is run in the top-level CL REDUCE directory.
 
 # Usage: ./build.sh [-c]
 
@@ -17,11 +18,7 @@ then
 	elif [ $option = f ]; then force='!*forcecompile := t;'; fi
 fi
 
-if [ ! "$reduce" ]
-then
-	reduce=$(cmd /c cd)			 # SBCL is a Windows application
-	export reduce=${reduce:0:-1} # remove trailing ^M
-fi
+if [ ! "$reduce" ]; then export reduce=.; fi
 
 # Build an initial bootstrap REDUCE image if necessary:
 if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
