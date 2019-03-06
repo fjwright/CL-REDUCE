@@ -61,13 +61,13 @@ Implementation-specific functionality
 
 The following facilities are modelled on those provided by PSL; please see the PSL manual for further details.
 
-Lisp-level function tracing is provided by the commands `tr` and `trst` after running the command `lisp load trace;`.  (The `trace` module will eventually be autoloaded.)  A command of the form `tr fn1, fn2, ...` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
+Lisp-level function tracing is provided by the commands `tr` and `trst` after running the command `lisp load trace;`.  (The `trace` module will eventually be autoloaded.)  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
 
 A preliminary implementation of the `system` function is provided but only for Microsoft Windows at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems (but not yet Common Lisp implementations).
 
 The functions `pwd` and `cd` respectively return and reset (and return) the current working directory.  (However, at present REDUCE will not be able to load compiled files if its current working directory is changed, so don't use `cd`!)
 
-Environment variables, "." and ".." in filenames are expanded by cd and open, in the latter case relative to the current input file if there is one, otherwise the current working directory.
+Environment variables, "." and ".." in filenames are expanded by `cd` and `open` relative to the current working directory of the REDUCE process.
 
 Current status
 --------------
@@ -79,23 +79,22 @@ All core test files run to completion and the output agrees with CSL except for 
 * `arith.tst` displays less numerical error;
 * `rlisp88.tst` and `assist.tst` show insignificant implementation differences.
 
-All noncore test files except `pm` and packages that do plotting appear to run to completion, and the test output agrees with CSL except for timings and insignificant numerical, letter case and/or implementation differences for 61/86 = 71% of them.
+73% of the noncore test files produce output that agrees with CSL except for timings and minor numerical, letter case and/or implementation differences.  This includes the crack suite.  A big chunk of the noncore packages that do not yet run correctly consists of the redlog suite.
 
-* `pm.tst` hangs loading the `pmrules` module.
-
-Timings (out of date)
+Timings
 -------
 
 I estimate that SBCL REDUCE is 3 or 4 times slower than PSL/CSL REDUCE, but note that it is currently built for comfort (of debugging) rather than speed!
 
-Operation                           | Previous Time | Latest Time
-------------------------------------|---------------|------------
-Build bootstrap REDUCE image        | 3.8 secs      | 3.8 secs
-Build final REDUCE image            | 0.5 secs      | 0.4 secs
-Run alg.tst                         | 297 ms        | 250 ms
-Run (and check) all core test files | 2 min 35 secs | 45 secs
+Operation                               | CSL Time | Previous Time | Latest Time
+----------------------------------------|----------|---------------|------------
+Build bootstrap REDUCE image            |          | 3.8 secs      | 3.8 secs
+Build final REDUCE image                |          | 0.5 secs      | 0.4 secs
+Run alg.tst                             | 47 ms    | 297 ms        | 344 ms
+Run (and check) all core test files     | 29 sec   | 155 secs      |  50 secs
+Run (and check) most noncore test files |  5 min   |               |  17 min
 
-Most of the time building REDUCE goes in compiling the packages, which takes a couple of minutes, but I don't currently have any precise timings for this.
+The shorter times above are probably not very meaningful.  Most of the time building REDUCE goes in compiling the packages, which takes a couple of minutes, but I don't currently have any precise timings for this.  The CSL times do not include checking, which involves running `diff`.  The CL time for the noncore tests does not include all packages since some of the tests currently hang.
 
 Known bugs
 ----------
@@ -125,7 +124,4 @@ Make SL-on-CL lower case and stop downcasing in the print functions.  (Internal 
 
 Allow REDUCE to be run with a current directory other than the build directory.
 
-
 Improve support for the noncore packages -- **work currently in progress**.
-
-A better trace facility that does not display the `STANDARD-LISP::` package prefix -- **work currently in progress**.

@@ -194,7 +194,9 @@ else if '$p eq 'mrvlimit then load_package taylor
 % Temporary hack to avoid build errors:
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
-   switch usermode >>;
+   switch usermode >>
+% Temporary hack to partially fix a letter-case issue:
+else if '$p eq 'sstools then put('d,'prifn,'bigdpri); % 'd was '!d
 
 load remake;
 

@@ -369,12 +369,6 @@ symbolic procedure rename!-file(fromname, toname)$
 %%     else return sa . sd
 %%   end;
 
-% Partially fix a problem in sstools caused by using an upper-case
-% Lisp, but the upper-case output is still lost and I can't see an
-% easy way to fix that:
-
-put('d,'prifn,'bigdpri)$				% 'd was '!d
-
 endmodule;
 
 end;

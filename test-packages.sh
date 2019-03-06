@@ -13,7 +13,7 @@
 # The parameters default to 'core noncore' if not specified.
 
 # Option -c ensures a clean test by deleting the testlog directory.
-if getopts c option; then rm -rf testlog; fi
+if getopts c option; then shift; rm -rf testlog; fi
 
 # Create log directory if necessary:
 mkdir -p testlog
