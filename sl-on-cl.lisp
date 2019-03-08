@@ -1787,6 +1787,14 @@ do not consider FUNARGs in this report."
 ;;; Input and Output
 ;;; ================
 
+;; An output filehandle is a dotted-list of the form
+;; ('file .  output-stream) or ('pipe output-stream . process).
+
+;; An input filehandle is a pair of the form
+;; (input-stream . echo-stream).
+
+;; Filehandles should probably be structures rather than lists!
+
 (defun close (filehandle)
   "CLOSE(FILEHANDLE:any):any eval, spread
 Closes the file with the internal name FILEHANDLE writing any
@@ -1797,13 +1805,19 @@ closed.
 ***** FILEHANDLE could not be closed"
   ;; A null filehandle represents standard IO; ignore it.
   (if filehandle
-	  (if (consp filehandle)
-		  ;; Input filehandle -- close echo stream then input stream:
-		  (progn (cl:close (cdr filehandle))
-				 (cl:close (car filehandle)))
-		  ;; Output filehandle:
-		  (cl:close filehandle)))
-  filehandle)
+	  (prog1 filehandle
+		(cond
+		  ((eq (car filehandle) 'file)
+		   ;; Output file stream ('file . output-stream):
+		   (cl:close (cdr filehandle)))
+		  ((eq (car filehandle) 'pipe)
+		   ;; Output pipe stream ('pipe output-stream . process):
+		   (sb-ext:process-close (cddr filehandle))
+		   (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
+		  (t
+		   ;; Input filehandle -- close echo stream then input stream:
+		   (cl:close (cdr filehandle))
+		   (cl:close (car filehandle)))))))
 
 (defun eject ()
   "EJECT():NIL eval, spread
@@ -2221,10 +2235,37 @@ selected output file.
 ***** FILEHANDLE could not be selected for output"
   (prog1
 	  *standard-output*
-	(setq *standard-output*
-		  (if (and filehandle (open-stream-p filehandle))
-			  filehandle
-			  +default-write-stream+))))
+	(setq *standard-output* +default-write-stream+) ; default
+	(if filehandle
+		(cond
+		  ((eq (car filehandle) 'file)
+		   ;; Output file stream ('file . output-stream):
+		   (setq filehandle (cdr filehandle))
+		   (if (open-stream-p filehandle)
+			   (setq *standard-output* filehandle)))
+		  ((eq (car filehandle) 'pipe)
+		   ;; Output pipe stream ('pipe output-stream . process):
+		   (setq filehandle (cadr filehandle))
+		   (if (open-stream-p filehandle)
+			   (setq *standard-output* filehandle)))))))
+
+(defun pipe-open (command how)
+  "Run COMMAND asynchronously with input via the pipe returned as a
+stream by this function."
+  (cond ((eq how 'output)
+		 ;; An output filehandle is a dotted-list of the form ('file .
+		 ;; output-stream) or ('pipe output-stream . process):
+		 (let ((p (sb-ext:run-program "cmd" (list "/c" command)
+									  :wait nil :search t :input :stream
+									  :escape-arguments nil)))
+		   (cons 'pipe (cons (sb-ext:process-input p) p))))
+		(t (cl:error "~a is not (currently) an option for PIPE-OPEN" how))))
+
+(defun channelflush (filehandle)
+  "Flush FILEHANDLE if it is a pipe stream."
+  ;; filehandle = ('pipe output-stream . process)
+  (if (eq (car filehandle) 'pipe)
+	  (finish-output (cadr filehandle))))
 
 
 ;;; PSL/CSL functions and some other required functions
