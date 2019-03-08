@@ -2328,21 +2328,14 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 			#'(lambda (c) (cl:intern (string c)))
 			(princ-to-string u))))
 
-;; Don't use variable numbers of arguments since it triggers a warning
-;; in REDUCE!  (Actually, could flag such functions variadic.)
-
-;; (defun string-concat (&rest s)			; PSL
-;;   "(string-concat [S:string]): string macro
-;; Concatenates all of its string arguments, returning the newly created string."
-;;   (cl:apply #'concatenate 'string s))
-
-(defun concat (s1 s2)
-  "Concatenates its two string arguments, returning the newly created string."
-  (concatenate 'string s1 s2))
-
 (defun concat2 (s1 s2)
   "Concatenates its two string arguments, returning the newly created string."
   (concatenate 'string s1 s2))
+
+(defun concat (&rest s)
+  "Concatenates all of its string arguments, returning the newly created string."
+  ;; Flagged variadic in clprolo.
+  (cl:apply #'concatenate 'string s))
 
 ;; (defalias 'allocate-string 'cl:make-string ; PSL
 ;;   "(allocate-string SIZE:integer): string expr
@@ -2378,16 +2371,6 @@ range of 0 ... 127 will result in an error.
 lisp> (list2string '(83 84 82 73 78 71))
 \"STRING\""
   (cl:map 'string #'%%character l))
-
-;; (defun list2widestring (u)
-;;   "Take a list U of integers (each in the range 0-0x0010ffff) and turn
-;; it into a string encoding those using UTF-8.  It will also support use
-;; of identifiers or strings as well as integers, and will use the first
-;; character (N.B. not octet) as the code concerned."
-;;   ;; This is a re-implementation of the procedure in rlisp/tok.red.
-;;   ;; It must be flagged lose in clprolo.
-;;   ;; It should make string!-store etc. redundant.
-;;   (cl:map 'string #'code-char u))
 
 (defun list2widestring (u)
   "Take a list U of integers (each in the range 0-0x0010ffff) and turn
@@ -2791,6 +2774,7 @@ interpret otherwise.  The default is compile."
 ;; CL symbols used in REDUCE source code:
 (import
  '(cl:lambda cl:warning cl:*features*
+   :common-lisp :win32
    cl:unwind-protect cl:evenp cl:oddp
    cl:string-not-greaterp cl:symbol-name cl:y-or-n-p ; used in clprolo
    cl:force-output									 ; used in clrend
