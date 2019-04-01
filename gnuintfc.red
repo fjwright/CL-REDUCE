@@ -55,6 +55,8 @@ global '(
    plottmp!*        % dir for temp files (inc. trailing directory separator)
    );
 
+!*plotusepipe := t;					 % declared switch in gnupldrv.red
+
 % Since it was first introduced the GNUPLOT package has passed a command
 % "set term XXX" to gnuplot, where XXX has typically been x11, aqua, vga
 % tek40xx or even dumb. At least with early versions of gnuplot that
@@ -141,7 +143,6 @@ symbolic procedure initialize_gnuplot();
 
    plotcleanup!* :=                  % delete scratch files
        {bldmsg("rm %wplotdt*",plottmp!*),bldmsg("rm %wplotcmds*",plottmp!*)};
-   !*plotinterrupts := '(10002);
 
 #elif (memq 'win32 lispsystem!*)		% *** MS WINDOWS ***
 
@@ -152,17 +153,21 @@ symbolic procedure initialize_gnuplot();
    !*plotpause := "mouse close";
    plotdta!* := for i:=1:10 collect
 	  bldmsg("%wplotdt%w.dat", plottmp!*, i); % scratch data files
-   % if not getd 'pipe!-open then load w!-pipes;
-   % !*plotusepipe := t;
-   plotcmds!* := concat(plottmp!*, "plotcmds");
-   % *** Assuming a pipe is not used...
-   plotcommand!* := concat("start /wait wgnuplot.exe ", plotcmds!*);
    plotheader!* := "";
-   plotcleanup!* :=					% delete scratch files
-	  {concat("del ", plotcmds!*, " ", plottmp!*, "plotdt*.dat")};
-  !*plotinterrupts := '(10002);
+   plotcleanup!* :=						% delete data files
+	  {concat("del ", plottmp!*, "plotdt*.dat")};
+   if !*plotusepipe then				% default as set above
+   	  plotcommand!* := "start /b gnuplot.exe"
+   else <<
+   	  plotcmds!* := concat(plottmp!*, "plotcmds");
+   	  plotcommand!* := concat("start /wait wgnuplot.exe ", plotcmds!*);
+   	  plotcleanup!* :=					% also delete command file
+	  	 {concat(plotcleanup!*, " ", plotcmds!*)};
+   >>;
 
 #endif
+
+   !*plotinterrupts := '(10002);
    % end of definition of initialize_gnuplot();
    >>;
 

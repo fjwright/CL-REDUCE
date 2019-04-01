@@ -1788,7 +1788,7 @@ do not consider FUNARGs in this report."
 ;;; ================
 
 ;; An output filehandle is a dotted-list of the form
-;; ('file .  output-stream) or ('pipe output-stream . process).
+;; ('file . output-stream) or ('pipe output-stream . process).
 
 ;; An input filehandle is a pair of the form
 ;; (input-stream . echo-stream).
@@ -1913,8 +1913,9 @@ OUTPUT or the file can't be opened.
 		   ;; (input-stream . echo-stream):
 		   (cons fh (make-echo-stream fh *standard-output*))))
 		((eq how 'output)
-		 (cl:open file :direction :output
-				  :if-exists :supersede :if-does-not-exist :create))
+		 (cons 'file
+			   (cl:open file :direction :output
+						:if-exists :supersede :if-does-not-exist :create)))
 		(t (cl:error "~a is not option for OPEN" how))))
 
 (defun pagelength (len)
@@ -2107,8 +2108,8 @@ Cons cell elements are printed using PRINFN."
   "The read stream using the initial value of *standard-input*.")
 
 (defvar %%read-stream +default-read-stream+
-  "A cons pair of the form (input-stream . echo-stream), where the cdr
-may be nil.")
+  "The current input filehandle: a cons pair of the form
+\(input-stream . echo-stream), where the cdr may be nil.")
 
 (defun %%read-stream ()
   "Return the appropriate input stream depending on the value of *echo."
@@ -2221,8 +2222,12 @@ The current print line is terminated."
   (cl:terpri)
   nil)
 
-(defconstant +default-write-stream+ *standard-output*
+(defconstant +default-write-stream+ (cons 'file *standard-output*)
   "The write stream using the initial value of *standard-output*.")
+
+(defvar %%write-stream +default-read-stream+
+  "The current output filehandle: a dotted-list of the form
+\('file . output-stream) or ('pipe output-stream . process).")
 
 (defun wrs (filehandle)
   "WRS(FILEHANDLE:any):any eval, spread
@@ -2234,20 +2239,20 @@ device is selected. WRS returns the internal name of the previously
 selected output file.
 ***** FILEHANDLE could not be selected for output"
   (prog1
-	  *standard-output*
-	(setq *standard-output* +default-write-stream+) ; default
-	(if filehandle
-		(cond
-		  ((eq (car filehandle) 'file)
-		   ;; Output file stream ('file . output-stream):
-		   (setq filehandle (cdr filehandle))
-		   (if (open-stream-p filehandle)
-			   (setq *standard-output* filehandle)))
-		  ((eq (car filehandle) 'pipe)
-		   ;; Output pipe stream ('pipe output-stream . process):
-		   (setq filehandle (cadr filehandle))
-		   (if (open-stream-p filehandle)
-			   (setq *standard-output* filehandle)))))))
+	  %%write-stream
+	(setq %%write-stream +default-write-stream+) ; default
+	(when filehandle
+	  (cond
+		((eq (car filehandle) 'file)
+		 ;; Output file stream ('file . output-stream):
+		 (if (open-stream-p (cdr filehandle))
+			 (setq *standard-output* (cdr filehandle)
+				   %%write-stream filehandle)))
+		((eq (car filehandle) 'pipe)
+		 ;; Output pipe stream ('pipe output-stream . process):
+		 (if (open-stream-p (cadr filehandle))
+			 (setq *standard-output* (cadr filehandle)
+				   %%write-stream filehandle)))))))
 
 (defun pipe-open (command how)
   "Run COMMAND asynchronously with input via the pipe returned as a
