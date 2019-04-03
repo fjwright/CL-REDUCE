@@ -1,7 +1,11 @@
 REDUCE on Common Lisp
 =====================
 
-Francis Wright, March 2019
+Francis Wright, April 2019
+
+From the introductory chapter of [*Common Lisp the Language, 2nd edition,* by Guy L. Steele Jr.](https://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html):
+
+> The goals of Common Lisp are thus very close to those of Standard Lisp and Portable Standard Lisp. Common Lisp differs from Standard Lisp primarily in incorporating more features, including a richer and more complicated set of data types and more complex control structures.
 
 **This code is currently experimental!**
 
@@ -63,7 +67,7 @@ The following facilities are modelled on those provided by PSL; please see the P
 
 Lisp-level function tracing is provided by the commands `tr` and `trst` after running the command `lisp load trace;`.  (The `trace` module will eventually be autoloaded.)  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
 
-A preliminary implementation of the `system` function is provided but only for Microsoft Windows at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems (but not yet Common Lisp implementations).
+Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided but only for Microsoft Windows at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems (but not yet Common Lisp implementations).
 
 The functions `pwd` and `cd` respectively return and reset (and return) the current working directory.  (However, at present REDUCE will not be able to load compiled files if its current working directory is changed, so don't use `cd`!)
 
@@ -79,7 +83,7 @@ All core test files run to completion and the output agrees with CSL except for 
 * `arith.tst` displays less numerical error;
 * `rlisp88.tst` and `assist.tst` show insignificant implementation differences.
 
-76% of the noncore test files produce output that agrees with CSL except for timings and minor numerical, letter case and/or implementation differences.  This includes the crack suite.  A big chunk of the noncore packages that do not yet run correctly consists of the redlog suite.
+76% of the noncore test files produce output that agrees with CSL except for timings and minor numerical, letter case and/or implementation differences.  This includes the crack suite and plotting packages.  A big chunk of the noncore packages that do not yet run correctly consists of the redlog suite.
 
 Timings
 -------
