@@ -6,11 +6,11 @@ boot.sl
 csltestlog
 csl-test-one-package.sh
 csl-test-packages.sh
-fasl
+fasl*
 lib
-log
+log*
 Non-Core Test Log.xlsx
 packages
 psltestlog
 reduce-algebra-code
-testlog
+testlog*
