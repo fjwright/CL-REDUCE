@@ -65,7 +65,7 @@ Implementation-specific functionality
 
 The following facilities are modelled on those provided by PSL; please see the PSL manual for further details.
 
-Lisp-level function tracing is provided by the commands `tr` and `trst` after running the command `lisp load trace;`.  (The `trace` module will eventually be autoloaded.)  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
+Lisp-level function tracing is provided by the commands `tr` and `trst`.  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
 
 Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided but only for Microsoft Windows at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems (but not yet Common Lisp implementations).
 
@@ -83,7 +83,7 @@ All core test files run to completion and the output agrees with CSL except for 
 * `arith.tst` displays less numerical error;
 * `rlisp88.tst` and `assist.tst` show insignificant implementation differences.
 
-76% of the noncore test files produce output that agrees with CSL except for timings and minor numerical, letter case and/or implementation differences.  This includes the crack suite and plotting packages.  A big chunk of the noncore packages that do not yet run correctly consists of the redlog suite.
+78% of the noncore test files produce output that agrees with CSL except for timings and minor numerical, letter case and/or implementation differences.  This includes the crack suite and plotting packages.  A big chunk of the noncore packages that do not yet run correctly consists of the redlog suite.
 
 Timings
 -------
@@ -92,11 +92,11 @@ I estimate that SBCL REDUCE is 3 or 4 times slower than PSL/CSL REDUCE, but note
 
 Operation                               | CSL Time | Previous Time | Latest Time
 ----------------------------------------|----------|---------------|------------
-Build bootstrap REDUCE image            |          | 3.8 secs      | 3.8 secs
-Build final REDUCE image                |          | 0.5 secs      | 0.4 secs
-Run alg.tst                             | 47 ms    | 297 ms        | 344 ms
-Run (and check) all core test files     | 29 sec   | 155 secs      |  50 secs
-Run (and check) most noncore test files |  5 min   |               |  17 min
+Build bootstrap REDUCE image            |          | 3.8 secs      | 4.1 secs
+Build final REDUCE image                |          | 0.4 secs      | 0.4 secs
+Run alg.tst                             | 47 ms    | 344 ms        | 282 ms
+Run (and check) all core test files     | 29 secs  |  50 secs      |  50 secs
+Run (and check) most noncore test files |  5 mins  |  17 mins      |  17 mins
 
 The shorter times above are probably not very meaningful.  Most of the time building REDUCE goes in compiling the packages, which takes a couple of minutes, but I don't currently have any precise timings for this.  The CSL times do not include checking, which involves running `diff`.  The CL time for the noncore tests does not include all packages since some of the tests currently hang.
 
@@ -104,6 +104,8 @@ Known bugs
 ----------
 
 By default, with `on defn` all output (including strings) will be lower case.  If you set `off printlower` then string case will be correct but all identifiers will be upper case.  This bug is a consequence of the fact that SL-on-CL is currently an upper-case lisp internally, whereas REDUCE assumes a lower-case lisp.  Input is up-cased when it is read and down-cased when it is printed, except for strings, for which character case is preserved.  However, in a few situations, strings are printed as a sequence of single-character identifiers, which are down-cased by default.  I have not found a solution to this bug, but it's essentially cosmetic and I don't suppose "on defn" is used a great deal.
+
+PSL and CSL prettyprint _ without an escape (unless it appears alone), whereas CL REDUCE always prettyprints _ with an escape.  This appears to be because CL REDUCE uses "rprint/pretty.red", whereas PSL and CSL don't!
 
 To do
 -----
@@ -116,7 +118,7 @@ In `rlisp/io.red`, `in` uses `mkfil*` but `out` and `shut` use `mkfil`; why the 
 
 Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 
-Turn on use of smacro/inline declarations in REDUCE (which I turned off to avoid a problem that is now fixed) and optimise SL-on-CL to improve its speed.
+Optimise SL-on-CL to improve its speed.
 
 Better error handling.
 
@@ -128,4 +130,4 @@ Make SL-on-CL lower case and stop downcasing in the print functions.  (Internal 
 
 Allow REDUCE to be run with a current directory other than the build directory.
 
-Improve support for the noncore packages -- **work currently in progress**.
+Improve support for the noncore packages &ndash; **work currently in progress**.
