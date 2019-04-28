@@ -178,8 +178,8 @@ sbcl --noinform << XXX &> log/reduce.blg
 
 % (savesystem "REDUCE" "$fasl/reduce" (quote ((read-init-file "reduce"))))
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
-% (save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
-(save!-lisp!-and!-die "fasl/reduce.img") % better for debugging
+% #+SBCL (sb-ext:save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
+#+SBCL (sb-ext:save!-lisp!-and!-die "fasl/reduce.img") % better for debugging
 
 XXX
 

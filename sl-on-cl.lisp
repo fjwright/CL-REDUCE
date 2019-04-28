@@ -5,7 +5,9 @@
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 ;; Created: 4 November 2018
 
-;; Current target is Windows SBCL (Steel Bank Common Lisp) 1.4.14.
+;; Current target implementations of Common Lisp:
+;; - Windows SBCL (Steel Bank Common Lisp) 1.4.14; see http://www.sbcl.org/
+;; - Cygwin CLISP 2.49 (2010-07-07); see https://clisp.sourceforge.io/
 
 ;; This file implements a superset of Standard Lisp that is a subset
 ;; of PSL and CSL in a package called STANDARD-LISP with nickname SL.
@@ -14,7 +16,7 @@
 
 ;; (declaim (optimize (speed 3) (safety 0)))
 (declaim (optimize debug))				; same as (debug 3)
-(declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+#+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
 		 (require :sb-posix))
@@ -36,10 +38,10 @@
 		   :char-downcase :char-upcase :string-downcase :mod
 		   :char-code)
 
-  #+SBCL (:import-from :sb-ext :exit :quit :gc :save-lisp-and-die)
+  #+SBCL (:import-from :sb-ext :exit :quit :save-lisp-and-die :gc)
   #+SBCL (:import-from :sb-posix :getenv :getpid)
 
-  #+CLISP (:import-from :ext :exit :quit :bye :getenv)
+  #+CLISP (:import-from :ext :exit :quit :saveinitmem :gc :getenv)
   )
 
 (in-package :standard-lisp)
@@ -1809,9 +1811,10 @@ closed.
 		  ((eq (car filehandle) 'file)
 		   ;; Output file stream ('file . output-stream):
 		   (cl:close (cdr filehandle)))
+		  #+SBCL
 		  ((eq (car filehandle) 'pipe)
 		   ;; Output pipe stream ('pipe output-stream . process):
-		   (sb-ext:process-close (cddr filehandle))	  ; closes output-stream
+		   (sb-ext:process-close (cddr filehandle)) ; closes output-stream
 		   (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
 		  (t
 		   ;; Input filehandle -- close echo stream then input stream:
@@ -1876,7 +1879,7 @@ leading `..' its parent."
 								  l))))))
   ;; sb-ext:native-pathname seems necessary to preserve odd characters
   ;; such as ^ in a filename:
-  (setq filename (sb-ext:native-pathname filename))
+  #+SBCL (setq filename (sb-ext:native-pathname filename))
   (let ((d (pathname-directory filename)))
 	(when (eq (car d) :relative)
 	  ;; Replace a leading "." with the current working directory:
@@ -2150,21 +2153,24 @@ returns the internal name of the previously selected input file.
 No escape characters are defined.")
 (set-syntax-from-char #\! #\A *string-readtable*)
 
+(unless (fboundp '%%cl-read-string)
+  (setf (symbol-function '%%cl-read-string)
+		(get-macro-character #\" *sl-readtable*)))
+
 (defun %%sl-read-string (stream closech)
   ;; This accumulates chars until it sees same char that invoked it,
   ;; namely closech. See the function read-string in
   ;; "sbcl-1.4.14/src/code/reader.lisp".
-  ;; NEEDS RE-IMPLEMENTING PORTABLY! Get and use the default read macro.
   (declare (character closech))
   (let* ((*readtable* *string-readtable*)
-		 (s (sb-impl::read-string stream closech)))
+		 (s (%%cl-read-string stream closech)))
 	(loop while	;; following character is "
 		 (char= (peek-char nil stream nil $eof$ t) closech)
 	   do ;; read and ignore it
 		 (read-char stream nil $eof$ t)
 	   ;; then read and concatenate the following string
 		 (setq s (concatenate 'string s (string closech)
-							  (sb-impl::read-string stream closech))))
+							  (%%cl-read-string stream closech))))
 	s))
 
 (set-macro-character #\" #'%%sl-read-string nil *sl-readtable*)
@@ -2258,6 +2264,7 @@ selected output file.
 			 (setq *standard-output* (cadr filehandle)
 				   %%write-stream filehandle)))))))
 
+#+SBCL
 (defun pipe-open (command how)
   "Run COMMAND asynchronously with input via the pipe returned as a
 stream by this function."
@@ -2336,7 +2343,12 @@ Elapsed time from some arbitrary initial point in milliseconds."
   ;; sb-ext:*gc-run-time* [Variable]
   ;; Total cpu time spent doing garbage collection (as reported by
   ;; get-internal-run-time.) Initialized to zero on startup.
-  (round (* sb-ext:*gc-run-time* +milliseconds-per-internal-time-unit+)))
+  (round (*
+		  #+SBCL sb-ext:*gc-run-time*
+		  #+CLISP (with-output-to-string (s)
+					(let ((*standard-output* s))
+					  (nth 5 (multiple-value-list (room)))))
+		  +milliseconds-per-internal-time-unit+)))
 
 (defvar gcknt* 0
   "gcknt* = [Initially: 0] global
@@ -2347,6 +2359,7 @@ incrementally, as desired.")
 (defvar *previous-gc-run-time* 0
   "Total (internal) GC time up to previous garbage collection.")
 
+#+SBCL
 (defun %%gc-reporting ()
   "Increment garbage collection count and optionally output a report.
 A function hung on the garbage collection hook."
@@ -2358,8 +2371,9 @@ A function hung on the garbage collection hook."
 						+milliseconds-per-internal-time-unit+))))
   (setq *previous-gc-run-time* sb-ext:*gc-run-time*))
 
-(pushnew '%%gc-reporting sb-ext:*after-gc-hooks*)
+#+SBCL (pushnew '%%gc-reporting sb-ext:*after-gc-hooks*)
 
+#+SBCL
 (defun gtheap ()
   "Size of the free dynamic space in bytes."
   (- (sb-ext:dynamic-space-size) (sb-ext:get-bytes-consed)))
@@ -2601,6 +2615,7 @@ to down-case the E in floats."
 ;;    (sb-ext:run-program "cmd" (cons "/c" command)
 ;; 					   :search t :output t :escape-arguments nil)))
 
+#+SBCL
 (defun system (command)					; PSL
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
@@ -2609,11 +2624,13 @@ COMMAND to the interpreter and return the process exit code."
    (sb-ext:run-program "cmd" (list "/c" command)
 					   :search t :output t :escape-arguments nil)))
 
+#+SBCL
 (defun pwd ()							; PSL
   "(pwd):STRING expr
 Return the current working directory in system specific format."
   (sb-ext:native-namestring *default-pathname-defaults*))
 
+#+SBCL
 (defun cd (dir)							; PSL
   "(cd DIR:string):BOOLEAN expr
 Set the current working directory to DIR after expanding the filename
@@ -2810,6 +2827,15 @@ When all done, execute FASLEND;~2%" name))
 
 (pushnew :standard-lisp *features*)
 
+(defparameter lispsystem* '(common-lisp)
+  "Information about the Lisp system supporting REDUCE.
+A list of identifiers indicating system properties.")
+
+#+SBCL (pushnew 'sbcl lispsystem*)
+#+CLISP (pushnew 'clisp lispsystem*)
+#+win32 (pushnew 'win32 lispsystem*)
+
+#+SBCL
 (defun compilation (on)
   "Set the SBCL evaluation mode to compile if ON is non-nil and to
 interpret otherwise.  The default is compile."
@@ -2819,12 +2845,11 @@ interpret otherwise.  The default is compile."
 ;; Inhibit printing of package prefixes in the debugger (which doesn't
 ;; seem to work):
 
-(setq sb-ext:*debug-print-variable-alist* '((*print-escape* . nil)))
+#+SBCL (setq sb-ext:*debug-print-variable-alist* '((*print-escape* . nil)))
 
 ;; CL symbols used in REDUCE source code:
 (import
  '(cl:lambda cl:warning cl:*features*
-   :common-lisp :win32
    cl:unwind-protect cl:evenp cl:oddp
    cl:string-not-greaterp cl:symbol-name cl:y-or-n-p ; used in clprolo
    cl:force-output									 ; used in clrend

@@ -16,21 +16,25 @@ if [ ! "$reduce" ]; then export reduce=.; fi
 mkdir -p log				 # -p avoids complaint if directory exists
 mkdir -p fasl
 
-if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
+# if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
+if [ "sl-on-cl.lisp" -nt "sl-on-cl.fas" ]
 then
 echo +++++ Compiling sl-on-cl
-sbcl << XXX &> log/sl-on-cl.blg
+# sbcl << XXX &> log/sl-on-cl.blg
+clisp -ansi << XXX &> log/sl-on-cl.blg
 (compile-file "sl-on-cl")
 XXX
 fi
 
 echo +++++ Building bootstrap REDUCE
 
-sbcl << XXX &> log/bootstrap.blg
+# sbcl << XXX &> log/bootstrap.blg
+clisp -ansi << XXX &> log/bootstrap.blg
 ;(declaim (optimize debug)				; same as (debug 3)
 ;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
-(load "sl-on-cl")
+;;;(load "sl-on-cl")
+(load "sl-on-cl.lisp")
 (standard-lisp)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -76,9 +80,10 @@ rds(xxx := open("build.red",'input));
    (prin2 "Time to build bootstrap REDUCE: ")
    (prin2 (quotient (difference (time) !*init!-time!*) 1000.0))
    (prin2t " secs")
-   (prin2 "Heap left: ")
-   (prin2 (gtheap))
-   (prin2t " bytes"))
+%%%%%   (prin2 "Heap left: ")
+%%%%%   (prin2 (gtheap))
+%%%%%   (prin2t " bytes")
+)
 
 (initreduce)
 (setq date!* (date))
@@ -86,7 +91,12 @@ rds(xxx := open("build.red",'input));
 
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
 % save!-lisp!-and!-die("fasl/bootstrap", !:executable, t, !:toplevel, (lambda () (standard-lisp) (begin)))
-(save!-lisp!-and!-die "fasl/bootstrap.img")  % better for debugging
+% For better debugging...
+(cond ((memq 'sbcl lispsystem!*)
+	   (save!-lisp!-and!-die "fasl/bootstrap.img"))
+	  ((memq 'clisp lispsystem!*)
+	   (saveinitmem "fasl/bootstrap.mem"))
+)
 
 XXX
 
