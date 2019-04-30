@@ -14,8 +14,8 @@
 # Option -f forces recompilation of all packages.
 if getopts cf option
 then
-	if [ $option = c ]; then rm -rf fasl log;
-	elif [ $option = f ]; then force='!*forcecompile := t;'; fi
+    if [ $option = c ]; then rm -rf fasl log;
+    elif [ $option = f ]; then force='!*forcecompile := t;'; fi
 fi
 
 if [ ! "$reduce" ]; then export reduce=.; fi
@@ -24,14 +24,14 @@ if [ ! "$reduce" ]; then export reduce=.; fi
 # if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
 if [ ! -e fasl/bootstrap.mem ]; then ./bootstrap.sh; fi
 
-mkdir -p log				 # -p avoids complaint if directory exists
+mkdir -p log                 # -p avoids complaint if directory exists
 
 shopt -s expand_aliases
 
-# runlisp=sbcl
-runlisp=clisp -ansi
-# runbootstrap=sbcl --noinform --core fasl/bootstrap.img
-runbootstrap=clisp -q -M fasl/bootstrap.mem
+# runlisp='sbcl'
+runlisp='clisp -ansi'
+# runbootstrap='sbcl --noinform --core fasl/bootstrap.img'
+runbootstrap='clisp -q -M fasl/bootstrap.mem'
 
 alias grep_errors=\
 "grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/\$p.blg | uniq"
@@ -46,7 +46,7 @@ package!-remake2('clprolo, nil);
 package!-remake2('revision, 'support);
 package!-remake2('clrend, nil);
 package!-remake2('entry, 'support);
-package!-remake2('remake, nil);	% for building noncore packages
+package!-remake2('remake, nil); % for building noncore packages
 
 % Create .dat files that list core and non-core modules to build:
 
@@ -133,8 +133,8 @@ echo +++++ Creating the REDUCE image file
 # compile the non-core modules.
 
 $runlisp << XXX &> log/reduce.blg
-;(declaim (optimize debug)				; same as (debug 3)
-;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+;(declaim (optimize debug)              ; same as (debug 3)
+;        (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (load "sl-on-cl") (load "trace") ; temporary -- until I can arrange autoloading!
 (standard-lisp)
@@ -159,7 +159,7 @@ $runlisp << XXX &> log/reduce.blg
 (load!-package 'mathpr)
 (load!-package 'entry)
 
-(cl:fmakunbound 'prettyprint)	% otherwise defautoload has no effect!
+(cl:fmakunbound 'prettyprint)   % otherwise defautoload has no effect!
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
 
 (setq date!* (date))
@@ -167,7 +167,7 @@ $runlisp << XXX &> log/reduce.blg
 (initreduce)
 
 (setq !*verboseload nil)        % inhibit loading messages
-(setq !*redefmsg t)				% display redefinition messages
+(setq !*redefmsg t)             % display redefinition messages
 
 (setq sb-ext:*muffled-warnings* 'warning)
 
@@ -189,9 +189,9 @@ $runlisp << XXX &> log/reduce.blg
 % (save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
 % For better debugging...
 (cond ((memq 'sbcl lispsystem!*)
-	   (save!-lisp!-and!-die "fasl/reduce.img"))
-	  ((memq 'clisp lispsystem!*)
-	   (saveinitmem "fasl/reduce.mem"))
+       (save!-lisp!-and!-die "fasl/reduce.img"))
+      ((memq 'clisp lispsystem!*)
+       (saveinitmem "fasl/reduce.mem"))
 )
 
 XXX
@@ -240,7 +240,7 @@ package!-remake '$p;
 % Hack to make gnuplot work:
 if '$p eq 'gnuplot then
    begin scalar !*int, !*forcecompile; !*forcecompile := t;
-   	  update!-fasl2('gnuintfc, nil);
+      update!-fasl2('gnuintfc, nil);
    end;
 
 bye;

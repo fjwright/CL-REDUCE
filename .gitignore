@@ -1,5 +1,6 @@
 *~
-*.fasl
+*.fas*
+*.lib
 Background Information.lnk
 Backup.lnk
 boot.sl

@@ -13,7 +13,7 @@
 
 if [ ! "$reduce" ]; then export reduce=.; fi
 
-mkdir -p log				 # -p avoids complaint if directory exists
+mkdir -p log                 # -p avoids complaint if directory exists
 mkdir -p fasl
 
 # if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
@@ -30,8 +30,8 @@ echo +++++ Building bootstrap REDUCE
 
 # sbcl << XXX &> log/bootstrap.blg
 clisp -ansi << XXX &> log/bootstrap.blg
-;(declaim (optimize debug)				; same as (debug 3)
-;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+;(declaim (optimize debug)              ; same as (debug 3)
+;        (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 (load "sl-on-cl")
 ;;;(load "sl-on-cl.lisp")
@@ -42,7 +42,7 @@ clisp -ansi << XXX &> log/bootstrap.blg
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 (setq !*verboseload t)
-(setq !*redefmsg nil)			% Just duplicates CL warnings!
+(setq !*redefmsg nil)           % Just duplicates CL warnings!
 
 (cl:defparameter !*init!-time!* (time))
 
@@ -93,9 +93,9 @@ rds(xxx := open("build.red",'input));
 % save!-lisp!-and!-die("fasl/bootstrap", !:executable, t, !:toplevel, (lambda () (standard-lisp) (begin)))
 % For better debugging...
 (cond ((memq 'sbcl lispsystem!*)
-	   (save!-lisp!-and!-die "fasl/bootstrap.img"))
-	  ((memq 'clisp lispsystem!*)
-	   (saveinitmem "fasl/bootstrap.mem"))
+       (save!-lisp!-and!-die "fasl/bootstrap.img"))
+      ((memq 'clisp lispsystem!*)
+       (saveinitmem "fasl/bootstrap.mem"))
 )
 
 XXX

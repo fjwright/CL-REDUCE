@@ -18,15 +18,16 @@ if [ ! "$reduce" ]; then export reduce=.; fi
 testfile=$reduce/packages/$1/$1.tst # most likely location
 if [ ! -e "$testfile" ]
 then
-	# Find the .red file, which must exist, then stop looking:
-	testfile=$(find -L "$reduce/packages" -name $1.red -print -and -quit)
-	# Change the filename to .tst:
-	testfile=${testfile%%.red}.tst
+    # Find the .red file, which must exist, then stop looking:
+    testfile=$(find -L "$reduce/packages" -name $1.red -print -and -quit)
+    # Change the filename to .tst:
+    testfile=${testfile%%.red}.tst
 fi
 
 if [ ! -e "$testfile" ]; then exit; fi
 
-sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # testlog/$1-errors.rlg #
+# sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # testlog/$1-errors.rlg #
+clisp -q -M fasl/reduce.mem << EOF &> /dev/null # testlog/$1-errors.rlg #
 (start-reduce)
 
 symbolic begin

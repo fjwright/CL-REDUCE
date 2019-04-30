@@ -28,22 +28,22 @@ echo 'Packages to test:' ${*:-$whichdefault}
 
 for which in ${*:-$whichdefault}
 do
-	hostname > testlog/test$which.log
-	date >> testlog/test$which.log
+    hostname > testlog/test$which.log
+    date >> testlog/test$which.log
 
-	rm -f testlog/check$which.log
+    rm -f testlog/check$which.log
 
-	packages="$(< fasl/$which-packages.dat)"
+    packages="$(< fasl/$which-packages.dat)"
 
-	for x in $packages
-	do
-		# if [[ $x = pm || $x = gnuplot || $x = turtle || $x = rubi_red ]]
-		# then continue; fi
-		case $x in pm | gnuplot | turtle | rubi_red | lalr ) continue;; esac
-		echo +++++ Testing $which package $x
-		echo $x >> testlog/test$which.log
-		./test-one-package.sh $x >> testlog/check$which.log
-	done
+    for x in $packages
+    do
+        # if [[ $x = pm || $x = gnuplot || $x = turtle || $x = rubi_red ]]
+        # then continue; fi
+        case $x in pm | gnuplot | turtle | rubi_red | lalr ) continue;; esac
+        echo +++++ Testing $which package $x
+        echo $x >> testlog/test$which.log
+        ./test-one-package.sh $x >> testlog/check$which.log
+    done
 
-	date >> testlog/test$which.log
+    date >> testlog/test$which.log
 done
