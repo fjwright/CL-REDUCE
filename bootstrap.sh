@@ -33,8 +33,8 @@ clisp -ansi << XXX &> log/bootstrap.blg
 ;(declaim (optimize debug)				; same as (debug 3)
 ;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
-;;;(load "sl-on-cl")
-(load "sl-on-cl.lisp")
+(load "sl-on-cl")
+;;;(load "sl-on-cl.lisp")
 (standard-lisp)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -80,9 +80,9 @@ rds(xxx := open("build.red",'input));
    (prin2 "Time to build bootstrap REDUCE: ")
    (prin2 (quotient (difference (time) !*init!-time!*) 1000.0))
    (prin2t " secs")
-%%%%%   (prin2 "Heap left: ")
-%%%%%   (prin2 (gtheap))
-%%%%%   (prin2t " bytes")
+   (prin2 "Heap left: ")
+   (prin2 (gtheap))
+   (prin2t " bytes")
 )
 
 (initreduce)

@@ -21,17 +21,23 @@ fi
 if [ ! "$reduce" ]; then export reduce=.; fi
 
 # Build an initial bootstrap REDUCE image if necessary:
-if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
+# if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
+if [ ! -e fasl/bootstrap.mem ]; then ./bootstrap.sh; fi
 
 mkdir -p log				 # -p avoids complaint if directory exists
 
 shopt -s expand_aliases
 
+# runlisp=sbcl
+runlisp=clisp -ansi
+# runbootstrap=sbcl --noinform --core fasl/bootstrap.img
+runbootstrap=clisp -q -M fasl/bootstrap.mem
+
 alias grep_errors=\
 "grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/\$p.blg | uniq"
 
 # First, compile fasl files for non-package source files:
-sbcl --noinform --core fasl/bootstrap.img << XXX &> log/build.blg
+$runbootstrap << XXX &> log/build.blg
 (standard-lisp)
 (begin)
 symbolic; $force
@@ -77,7 +83,7 @@ for p in $(< fasl/core-packages.dat)
 do
 echo +++++ Remaking core package $p
 
-sbcl --noinform --core fasl/bootstrap.img << XXX &> log/$p.blg
+$runbootstrap << XXX &> log/$p.blg
 (standard-lisp)
 (begin)
 symbolic; $force
@@ -101,18 +107,20 @@ grep_errors
 
 done
 
-if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
+# if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
+if [ "sl-on-cl.lisp" -nt "sl-on-cl.fas" ]
 then
 echo +++++ Compiling sl-on-cl
-sbcl << XXX &> log/sl-on-cl.blg
+$runlisp << XXX &> log/sl-on-cl.blg
 (compile-file "sl-on-cl")
 XXX
 fi
 
-if [ "trace.lisp" -nt "trace.fasl" ]
+# if [ "trace.lisp" -nt "trace.fasl" ]
+if [ "trace.lisp" -nt "trace.fas" ]
 then
 echo +++++ Compiling trace
-sbcl << XXX &> log/trace.blg
+$runlisp << XXX &> log/trace.blg
 (load "sl-on-cl")
 (compile-file "trace")
 XXX
@@ -124,7 +132,7 @@ echo +++++ Creating the REDUCE image file
 # above.  Then save a final REDUCE image that will be used below to
 # compile the non-core modules.
 
-sbcl --noinform << XXX &> log/reduce.blg
+$runlisp << XXX &> log/reduce.blg
 ;(declaim (optimize debug)				; same as (debug 3)
 ;		 (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
@@ -178,8 +186,13 @@ sbcl --noinform << XXX &> log/reduce.blg
 
 % (savesystem "REDUCE" "$fasl/reduce" (quote ((read-init-file "reduce"))))
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
-% #+SBCL (sb-ext:save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
-#+SBCL (sb-ext:save!-lisp!-and!-die "fasl/reduce.img") % better for debugging
+% (save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
+% For better debugging...
+(cond ((memq 'sbcl lispsystem!*)
+	   (save!-lisp!-and!-die "fasl/reduce.img"))
+	  ((memq 'clisp lispsystem!*)
+	   (saveinitmem "fasl/reduce.mem"))
+)
 
 XXX
 
@@ -190,7 +203,8 @@ for p in $(< fasl/noncore-packages.dat)
 do
 echo +++++ Remaking noncore package $p
 
-sbcl --noinform --core fasl/reduce.img << XXX &> log/$p.blg
+# sbcl --noinform --core fasl/reduce.img << XXX &> log/$p.blg
+clisp -q -M fasl/reduce.mem << XXX &> log/$p.blg
 (standard-lisp)
 (begin)
 symbolic; $force
