@@ -15,8 +15,12 @@
 ;; for running REDUCE (which provides its own REPL) on Common Lisp.
 
 ;; (declaim (optimize (speed 3) (safety 0)))
-(declaim (optimize debug))              ; same as (debug 3)
+#+SBCL (declaim (optimize debug))       ; same as (debug 3)
+;; CLISP seems to be *very* slow, so...
+#+CLISP (declaim (optimize speed))
+
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+#+CLISP (setf custom:*suppress-check-redefinition* t)
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
@@ -869,8 +873,8 @@ in interpreted functions are automatically considered fluid."
   nil)
 
 ;; SL declarations for special variables defined above:
-(fluid '(*comp *raise))
-(global '(emsg* *gc))
+(fluid '(*comp *gc *raise))
+(global '(emsg*))
 
 
 ;;; Program Feature Functions
@@ -1524,11 +1528,15 @@ The top level length of the list X is returned.
 EXPR PROCEDURE LENGTH(X);
    IF ATOM X THEN 0
       ELSE PLUS(1, LENGTH CDR X);"
+  ;; The above recursive definition uses too much stack.
   ;; The CL length function cannot be used because it does not accept
   ;; atoms or dotted pairs!
-  (if (atom x)
-      0
-    (1+ (length (cdr x)))))
+  ;; This iterative implementation is based on the description of
+  ;; list-length in the CLHS:
+  (do ((n 0 (1+ n))    ; counter
+       (p x (cdr p)))  ; pointer
+      ;; When pointer hits an atom, return the count:
+      ((atom p) n)))
 
 (defun liter (u)
   "LITER(U:any):boolean eval, spread
@@ -1595,8 +1603,9 @@ EXPR PROCEDURE PAIR(U, V);
       ELSE IF OR(U, V) THEN ERROR(000,
          \"Different length lists in PAIR\")
       ELSE NIL;"
-  (cond ((and u v) (cons (cons (car u) (car v)) (pair (cdr u) (cdr v))))
-        ((or u v) (cl:error "000 Different length lists in PAIR"))))
+  (if (/= (cl:length u) (cl:length v))
+      (cl:error "000 Different length lists in PAIR")
+      (cl:map 'cl:list #'cl:cons u v)))
 
 (import 'cl:reverse)
 ;; REVERSE(U:list):list eval, spread
@@ -2557,7 +2566,7 @@ order.
 \(L I S T)"
   (cl:map 'list #'cl:identity v))
 
-(defalias 'copy 'copy-tree              ; PSL
+(defalias 'copy 'cl:copy-tree              ; PSL
   "(copy X:any): any expr
 This function returns a copy of X. While each pair is copied, atomic
 elements (for example ids, strings, and vectors) are not.")
@@ -2633,14 +2642,16 @@ to down-case the E in floats."
 ;;    (sb-ext:run-program "cmd" (cons "/c" command)
 ;;                     :search t :output t :escape-arguments nil)))
 
-#+SBCL
 (defun system (command)                 ; PSL
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
 COMMAND to the interpreter and return the process exit code."
-  (sb-ext:process-exit-code
-   (sb-ext:run-program "cmd" (list "/c" command)
-                       :search t :output t :escape-arguments nil)))
+  #+SBCL (sb-ext:process-exit-code
+          (sb-ext:run-program "cmd" (list "/c" command)
+                              :search t :output t :escape-arguments nil))
+  ;; Cygwin CLISP behaves as if running on Unix, not Windows.
+  ;; ext:shell returns nil for normal exit with status 0!
+  #+CLISP (or (ext:shell command) 0))
 
 #+SBCL
 (defun pwd ()                           ; PSL
@@ -2668,6 +2679,8 @@ not sucessful, the value Nil is returned."
         (setq *default-pathname-defaults* dir))))
 
 (defalias 'filep 'probe-file)           ; PSL
+
+#+CLISP (defalias 'getpid 'os:process-id)
 
 
 ;;; Compile and load
@@ -2859,6 +2872,7 @@ A list of identifiers indicating system properties.")
 
 #+SBCL (pushnew 'sbcl lispsystem*)
 #+CLISP (pushnew 'clisp lispsystem*)
+#+unix (pushnew 'unix lispsystem*)
 #+win32 (pushnew 'win32 lispsystem*)
 
 #+SBCL
@@ -2882,6 +2896,7 @@ interpret otherwise.  The default is compile."
    cl:file-write-date                                ; used in remake
    cl:symbol-name                                    ; used in rlisp
    cl:catch cl:throw                                 ; used in rubi_red
+   cl:sleep                                          ; used in crack
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for

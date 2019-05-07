@@ -163,13 +163,18 @@ $runlisp << XXX &> log/reduce.blg
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
 
 (setq date!* (date))
-(setq version!* (cl:format nil "REDUCE (Free SBCL version, revision ~a)" revision!*))
+(setq version!* (cl:format nil "REDUCE (Free ~a version, revision ~a)"
+      (cond ((memq 'sbcl lispsystem!*) "SBCL")
+            ((memq 'clisp lispsystem!*) "CLISP"))
+      revision!*))
+
 (initreduce)
 
 (setq !*verboseload nil)        % inhibit loading messages
 (setq !*redefmsg t)             % display redefinition messages
 
-(setq sb-ext:*muffled-warnings* 'warning)
+% (if (memq 'sbcl lispsystem!*) (setq sb-ext:*muffled-warnings* 'warning))
+% ***** I think CLISP still tries to parse this and complains about the sb-ext package! *****
 
 (prog nil
    (terpri)

@@ -214,7 +214,8 @@ the rhs only once in case of side effects (such as a gensym)."
            (setq pos (position #\/ (setq file (symbol-name file))))) ; e.g. 3
       (setq file (subseq file pos (- (length file) 3))) ; e.g. "/mod."
       (setq file (concatenate 'string "fasl" file "lisp")) ; e.g. "fasl/mod.lisp"
-      (when (setq stream (open file :external-format :UTF-8))
+      (when (setq stream (open file :external-format
+                               #+SBCL :UTF-8 #+CLISP charset:UTF-8))
         (loop
            do
              (setq form (read stream nil sl::$eof$))
