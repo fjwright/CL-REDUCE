@@ -8,30 +8,48 @@
 # Compile all required fasl files and save a final REDUCE image.
 # Assume this script is run in the top-level CL REDUCE directory.
 
-# Usage: ./build.sh [-c]
+# Usage: ./build.sh -l sbcl/clisp [-c/f]
 
 # Option -c ensures a clean build by deleting any previous build.
 # Option -f forces recompilation of all packages.
-if getopts cf option
-then
-    if [ $option = c ]; then rm -rf fasl log;
-    elif [ $option = f ]; then force='!*forcecompile := t;'; fi
+
+while getopts l:cf option
+do
+    if   [ $option = l ]; then lisp=$OPTARG;
+    elif [ $option = c ]; then rm -rf fasl log;
+    elif [ $option = f ]; then force='!*forcecompile := t;';
+    fi
+done
+
+if [ "$lisp" = 'sbcl' ]; then
+    runlisp='sbcl'
+    runbootstrap='sbcl --noinform --core fasl/bootstrap.img'
+    runreduce='sbcl --noinform --core fasl/reduce.img'
+    saveext='img'
+    faslext='fasl'
+    if_sbcl=''
+    if_clisp='%'
+elif [ "$lisp" = 'clisp' ]; then
+    runlisp='clisp -ansi'
+    runbootstrap='clisp -q -M fasl/bootstrap.mem'
+    runreduce='clisp -q -M fasl/reduce.mem'
+    saveext='mem'
+    faslext='fas'
+    if_sbcl='%'
+    if_clisp=''
+else
+    echo 'Error: option -l sbcl/clisp is required'
+    exit
 fi
 
 if [ ! "$reduce" ]; then export reduce=.; fi
 
 # Build an initial bootstrap REDUCE image if necessary:
-# if [ ! -e fasl/bootstrap.img ]; then ./bootstrap.sh; fi
-if [ ! -e fasl/bootstrap.mem ]; then ./bootstrap.sh; fi
+if [ ! -e fasl/bootstrap.$saveext ]; then ./bootstrap.sh -l $lisp; fi
 
 mkdir -p log                 # -p avoids complaint if directory exists
 
 shopt -s expand_aliases
-
-# runlisp='sbcl'
-runlisp='clisp -ansi'
-# runbootstrap='sbcl --noinform --core fasl/bootstrap.img'
-runbootstrap='clisp -q -M fasl/bootstrap.mem'
 
 alias grep_errors=\
 "grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/\$p.blg | uniq"
@@ -107,8 +125,7 @@ grep_errors
 
 done
 
-# if [ "sl-on-cl.lisp" -nt "sl-on-cl.fasl" ]
-if [ "sl-on-cl.lisp" -nt "sl-on-cl.fas" ]
+if [ "sl-on-cl.lisp" -nt "sl-on-cl.$faslext" ]
 then
 echo +++++ Compiling sl-on-cl
 $runlisp << XXX &> log/sl-on-cl.blg
@@ -116,8 +133,7 @@ $runlisp << XXX &> log/sl-on-cl.blg
 XXX
 fi
 
-# if [ "trace.lisp" -nt "trace.fasl" ]
-if [ "trace.lisp" -nt "trace.fas" ]
+if [ "trace.lisp" -nt "trace.$faslext" ]
 then
 echo +++++ Compiling trace
 $runlisp << XXX &> log/trace.blg
@@ -173,8 +189,7 @@ $runlisp << XXX &> log/reduce.blg
 (setq !*verboseload nil)        % inhibit loading messages
 (setq !*redefmsg t)             % display redefinition messages
 
-% (if (memq 'sbcl lispsystem!*) (setq sb-ext:*muffled-warnings* 'warning))
-% ***** I think CLISP still tries to parse this and complains about the sb-ext package! *****
+$if_sbcl (setq sb-ext:*muffled-warnings* 'warning)
 
 (prog nil
    (terpri)
@@ -193,11 +208,8 @@ $runlisp << XXX &> log/reduce.blg
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
 % (save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
 % For better debugging...
-(cond ((memq 'sbcl lispsystem!*)
-       (save!-lisp!-and!-die "fasl/reduce.img"))
-      ((memq 'clisp lispsystem!*)
-       (saveinitmem "fasl/reduce.mem"))
-)
+$if_sbcl (save!-lisp!-and!-die "fasl/reduce.img"))
+$if_clisp (saveinitmem "fasl/reduce.mem"))
 
 XXX
 
@@ -208,8 +220,7 @@ for p in $(< fasl/noncore-packages.dat)
 do
 echo +++++ Remaking noncore package $p
 
-# sbcl --noinform --core fasl/reduce.img << XXX &> log/$p.blg
-clisp -q -M fasl/reduce.mem << XXX &> log/$p.blg
+$runreduce << XXX &> log/$p.blg
 (standard-lisp)
 (begin)
 symbolic; $force

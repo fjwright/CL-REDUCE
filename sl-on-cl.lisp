@@ -1907,6 +1907,14 @@ leading `..' its parent."
                            (make-pathname :directory cwd))))))
   filename)
 
+#+cygwin
+(defun win-to-cyg (filename)
+  "Convert a Windows filename to Cygwin format."
+  (setq filename (substitute #\/ #\\ filename))
+  (if (char= (aref filename 1) #\:)
+      (concatenate 'string "/cygdrive/" (subseq filename 0 1) (subseq filename 2))
+      filename))
+
 (defun open (file how)
   "OPEN(FILE:any, HOW:id):any eval, spread
 Open the file with the system dependent name FILE for output if
@@ -1917,6 +1925,7 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
+  #+cygwin (setq file (win-to-cyg file))
   (setq file (substitute-in-file-name file))
   (cond ((eq how 'input)
          (let ((fh (cl:open file :direction :input)))
@@ -2654,6 +2663,16 @@ COMMAND to the interpreter and return the process exit code."
   #+CLISP (or (ext:shell command) 0))
 
 #+SBCL
+(defun system-to-string (command)       ; not tested!
+  (with-output-to-string (*standard-output*)
+    (system command)))
+
+#+CLISP
+(defun system-to-string (command)
+  (let ((s (ext:run-shell-command command :output :stream)))
+    (get-output-stream-string s)))
+
+#+SBCL
 (defun pwd ()                           ; PSL
   "(pwd):STRING expr
 Return the current working directory in system specific format."
@@ -2872,8 +2891,9 @@ A list of identifiers indicating system properties.")
 
 #+SBCL (pushnew 'sbcl lispsystem*)
 #+CLISP (pushnew 'clisp lispsystem*)
-#+unix (pushnew 'unix lispsystem*)
 #+win32 (pushnew 'win32 lispsystem*)
+#+cygwin (pushnew 'cygwin lispsystem*)  ; together with unix
+#+unix (pushnew 'unix lispsystem*)
 
 #+SBCL
 (defun compilation (on)
