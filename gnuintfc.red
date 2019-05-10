@@ -86,23 +86,66 @@ global '(plotcommand!* gnuplot_select_terminal!*);
 
 % The initialize_gnuplot() function will set plotcommand!*.
 
-gnuplot_select_terminal!* :=
-"if(strstrt(GPVAL_TERMINALS,""aqua"")!=0)set terminal aqua;else set term x11;";
+gnuplot_select_terminal!* :="dumb";     % ***** TEMPORARY *****
+% "if(strstrt(GPVAL_TERMINALS,""aqua"")!=0)set terminal aqua;else set term x11;";
 
 symbolic procedure initialize_gnuplot();
    <<
-#if (member 'cygwin lispsystem!*)        % *** Cygwin on MS Windows ***
+#if (member 'cygwin lispsystem!*)       % *** Cygwin on MS Windows ***
 
-   !*plotusepipe := nil;
+   !*plotusepipe := nil;                % pipes: yes
 
-   if system "cmd /c start /wait wgnuplot.exe -V" = 0 then <<
-      % *** Cygwin running native MS Windows gnuplot ***
+   if system "type gnuplot &> /dev/null" = 0 then <<
+      % *** Prefer Cygwin gnuplot if available ***
 
-      plottmp!* := concat(getenv "LOCALAPPDATA", "\Temp\");
+   !*plotpause := "mouse close";
+   plottmp!* := "/tmp/";
+   plotdta!* := for i:= 1:10 collect
+      bldmsg("%wplotdt%w", plottmp!*, i); % scratch data files
+   plotcleanup!* :=                       % delete data files
+      concat("rm ", plottmp!*, "plotdt*");
+   if !*plotusepipe then <<             % default as set above
+      plotcommand!* := "gnuplot";
+      plotcleanup!* := {plotcleanup!*}; % must be a list
+   >> else <<
+      plotcmds!* := concat(plottmp!*, "plotcmds");
+      plotcommand!* := concat("gnuplot ", plotcmds!*);
+      plotcleanup!* :=                  % also delete command file
+         {concat(plotcleanup!*, " ", plotcmds!*)};
+   >>;
+
+   % Select header lines for setting the appropriate GNUPLOT terminal
+   % type if force_gnuplot_term is set on:
+   if null plotheader!* then
+      if null !*force_gnuplot_term then plotheader!* := ""
+      else << if null x then
+         if getenv "DISPLAY" then x := nil . gnuplot_select_terminal!*
+         else x := '(nil . "dumb");
+      if string!-length cdr x < 20
+      then plotheader!* := bldmsg("set term %w", cdr x)
+      else plotheader!* := cdr x;
+      >>
+         where x =
+            assoc(getenv "TERM",
+               ("xterm" . gnuplot_select_terminal!*) .
+                  ("xterm-color" . gnuplot_select_terminal!*) .
+                     '(
+                        %% You may want to extend or modify the terminal list above
+                        ("sun-cmd" . "x11")
+                        ("sun" . "x11")
+                        ("hpterm" . "x11")
+                        ("vt52"  . "tek40xx")
+                        ("vt100" . "tek40xx")
+                        ("vt102" . "tek40xx")
+                           ));
+
+   >> else if system "cmd /c start /wait wgnuplot.exe -V" = 0 then <<
+      % *** Fall back to Cygwin running native MS Windows gnuplot ***
+
       !*plotpause := "mouse close";
-      plotdta!* := for i:=1:10 collect
+      plottmp!* := concat(getenv "LOCALAPPDATA", "\Temp\");
+      plotdta!* := for i:= 1:10 collect
          bldmsg("%wplotdt%w.dat", plottmp!*, i); % scratch data files
-      plotheader!* := "";
       plotcleanup!* :=                     % delete data files
          concat("cmd /c del '", plottmp!*, "plotdt*.dat'");
       if !*plotusepipe then <<             % default as set above
@@ -115,53 +158,9 @@ symbolic procedure initialize_gnuplot();
             {concat(plotcleanup!*, " '", plotcmds!*, "'")};
       >>;
 
+      plotheader!* := "";
+
    >>;
-
-   % dirchar!* := "/";
-   % tempdir!* := "/tmp";
-
-   % !*plotusepipe:=t;               % pipes: yes
-   % !*plotpause:=nil;                 % pause: no
-   % if getenv "LOGNAME" then
-   %    plottmp!* := bldmsg("%w%w%w.",get!-tempdir(),dirchar!*,getenv "LOGNAME")
-   %  else if getenv "USER" then
-   %    plottmp!* := bldmsg("%w%w%w.",get!-tempdir(),dirchar!*,getenv "USER")
-   %  else
-   %    plottmp!* := concat(get!-tempdir(),dirchar!*);
-   % plotdta!* := for i:=1:10 collect
-   %       bldmsg("%wplotdt%w",plottmp!*,i); % scratch data files
-   % plotcmds!* :=bldmsg("%wplotcmds",plottmp!*); % if pipes not accessible
-
-   %   % select header lines for setting the appropriate GNUPLOT
-   %   % terminal type if force_gnuplot_term is set on.
-
-   % if null plotheader!* then
-   % if null !*force_gnuplot_term then plotheader!* := ""
-   % else << if null x then
-   %    if getenv "DISPLAY" then x := nil . gnuplot_select_terminal!*
-   %                      else x:='(nil."dumb");
-   %    if wlessp (strlen strinf cdr x, 20)
-   %               then  plotheader!* :=bldmsg("set term %w",cdr x)
-   %                     else plotheader!* := cdr x ;
-   % >>
-   %   where x =
-   %    assoc(getenv "TERM",
-   %      ("xterm" . gnuplot_select_terminal!*) .
-   %      ("xterm-color" . gnuplot_select_terminal!*) .
-   %         '(
-   %        %% You may want to extend or modify the terminal list above
-   %              ("sun-cmd" . "x11")
-   %              ("sun" . "x11")
-   %              ("hpterm" . "x11")
-   %              ("vt52"  . "tek40xx")
-   %              ("vt100" . "tek40xx")
-   %              ("vt102" . "tek40xx")
-   %         ));
-
-   % plotcommand!* := find!-gnuplot();
-
-   % plotcleanup!* :=                  % delete scratch files
-   %     {bldmsg("rm %wplotdt*",plottmp!*),bldmsg("rm %wplotcmds*",plottmp!*)};
 
 #elif (memq 'win32 lispsystem!*)        % *** MS Windows ***
 
