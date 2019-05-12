@@ -93,7 +93,7 @@ symbolic procedure initialize_gnuplot();
    <<
 #if (member 'cygwin lispsystem!*)       % *** Cygwin on MS Windows ***
 
-   !*plotusepipe := nil;                % pipes: yes
+   % !*plotusepipe := nil;                % pipes: yes
 
    if system "type gnuplot &> /dev/null" = 0 then <<
       % *** Prefer Cygwin gnuplot if available ***

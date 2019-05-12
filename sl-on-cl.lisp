@@ -43,7 +43,7 @@
            :char-code)
 
   #+SBCL (:import-from :sb-ext :exit :quit :save-lisp-and-die :gc)
-  #+SBCL (:import-from :sb-posix :getenv :getpid)
+  #+SBCL (:import-from :sb-posix :getenv)
 
   #+CLISP (:import-from :ext :exit :quit :saveinitmem :gc :getenv)
   )
@@ -1800,6 +1800,8 @@ do not consider FUNARGs in this report."
 ;; An output filehandle is a dotted-list of the form
 ;; ('file . output-stream) or ('pipe output-stream . process).
 
+;; On CLISP, process is nil.
+
 ;; An input filehandle is a pair of the form
 ;; (input-stream . echo-stream).
 
@@ -1825,6 +1827,10 @@ closed.
            ;; Output pipe stream ('pipe output-stream . process):
            (sb-ext:process-close (cddr filehandle)) ; closes output-stream
            (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
+          #+CLISP
+          ((eq (car filehandle) 'pipe)
+           ;; Output pipe stream ('pipe output-stream):
+           (cl:close (cadr filehandle))) ; closes output-stream
           (t
            ;; Input filehandle -- close echo stream then input stream:
            (cl:close (cdr filehandle))
@@ -1865,11 +1871,9 @@ of a page, 0 is returned."
 (defun substitute-in-file-name (filename)
   "Return a copy of FILENAME with all environment variables expanded.
 Replace every substring of the form `$name' terminated by a
-non-alphanumeric character by its value.  Called by `open'.
-Also replace a leading `.' by the current working directory and each
-leading `..' its parent."
-  ;; A simplified combination of the Elisp functions
-  ;; `substitute-in-file-name' and `expand-file-name'.
+non-alphanumeric character by its value.  Called by `open'."
+  ;; A simplified version of the Elisp function
+  ;; `substitute-in-file-name'.
   ;; Replace environment variables with their values:
   (loop
      with beg and end = 0 and l
@@ -1886,6 +1890,13 @@ leading `..' its parent."
                               (if end
                                   (push (subseq filename end) l)
                                   l))))))
+  filename)
+
+(defun expand-file-name (filename)
+  "Return a copy of FILENAME with a leading `.'  replaced by the
+current working directory and each leading `..' replaced by its
+parent.  Called by `open' on SBCL."
+  ;; A simplified version of the Elisp function `expand-file-name'.
   ;; sb-ext:native-pathname seems necessary to preserve odd characters
   ;; such as ^ in a filename:
   #+SBCL (setq filename (sb-ext:native-pathname filename))
@@ -1907,13 +1918,17 @@ leading `..' its parent."
                            (make-pathname :directory cwd))))))
   filename)
 
-#+cygwin
-(defun win-to-cyg (filename)
-  "Convert a Windows filename to Cygwin format."
-  (setq filename (substitute #\/ #\\ filename))
-  (if (char= (aref filename 1) #\:)
-      (concatenate 'string "/cygdrive/" (subseq filename 0 1) (subseq filename 2))
-      filename))
+;; #+cygwin
+;; (defun win-to-cyg (filename)
+;;   "Convert a Windows filename to Cygwin format."
+;;   (setq filename (substitute #\/ #\\ filename))
+;;   (if (char= (aref filename 1) #\:)
+;;       (concatenate 'string "/cygdrive/" (subseq filename 0 1) (subseq filename 2))
+;;       filename))
+
+;; CLISP user variable CUSTOM:*DEVICE-PREFIX* controls translation
+;; between Cygwin pathnames (e.g., #P"/cygdrive/c/gnu/clisp/") and
+;; native Win32 pathnames (e.g., #P"C:\\gnu\\clisp\\").
 
 (defun open (file how)
   "OPEN(FILE:any, HOW:id):any eval, spread
@@ -1925,8 +1940,10 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
-  #+cygwin (setq file (win-to-cyg file))
-  (setq file (substitute-in-file-name file))
+  (setq file (substitute-in-file-name file)) ; substitute environment variables
+  #+SBCL (setq file (expand-file-name file)) ; expand . and ..
+  ;; #+cygwin (setq file (win-to-cyg file))
+  #+cygwin (setq file (parse-namestring file)) ; convert Windows filename to Cygwin format
   (cond ((eq how 'input)
          (let ((fh (cl:open file :direction :input)))
            ;; An input filehandle is a pair of the form
@@ -2298,17 +2315,22 @@ selected output file.
              (setq *standard-output* (cadr filehandle)
                    %%write-stream filehandle)))))))
 
-#+SBCL
 (defun pipe-open (command how)
   "Run COMMAND asynchronously with input via the pipe returned as a
 stream by this function."
   (cond ((eq how 'output)
+         #+SBCL
          ;; An output filehandle is a dotted-list of the form ('file .
          ;; output-stream) or ('pipe output-stream . process):
          (let ((p (sb-ext:run-program "cmd" (list "/c" command)
                                       :wait nil :search t :input :stream
                                       :escape-arguments nil)))
-           (cons 'pipe (cons (sb-ext:process-input p) p))))
+           (cons 'pipe (cons (sb-ext:process-input p) p)))
+         #+CLISP
+         ;; An output filehandle is a dotted-list of the form ('file .
+         ;; output-stream) or ('pipe output-stream . nil):
+         ;; (list 'pipe (ext:run-shell-command command :input :stream :wait nil)))
+         (list 'pipe (ext:make-pipe-output-stream command)))
         (t (cl:error "~a is not (currently) an option for PIPE-OPEN" how))))
 
 (defun channelflush (filehandle)
@@ -2663,20 +2685,20 @@ COMMAND to the interpreter and return the process exit code."
   #+CLISP (or (ext:shell command) 0))
 
 #+SBCL
-(defun system-to-string (command)       ; not tested!
+(defun system-to-string (command)       ; experimental - not tested!
   (with-output-to-string (*standard-output*)
     (system command)))
 
 #+CLISP
-(defun system-to-string (command)
+(defun system-to-string (command)       ; experimental - doesn't seem to work
   (let ((s (ext:run-shell-command command :output :stream)))
     (get-output-stream-string s)))
 
-#+SBCL
 (defun pwd ()                           ; PSL
   "(pwd):STRING expr
 Return the current working directory in system specific format."
-  (sb-ext:native-namestring *default-pathname-defaults*))
+  #+SBCL (sb-ext:native-namestring *default-pathname-defaults*)
+  #+CLISP (namestring (ext:cd)))
 
 #+SBCL
 (defun cd (dir)                         ; PSL
@@ -2692,13 +2714,26 @@ not sucessful, the value Nil is returned."
                                        (list (file-namestring dir))))))
   ;; Expand environment variables, "." and "..":
   (setq dir (substitute-in-file-name (namestring dir)))
+  (setq file (expand-file-name file))
   (setq dir (merge-pathnames dir))
   (and (probe-file dir)
-       (sb-ext:native-namestring    ; more useful return value than t!
+       ;; Return a more useful value than t:
+       (sb-ext:native-namestring
         (setq *default-pathname-defaults* dir))))
+
+#+CLISP
+(defun cd (dir)                         ; PSL
+  "(cd DIR:string):BOOLEAN expr
+Set the current working directory to DIR after expanding the filename
+according to the rules of the operating system.  If this operation is
+not sucessful, the value Nil is returned."
+  ;; Expand environment variables, "." and "..":
+  ;; In CLISP, MAKE-PATHNAME canonicalizes the PATHNAME directory component.
+  (namestring (ext:cd (expand-file-name dir))))
 
 (defalias 'filep 'probe-file)           ; PSL
 
+#+SBCL (import 'sb-posix:getpid)
 #+CLISP (defalias 'getpid 'os:process-id)
 
 
