@@ -1799,7 +1799,6 @@ do not consider FUNARGs in this report."
 
 ;; An output filehandle is a dotted-list of the form
 ;; ('file . output-stream) or ('pipe output-stream . process).
-
 ;; On CLISP, process is nil.
 
 ;; An input filehandle is a pair of the form
@@ -1917,14 +1916,6 @@ parent.  Called by `open' on SBCL."
                            (make-pathname :directory d :defaults filename)
                            (make-pathname :directory cwd))))))
   filename)
-
-;; #+cygwin
-;; (defun win-to-cyg (filename)
-;;   "Convert a Windows filename to Cygwin format."
-;;   (setq filename (substitute #\/ #\\ filename))
-;;   (if (char= (aref filename 1) #\:)
-;;       (concatenate 'string "/cygdrive/" (subseq filename 0 1) (subseq filename 2))
-;;       filename))
 
 ;; CLISP user variable CUSTOM:*DEVICE-PREFIX* controls translation
 ;; between Cygwin pathnames (e.g., #P"/cygdrive/c/gnu/clisp/") and

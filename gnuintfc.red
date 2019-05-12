@@ -86,17 +86,18 @@ global '(plotcommand!* gnuplot_select_terminal!*);
 
 % The initialize_gnuplot() function will set plotcommand!*.
 
-gnuplot_select_terminal!* :="dumb";     % ***** TEMPORARY *****
-% "if(strstrt(GPVAL_TERMINALS,""aqua"")!=0)set terminal aqua;else set term x11;";
+gnuplot_select_terminal!* :=
+"if(strstrt(GPVAL_TERMINALS,""aqua"")!=0)set terminal aqua;else set term x11;";
 
 symbolic procedure initialize_gnuplot();
    <<
 #if (member 'cygwin lispsystem!*)       % *** Cygwin on MS Windows ***
 
-   % !*plotusepipe := nil;                % pipes: yes
+   gnuplot_select_terminal!* := "dumb"; % ***** TEMPORARY *****
 
    if system "type gnuplot &> /dev/null" = 0 then <<
       % *** Prefer Cygwin gnuplot if available ***
+      % Assume gnuplot is in PATH.
 
    !*plotpause := "mouse close";
    plottmp!* := "/tmp/";
