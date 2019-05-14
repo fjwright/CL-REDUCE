@@ -17,18 +17,20 @@
 ;; (declaim (optimize (speed 3) (safety 0)))
 #+SBCL (declaim (optimize debug))       ; same as (debug 3)
 ;; CLISP seems to be *very* slow, so...
-#+CLISP (declaim (optimize speed))
+;; #+CLISP (declaim (optimize speed))
 
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
-#+CLISP (setf custom:*suppress-check-redefinition* t)
+;; #+CLISP (setf custom:*suppress-check-redefinition* t)
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
 
 (defpackage :standard-lisp
   (:nicknames :sl)
-  (:documentation "Standard Lisp on Common Lisp")
-  (:use :common-lisp)                   ; unused at end of file
+  (:documentation "Lower-case Standard Lisp on Common Lisp")
+  (:use :cs-common-lisp)                ; unused at end of file
+  (:case-sensitive t)
+  (:case-inverted t)    ; *** remove case-inversion at end of file ***
 
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
@@ -90,13 +92,13 @@ system dependent messages may be displayed.")
 ;; NIL is a special global variable. It is protected from being modifed
 ;; by SET or SETQ.
 
-(defvar *raise t
+(defvar *raise nil
   "*RAISE = NIL global
 If !*RAISE is non-NIL all characters input through Standard LISP
 input/output functions will be raised to upper case. If !*RAISE is
 NIL characters will be input as is.")
 
-(defvar *printlower t
+(defvar *printlower nil
   ;; Calling this variable *lower causes problems bootstrapping rlisp
   ;; that I don't understand, but this switch is different from the
   ;; PSL/CSL lower switch anyway!
@@ -2251,7 +2253,7 @@ Comments delimited by % and end-of-line are not transparent to READCH."
                (setq %%readch-escape (not %%readch-escape)) '!)
               (%%readch-escape
                (setq %%readch-escape nil) (cl:intern (string c)))
-              (*raise (cl:intern (string (cl:char-upcase c))))
+              ;; (*raise (cl:intern (string (cl:char-upcase c))))
               (t (cl:intern (string c)))))))
 
 (defun terpri ()
@@ -2543,7 +2545,7 @@ Returns the id space position of D as a LISP integer."
 
 (defalias 'char-code 'id2int)           ; CSL
 
-(defalias 'id2string 'cl:symbol-name    ; PSL
+(defalias 'id2string 'symbol-name       ; PSL
   "(id2string D:id): string expr
 Get name from id space. Id2string returns the print name of its argument
 as a string. This is not a copy, so destructive operations should not be performed
@@ -2903,7 +2905,7 @@ When all done, execute FASLEND;~2%" name))
   (standard-lisp)
   (begin))
 
-(import '(standard-lisp start-reduce) :cl-user)
+(import '(standard-lisp start-reduce) :cs-cl-user)
 
 (defun reset-readtable ()
   "Switch to Common Lisp read syntax."
@@ -2928,21 +2930,19 @@ interpret otherwise.  The default is compile."
   (setq sb-ext:*evaluator-mode*
         (if on :compile :interpret)))
 
-;; Inhibit printing of package prefixes in the debugger (which doesn't
-;; seem to work):
-
+;; In SBCL, inhibit printing of package prefixes in the debugger
+;; (which doesn't seem to work):
 #+SBCL (setq sb-ext:*debug-print-variable-alist* '((*print-escape* . nil)))
 
 ;; CL symbols used in REDUCE source code:
 (import
  '(cl:lambda cl:warning
    cl:unwind-protect cl:evenp cl:oddp
-   cl:string-not-greaterp cl:symbol-name cl:y-or-n-p ; used in clprolo
-   cl:force-output                                   ; used in clrend
-   cl:file-write-date                                ; used in remake
-   cl:symbol-name                                    ; used in rlisp
-   cl:catch cl:throw                                 ; used in rubi_red
-   cl:sleep                                          ; used in crack
+   cl:string-not-greaterp symbol-name cl:y-or-n-p ; used in clprolo
+   cl:force-output                                ; used in clrend
+   cl:file-write-date                             ; used in remake
+   cl:catch cl:throw                              ; used in rubi_red
+   cl:sleep                                       ; used in crack
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for
