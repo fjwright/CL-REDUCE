@@ -129,18 +129,18 @@ if [ "sl-on-cl.lisp" -nt "sl-on-cl.$faslext" ]
 then
 echo +++++ Compiling sl-on-cl
 $runlisp << XXX &> log/sl-on-cl.blg
-(compile-file "sl-on-cl")
+(or (compile-file "sl-on-cl") (exit 1))
 XXX
-fi
+fi || (echo '***** Compilation failed'; exit)
 
 if [ "trace.lisp" -nt "trace.$faslext" ]
 then
 echo +++++ Compiling trace
 $runlisp << XXX &> log/trace.blg
 (load "sl-on-cl")
-(compile-file "trace")
+(or (compile-file "trace") (exit 1))
 XXX
-fi
+fi || (echo '***** Compilation failed'; exit)
 
 echo +++++ Creating the REDUCE image file
 
