@@ -95,11 +95,19 @@ system dependent messages may be displayed.")
 ;; NIL is a special global variable. It is protected from being modifed
 ;; by SET or SETQ.
 
-(defvar *raise nil
+;; **********************************************************************
+;; Make CLISP REDUCE case-insensitive for now to facilitate comparison
+;; with the test output from CSL/PSL REDUCE.  Later, could make it
+;; case-sensitive with a switch *legacy that enables *raise for
+;; compatibility with legacy REDUCE.
+;; **********************************************************************
+
+(defvar *raise nil                      ; t
   "*RAISE = NIL global
-If !*RAISE is non-NIL all characters input through Standard LISP
-input/output functions will be raised to upper case. If !*RAISE is
-NIL characters will be input as is.")
+If !*RAISE is non-NIL all characters input through Standard LISP input
+functions will be converted to a standard case.  Currently, this is
+upper case on SBCL and lower case on CLISP.  If !*RAISE is NIL
+characters will be input as is.")
 
 (defvar *printlower nil
   ;; Calling this variable *lower causes problems bootstrapping rlisp
@@ -2245,6 +2253,10 @@ the OBLIST (see the INTERN function in \"Identifiers\"). READ
 returns the value of !$EOF!$ when the end of the currently
 selected input file is reached."
   (let* ((*readtable* *sl-readtable*))
+    ;; The case sensitivity mode is one of the symbols :upcase,
+    ;; :downcase, :preserve, or :invert.
+    ;; (setf (readtable-case *readtable*)
+    ;;       (if *raise :downcase :preserve))
     ;; Using read-preserving-whitespace rather than read seems to be
     ;; more consistent with PSL and CSL: it leaves the EOL to be read
     ;; by REDUCE, which counts input lines in each file into the value
@@ -2271,7 +2283,7 @@ Comments delimited by % and end-of-line are not transparent to READCH."
                (setq %%readch-escape (not %%readch-escape)) '!)
               (%%readch-escape
                (setq %%readch-escape nil) (%intern-character c))
-              ;; (*raise (%intern-character (cs-cl:char-upcase c)))
+              ;; (*raise (%intern-character (cs-cl:char-downcase c)))
               (t (%intern-character c))))))
 
 (defun terpri ()
@@ -2605,7 +2617,7 @@ order.
 \(L I S T)"
   (cs-cl:map 'list #'cs-cl:identity v))
 
-(defalias 'copy 'cs-cl:copy-tree              ; PSL
+(defalias 'copy 'cs-cl:copy-tree        ; PSL
   "(copy X:any): any expr
 This function returns a copy of X. While each pair is copied, atomic
 elements (for example ids, strings, and vectors) are not.")
@@ -2654,6 +2666,7 @@ Returns the union of sets X and Y."
 (defalias 'lcmn 'cs-cl:lcm)
 (defalias 'yesp1 'cs-cl:y-or-n-p)
 
+#-CLISP                                 ; not required on CLISP
 (defun smallcompress (li)
   "Compress list LI to a string representing a number (only).
 Defined and called only in \"arith/smlbflot.red\" and redefined here

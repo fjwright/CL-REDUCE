@@ -63,11 +63,6 @@ flag('(eqcar),'lose);
 flag('(first second third rest lastpair lastcar nth pnth reversip
    evenp oddp symbol!-name),'lose);
 
-% These two functions are defined in arith/smlbflot.red, but
-% smallcompress is re-implemented in sl-on-cl.lisp and smallsplit is
-% used only in smallcompress, so is no longer required:
-flag('(smallcompress smallsplit),'lose);
-
 % These functions are defined in rlisp/tok.red, but I have
 % re-implemented them in sl-on-cl.lisp:
 flag('(list2widestring widestring2list

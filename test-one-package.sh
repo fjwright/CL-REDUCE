@@ -5,10 +5,21 @@
 # Author: Francis J. Wright
 # Based (loosely) on code by Anthony C. Hearn.
 
-# Usage: ./test-one-package.sh package
+# Usage: ./test-one-package.sh -l sbcl/clisp package
 
 # Assume this script is run in the top-level CL REDUCE directory.
 # This script is normally run by test-packages.sh.
+
+if getopts l: option; then lisp=$OPTARG; shift 2; fi
+
+if [ "$lisp" = 'sbcl' ]; then
+    runreduce='sbcl --noinform --core fasl/reduce.img'
+elif [ "$lisp" = 'clisp' ]; then
+    runreduce='clisp -q -norc -M fasl/reduce.mem'
+else
+    echo 'Error: option -l sbcl/clisp is required'
+    exit
+fi
 
 # Create log directory if necessary:
 mkdir -p testlog
@@ -26,8 +37,7 @@ fi
 
 if [ ! -e "$testfile" ]; then exit; fi
 
-# sbcl --noinform --core fasl/reduce.img << EOF &> /dev/null # testlog/$1-errors.rlg #
-clisp -q -M fasl/reduce.mem << EOF &> /dev/null # testlog/$1-errors.rlg #
+$runreduce << EOF &> /dev/null # testlog/$1-errors.rlg #
 (start-reduce)
 
 symbolic begin
@@ -42,7 +52,7 @@ out "testlog/$1.rlg";
 
 load_package $1;
 
-if '$1 eq 'rlfi then in "rlfi.tst" else % *** UPPER-CASE VERSION ***
+if 'sbcl memq lispsystem!* and '$1 eq 'rlfi then in "rlfi.tst" else % *** UPPER-CASE VERSION ***
 in "$testfile";
 
 symbolic begin
