@@ -102,12 +102,12 @@ system dependent messages may be displayed.")
 ;; compatibility with legacy REDUCE.
 ;; **********************************************************************
 
-(defvar *raise nil                      ; t
+(defvar *raise t
   "*RAISE = NIL global
-If !*RAISE is non-NIL all characters input through Standard LISP input
-functions will be converted to a standard case.  Currently, this is
-upper case on SBCL and lower case on CLISP.  If !*RAISE is NIL
-characters will be input as is.")
+Follow the PSL convention: If !*RAISE is non-NIL all characters input
+through Standard LISP input functions will be converted to a standard
+case.  Currently, this is upper case on SBCL and lower case on CLISP.
+If !*RAISE is NIL characters will be input as is.")
 
 (defvar *printlower nil
   ;; Calling this variable *lower causes problems bootstrapping rlisp
@@ -2283,7 +2283,7 @@ Comments delimited by % and end-of-line are not transparent to READCH."
                (setq %%readch-escape (not %%readch-escape)) '!)
               (%%readch-escape
                (setq %%readch-escape nil) (%intern-character c))
-              ;; (*raise (%intern-character (cs-cl:char-downcase c)))
+              (*raise (%intern-character (cs-cl:char-downcase c)))
               (t (%intern-character c))))))
 
 (defun terpri ()
@@ -2547,12 +2547,14 @@ Returns the number of elements in a PSL string. Since indexes start with
 index 0, the size is one larger than the greatest legal index. Compare this
 function with string-upper-bound, documented below.")
 
-(defun char-downcase (c)
-  "Convert single-character identifier C to lower case; cf. CSL."
+(defun char-downcase (c)                ; CSL
+  "Convert single-character identifier C to lower case."
   (cs-cl:intern (cs-cl:string-downcase (symbol-name c))))
 
-(defun char-upcase (c)
-  "Convert single-character identifier C to lower case; cf. CSL."
+(defalias 'red-char-downcase 'char-downcase) ; PSL
+
+(defun char-upcase (c)                  ; CSL
+  "Convert single-character identifier C to lower case."
   (cs-cl:intern (cs-cl:string-upcase (symbol-name c))))
 
 (defun int2id (i)                       ; PSL
