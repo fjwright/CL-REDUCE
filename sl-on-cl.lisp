@@ -20,7 +20,7 @@
 ;; #+CLISP (declaim (optimize speed))
 
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
-;; #+CLISP (setf custom:*suppress-check-redefinition* t)
+#+CLISP (setf custom:*suppress-check-redefinition* t)
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
@@ -1825,8 +1825,8 @@ do not consider FUNARGs in this report."
 ;;; Input and Output
 ;;; ================
 
-;; An output filehandle is a dotted-list of the form
-;; ('file . output-stream) or ('pipe output-stream . process).
+;; An output filehandle is a (possibly dotted) list of the form
+;; ('file output-stream) or ('pipe output-stream . process).
 ;; On CLISP, process is nil.
 
 ;; An input filehandle is a pair of the form
@@ -1847,8 +1847,8 @@ closed.
       (prog1 filehandle
         (cond
           ((eq (car filehandle) 'file)
-           ;; Output file stream ('file . output-stream):
-           (cs-cl:close (cdr filehandle)))
+           ;; Output file stream ('file output-stream):
+           (cs-cl:close (cadr filehandle)))
           #+SBCL
           ((eq (car filehandle) 'pipe)
            ;; Output pipe stream ('pipe output-stream . process):
@@ -1969,9 +1969,9 @@ OUTPUT or the file can't be opened.
            ;; (input-stream . echo-stream):
            (cons fh (make-echo-stream fh *standard-output*))))
         ((eq how 'output)
-         (cons 'file
+         (list 'file
                (cs-cl:open file :direction :output
-                        :if-exists :supersede :if-does-not-exist :create)))
+                           :if-exists :supersede :if-does-not-exist :create)))
         (t (cs-cl:error "~a is not option for OPEN" how))))
 
 (defun pagelength (len)
@@ -2295,7 +2295,7 @@ The current print line is terminated."
 
 (defun %%default-write-stream ()
   "The default write stream using the current value of *standard-output*."
-  (cons 'file *standard-output*))
+  (list 'file *standard-output*))
 
 (defparameter +default-write-stream+ (%%default-write-stream)
   "The default write stream using the initial value of *standard-output*.
@@ -2324,13 +2324,13 @@ selected output file.
     ;;    %%write-stream +default-write-stream+)
     ;; But this version compiles OK:
     (setq %%write-stream +default-write-stream+
-          *standard-output* (cdr %%write-stream))
+          *standard-output* (cadr %%write-stream))
     (when filehandle
       (cond
         ((eq (car filehandle) 'file)
-         ;; Output file stream ('file . output-stream):
-         (if (open-stream-p (cdr filehandle))
-             (setq *standard-output* (cdr filehandle)
+         ;; Output file stream ('file output-stream):
+         (if (open-stream-p (cadr filehandle))
+             (setq *standard-output* (cadr filehandle)
                    %%write-stream filehandle)))
         ((eq (car filehandle) 'pipe)
          ;; Output pipe stream ('pipe output-stream . process):
@@ -2356,11 +2356,15 @@ stream by this function."
          (list 'pipe (ext:make-pipe-output-stream command)))
         (t (cs-cl:error "~a is not (currently) an option for PIPE-OPEN" how))))
 
-(defun channelflush (filehandle)
+(defun channelflush (filehandle)        ; PSL
   "Flush FILEHANDLE if it is a pipe stream."
   ;; filehandle = ('pipe output-stream . process)
   (if (eq (car filehandle) 'pipe)
       (finish-output (cadr filehandle))))
+
+(defun flush ()                         ; CSL
+  "Flush the current output stream."
+  (finish-output (cadr %%write-stream)))
 
 
 ;;; PSL/CSL functions and some other required functions

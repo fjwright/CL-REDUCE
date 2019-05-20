@@ -324,16 +324,29 @@ flag('(i!&prn), 'lose);
 #endif
 
 
+remflag('(systo_get!-resource!-directory rl_typeString2TypeForm), 'lose);
+
 % This function is called in redlog but only defined for PSL or CSL
 % specifically.  Otherwise, it only gets an autoload definition that
 % causes infinite recursion when called.  This stub is an attempt to
-% avoid this error, but nothing more.  It will need attention later!
+% avoid this error, but nothing more.  It may need attention later,
+% but what is the Common Lisp resource directory?
+symbolic procedure systo_get!-resource!-directory; "";
 
-remflag('(systo_get!-resource!-directory), 'lose);
+% The version of this function defined in
+% redlog/rlsupport/rlservice.red assumes that explode accepts a
+% (possible nested) LIST and compress will return a (possible nested)
+% LIST of UNINTERNED identifiers, which appears to be the case with
+% PSL.  Until I implement this in SL-on-CL, here is a temporary fix:
+symbolic procedure rl_typeString2TypeForm(s);
+   rl_typeString2TypeForm1 ioto_sxread s where !*lower=nil, !*raise=nil;
 
-procedure systo_get!-resource!-directory; "";
+symbolic procedure rl_typeString2TypeForm1(x);
+   if idp x then intern lto_downcase x
+   else for each y in x collect rl_typeString2TypeForm1 y;
 
-flag('(systo_get!-resource!-directory), 'lose);
+flag('(systo_get!-resource!-directory rl_typeString2TypeForm), 'lose);
+
 
 % This function is called in tmprint and apparently defined in PSL.
 % This stub is an attempt to avoid an error, but nothing more.  It
