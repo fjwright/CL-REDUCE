@@ -2571,12 +2571,16 @@ id NIL is always found by (int2id 128)."
   ;; This may not be correct for i >= 128.
   (%intern-character (code-char i)))
 
-(defun id2int (d)                       ; PSL
+(defalias 'id2int 'sxhash               ; PSL
   "(id2int D:id): integer expr
-Returns the id space position of D as a LISP integer."
-  (cs-cl:char-code (character d)))
+Returns the id space position of D as a LISP integer.")
+;; I presume this means the position in the oblist, which I can't
+;; access.  However, sxhash returns a unique non-negative fixnum,
+;; which should suffice.
 
-(defalias 'char-code 'id2int)           ; CSL
+(defun char-code (c)                    ; PSL
+  "Returns the code attribute of C. (In PSL this function is an identity function.)"
+  (cs-cl:char-code (character c)))
 
 (defalias 'id2string 'symbol-name       ; PSL
   "(id2string D:id): string expr
