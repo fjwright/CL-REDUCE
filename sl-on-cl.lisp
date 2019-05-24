@@ -405,17 +405,24 @@ an out of range error occurs.
   "Convert a list of single-character symbols to a case-inverted string."
   (cs-cl:map 'string #'%character-inverted u))
 
-(defun compress (u)
+(defvar %u)
+
+(defun compress (u)                     ; PSL spec
   "COMPRESS(U:id-list):{atom-vector} eval, spread
-U is a list of single character identifiers which is built into a Standard
-LISP entity and returned. Recognized are numbers, strings, and
-identifiers with the escape character prefixing special characters. The
-formats of these items appear in \"Primitive Data Types\" section 2.1
-on page 3. Identifiers are not interned on the OBLIST. Function
-pointers may be compressed but this is an undefined use. If an entity
-cannot be parsed out of U or characters are left over after parsing
-an error occurs:
+U is a list of single character identifiers which is built into a
+Standard LISP entity and returned.  Recognized are lists, numbers,
+strings, and identifiers with the escape character prefixing special
+characters.  Identifiers are not interned.  Function pointers may not
+be compressed.  If an entity cannot be parsed out of U an error
+occurs:
 ***** Poorly formed atom in COMPRESS"
+  (let ((%u u))
+    (%compress)))
+
+(defun %compress-skip-spaces ()
+  (loop while (eq (car %u) '| |) do (setq %u (cdr %u))))
+
+(defun %compress ()
   ;; Concatenate the characters into a string and then handle any !
   ;; characters as follows:
   ;; A string begins with " and should retain any ! characters without
@@ -423,65 +430,89 @@ an error occurs:
   ;; A number begins with - or a digit and should not contain any !
   ;; characters.
   ;; Otherwise, assume an identifier and replace ! by \, but !! by \!
-  (let ((u0 (car u)))                   ; first element
+  (let (u0)                             ; first element
+    (%compress-skip-spaces)             ; skip leading spaces
+    (setq u0 (car %u))
     (cond
+      ;; LIST?
+      ((eq u0 '|(|) (setq %u (cdr %u))
+       (%compress-skip-spaces)          ; skip leading spaces
+       (loop
+          while (not (eq (car %u) '|)|))
+          collect (%compress)
+          do (%compress-skip-spaces)))
       ;; STRING?
       ((eq u0 '\")
        ;; In Standard Lisp, "" in a string represents ":
-       (loop for x on (cdr u) with newu while (cdr x) do
-            (unless (and (eq (car x) '\") (eq (cadr x) '\"))
-              (push (car x) newu))
-          finally (return (%compress-list-to-inverted-string (nreverse newu)))))
+       (loop with newu while (setq %u (cdr %u)) do
+            (when (eq (car %u) '\")
+              (setq %u (cdr %u))
+              (if (not (and %u (eq (car %u) '\"))) ; end of string
+                  (return (%compress-list-to-inverted-string (nreverse newu)))))
+            (push (car %u) newu)))
       ;; NUMBER?
       ((or (digit u0) (char= (character u0) #\-))
-       ;; (eq u0 '-) fails because u0 is in SL but - is in CL.
-       (read-from-string (%compress-list-to-string u)))
+       ;; (eq u0 '-) fails because u0 is in SL but - is (an operator) in CL.
+       (multiple-value-bind (obj pos)
+           (read-from-string (%compress-list-to-string %u))
+         (setq %u (nthcdr pos %u))
+         obj))
       ;; IDENTIFIER
       (t
        ;; Delete a single ! but replace !! by !
-       (loop with newu while u do
-            (cond ((eq (car u) '!)
-                   (when (eq (cadr u) '!)
-                     (push '! newu)
-                     (setf u (cdr u))))
-                  (t (push (car u) newu)))
-            (setf u (cdr u))
-          finally (return
-                    (make-symbol        ; uninterned symbol
-                     (%compress-list-to-string (nreverse newu)))))))))
+       ;; In PSL, an identifier can contain any of the special characters
+       ;; + - $ & * / : ; | < = > ? ˆ _ { } ˜ @
+       ;; and hence not any of
+       ;; space ! " ' ( ) , . # % [ \ ] `
+       ;; unless they are escaped with ! (which must be handled specially).
+       (loop with newu do
+            (cond ((or (null %u)
+                       (cs-cl:member (car %u)
+                                     '(\  \" \' \( \) \, \. \# \% \[ \\ \] \`)))
+                   (return
+                     (make-symbol       ; uninterned symbol
+                      (%compress-list-to-string (nreverse newu)))))
+                  ((eq (car %u) '!) ; ignore ! but keep WHATEVER follows it
+                   (if (setf %u (cdr %u))
+                       (push (car %u) newu)))
+                  (t (push (car %u) newu)))
+            (setf %u (cdr %u)))))))
 
-(defun explode (u)
-  "EXPLODE(U:{atom}-{vector}):id-list eval, spread
-Returned is a list of interned characters representing the characters to
-print of the value of U. The primitive data types have these formats:
-integer -- Leading zeroes are suppressed and a minus sign prefixes the
-  digits if the integer is negative.
-floating -- The value appears in the format [-]0.nn...nnE[-]mm if the
-  magnitude of the number is too large or small to display in
-  [-]nnnn.nnnn format. The crossover point is determined by the
-  implementation.
-id -- The characters of the print name of the identifier are produced
-  with special characters prefixed with the escape character.
-string -- The characters of the string are produced surrounded by
-  double quotes \"...\".
-function-pointer -- The value of the function-pointer is created as a
-  list of characters conforming to the conventions of the system site.
-The type mismatch error occurs if U is not a number, identifier,
-string, or function-pointer."
-  (cs-cl:map
-   'list
-   #'%intern-character
-   (cond ((or (stringp u) (numberp u)) (prin1-to-string u))
-         ;; Assume identifier -- must insert ! before a leading digit and
-         ;; before any special characters in string without \ escapes:
-         (t (loop with s = (princ-to-string u) and ss and e
-                  for i below (cs-cl:length s) do
-                  (setf e (aref s i))
-                  (if (not (or (and (not (eql i 0)) (digit-char-p e))
-                               (alpha-char-p e)))
-                      (push #\! ss))
-                  (push e ss)
-                  finally (return (nreverse ss)))))))
+(defun explode (u)                      ; PSL spec
+  "(explode U:any): id-list expr
+Explode returns a list of interned single-character identifiers
+representing the characters required to print the S-expression U in a
+way that could be read by Lisp.  It is implemented by effectively
+printing (using prin1) to a list.  E.g.
+1 lisp> (explode ’foo)
+\(f o o)
+2 lisp> (explode ’(a . b))
+\(!( a !  !. !  b !))"
+  ;; Add support for vectors?  Share code with print routines?
+  (if (consp u)
+      (let ((ll (list (explode (car u)) (list '|(|))))
+        (loop while (consp (setq u (cdr u)))
+           do (push (list '| |) ll)
+           do (push (explode (car u)) ll))
+        (when u
+          (push (list '| | '|.| '| |) ll)
+          (push (explode u) ll))
+        (push (list '|)|) ll)
+        (cs-cl:apply #'nconc (nreverse ll)))
+      (cs-cl:map
+       'list
+       #'%intern-character
+       (cond ((or (stringp u) (numberp u)) (prin1-to-string u))
+             ;; Assume identifier -- must insert ! before a leading digit and
+             ;; before any special characters in string without \ escapes:
+             (t (loop with s = (princ-to-string u) and ss and e
+                   for i below (cs-cl:length s) do
+                     (setf e (aref s i))
+                     (if (not (or (and (not (eql i 0)) (digit-char-p e))
+                                  (alpha-char-p e)))
+                         (push #\! ss))
+                     (push e ss)
+                   finally (return (nreverse ss))))))))
 
 (defalias 'gensym 'cs-cl:gensym)
 ;; GENSYM():identifier eval, spread
@@ -2567,16 +2598,20 @@ Converts an integer to an id; this refers to the I'th id in the id space. Since
 0 ... 255 correspond to ASCII characters, int2id with an argument in this
 range converts an ASCII code to the corresponding single character id. The
 id NIL is always found by (int2id 128)."
-  ;; I'm guessing that the id should be interned! If not, use make-symbol.
-  ;; This may not be correct for i >= 128.
+  ;; Defined in csl.red as
+  ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
+  ;;   intern list2string list x;
+  ;; (unless (= i 128) (%intern-character (code-char i)))
   (%intern-character (code-char i)))
 
-(defalias 'id2int 'sxhash               ; PSL
+(defun id2int (d)                       ; PSL
   "(id2int D:id): integer expr
-Returns the id space position of D as a LISP integer.")
-;; I presume this means the position in the oblist, which I can't
-;; access.  However, sxhash returns a unique non-negative fixnum,
-;; which should suffice.
+Returns the id space position of D as a LISP integer."
+  ;; Defined in csl.red as
+  ;; inline procedure id2int x; % Gets first octet of UTF-8 form of name
+  ;;   car string2list x;
+  ;; (if d (cs-cl:char-code (aref (symbol-name d) 0)) 128)
+  (cs-cl:char-code (aref (symbol-name d) 0)))
 
 (defun char-code (c)                    ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"

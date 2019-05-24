@@ -49,7 +49,7 @@ do
 
     for x in $packages
     do
-        case $x in pm | gnuplot | turtle | rubi_red | lalr ) continue;; esac
+        case $x in pm | reduce4 | gnuplot | turtle | rubi_red | lalr ) continue;; esac
         echo +++++ Testing $which package $x
         echo $x >> testlog/test$which.log
         ./test-one-package.sh -l $lisp $x >> testlog/check$which.log
