@@ -2149,20 +2149,49 @@ Convert to lower case if *printlower is non-nil; otherwise to upper case."
   "Number of significant decimal digits to include when printing floats, or nil.
 If nil then floats are printed without any additional rounding.")
 
+;; (defun %%prin-float-to-string (u)
+;;   "Print a float to a string rounded to include only significant digits."
+;;   ;; Rescale u so that the significant digits form the integer part,
+;;   ;; round that and then undo the rescaling.
+;;   (princ-to-string
+;;    (if (and *float-print-precision* (not (zerop u)))
+;;        (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
+;;               ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
+;;               ;; integer part of u contains e+1 digits.  To make u
+;;               ;; contain d significant digits, multiply by a scale
+;;               ;; factor s = 10^(d-e-1), round and divide s out again:
+;;               (s (expt 10d0 (- *float-print-precision* e 1))))
+;;          (setq u (/ (fround (* u s)) s)))
+;;        u)))
+
+;; Using `format' instead of `princ-to-string' below might be better.
+;; (format nil "~,,,,,,'ee" 1e10) -> "1.0e+10"
+;; But deciding between ~f and ~e format to emulate Standard Lisp
+;; print output might not be so easy.  So, at least for now, use the
+;; following hack!
+
 (defun %%prin-float-to-string (u)
   "Print a float to a string rounded to include only significant digits."
   ;; Rescale u so that the significant digits form the integer part,
   ;; round that and then undo the rescaling.
-  (princ-to-string
-   (if (and *float-print-precision* (not (zerop u)))
-       (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
-              ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
-              ;; integer part of u contains e+1 digits.  To make u
-              ;; contain d significant digits, multiply by a scale
-              ;; factor s = 10^(d-e-1), round and divide s out again:
-              (s (expt 10d0 (- *float-print-precision* e 1))))
-         (setq u (/ (fround (* u s)) s)))
-       u)))
+  (let ((s (princ-to-string
+            (if (and *float-print-precision* (not (zerop u)))
+                (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
+                       ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
+                       ;; integer part of u contains e+1 digits.  To make u
+                       ;; contain d significant digits, multiply by a scale
+                       ;; factor s = 10^(d-e-1), round and divide s out again:
+                       (s (expt 10d0 (- *float-print-precision* e 1))))
+                  (setq u (/ (fround (* u s)) s)))
+                u)))
+        p)
+    ;; Lower-case an E if necessary and follow e with + unless there is already a -.
+    (when (setq p (position #+SBCL #\e #+CLISP #\E s))
+      #+CLISP (setf (aref s p) #\e)
+      (incf p)
+      (unless (char-equal (aref s p) #\-)
+        (setq s (concatenate 'string (subseq s 0 p) "+" (subseq s p)))))
+    s))
 
 (defun %%prin-vector (u prinfn)
   "Print vector U delimited by [ and ] using PRINFN to print each element."
