@@ -405,8 +405,6 @@ an out of range error occurs.
   "Convert a list of single-character symbols to a case-inverted string."
   (cs-cl:map 'string #'%character-inverted u))
 
-(defvar %u)
-
 (defun compress (u)                     ; PSL spec
   "COMPRESS(U:id-list):{atom-vector} eval, spread
 U is a list of single character identifiers which is built into a
@@ -416,67 +414,73 @@ characters.  Identifiers are not interned.  Function pointers may not
 be compressed.  If an entity cannot be parsed out of U an error
 occurs:
 ***** Poorly formed atom in COMPRESS"
-  (let ((%u u))
-    (%compress)))
-
-(defun %compress-skip-spaces ()
-  (loop while (eq (car %u) '| |) do (setq %u (cdr %u))))
-
-(defun %compress ()
-  ;; Concatenate the characters into a string and then handle any !
-  ;; characters as follows:
-  ;; A string begins with " and should retain any ! characters without
-  ;; change.
-  ;; A number begins with - or a digit and should not contain any !
-  ;; characters.
-  ;; Otherwise, assume an identifier and replace ! by \, but !! by \!
-  (let (u0)                             ; first element
-    (%compress-skip-spaces)             ; skip leading spaces
-    (setq u0 (car %u))
-    (cond
-      ;; LIST?
-      ((eq u0 '|(|) (setq %u (cdr %u))
-       (%compress-skip-spaces)          ; skip leading spaces
-       (loop
-          while (not (eq (car %u) '|)|))
-          collect (%compress)
-          do (%compress-skip-spaces)))
-      ;; STRING?
-      ((eq u0 '\")
-       ;; In Standard Lisp, "" in a string represents ":
-       (loop with newu while (setq %u (cdr %u)) do
-            (when (eq (car %u) '\")
-              (setq %u (cdr %u))
-              (if (not (and %u (eq (car %u) '\"))) ; end of string
-                  (return (%compress-list-to-inverted-string (nreverse newu)))))
-            (push (car %u) newu)))
-      ;; NUMBER?
-      ((or (digit u0) (char= (character u0) #\-))
-       ;; (eq u0 '-) fails because u0 is in SL but - is (an operator) in CL.
-       (multiple-value-bind (obj pos)
-           (read-from-string (%compress-list-to-string %u))
-         (setq %u (nthcdr pos %u))
-         obj))
-      ;; IDENTIFIER
-      (t
-       ;; Delete a single ! but replace !! by !
-       ;; In PSL, an identifier can contain any of the special characters
-       ;; + - $ & * / : ; | < = > ? ˆ _ { } ˜ @
-       ;; and hence not any of
-       ;; space ! " ' ( ) , . # % [ \ ] `
-       ;; unless they are escaped with ! (which must be handled specially).
-       (loop with newu do
-            (cond ((or (null %u)
-                       (cs-cl:member (car %u)
-                                     '(\  \" \' \( \) \, \. \# \% \[ \\ \] \`)))
-                   (return
-                     (make-symbol       ; uninterned symbol
-                      (%compress-list-to-string (nreverse newu)))))
-                  ((eq (car %u) '!) ; ignore ! but keep WHATEVER follows it
-                   (if (setf %u (cdr %u))
-                       (push (car %u) newu)))
-                  (t (push (car %u) newu)))
-            (setf %u (cdr %u)))))))
+  (labels
+      ((compress () ; This internal function recursively process lists.
+         ;; Concatenate the characters into a string and then handle any !
+         ;; characters as follows:
+         ;; A string begins with " and should retain any ! characters without
+         ;; change.
+         ;; A number begins with - or a digit and should not contain any !
+         ;; characters.
+         ;; Otherwise, assume an identifier and replace ! by \, but !! by \!
+         (let (u0)                      ; first element
+           (compress-skip-spaces)       ; skip leading spaces
+           (if (or (null u)
+                   (cs-cl:member (setq u0 (car u))
+                                 '(\' \) \, \% \[ \\ \`))) ; PSL
+               (cs-cl:error "Poorly formed S-expression in COMPRESS"))
+           (cond
+             ;; LIST?
+             ((eq u0 '|(|) (setq u (cdr u))
+              (compress-skip-spaces)    ; skip leading spaces
+              (loop
+                 while (not (eq (car u) '|)|))
+                 collect (compress)
+                 do (compress-skip-spaces)))
+             ;; STRING?
+             ((eq u0 '\")
+              ;; In Standard Lisp, "" in a string represents ":
+              (loop with newu while (setq u (cdr u)) do
+                   (when (eq (car u) '\")
+                     (setq u (cdr u))
+                     (if (not (and u (eq (car u) '\"))) ; end of string
+                         (return-from 'compress
+                           (%compress-list-to-inverted-string (nreverse newu)))))
+                   (push (car u) newu))
+              ;; String not terminated:
+              (cs-cl:error "Poorly formed S-expression in COMPRESS"))
+             ;; NUMBER?
+             ((or (digit u0) (char= (character u0) #\-))
+              ;; (eq u0 '-) fails because u0 is in SL but - is (an operator) in CL.
+              (multiple-value-bind (obj pos)
+                  (read-from-string (%compress-list-to-string u))
+                (setq u (nthcdr pos u))
+                obj))
+             ;; IDENTIFIER
+             (t
+              ;; Delete a single ! but replace !! by !
+              ;; In PSL, an identifier can contain any of the special characters
+              ;; + - $ & * / : ; | < = > ? ˆ _ { } ˜ @
+              ;; and hence not any of
+              ;; space ! " ' ( ) , . # % [ \ ] `
+              ;; unless they are escaped with ! (which must be handled specially).
+              (loop with newu do
+                   (cond ((or (null u)
+                              (cs-cl:member (car u)
+                                            '(\  \" \' \( \) \, \% \[ \\ \] \`)))
+                          (return
+                            (make-symbol ; uninterned symbol
+                             (%compress-list-to-string (nreverse newu)))))
+                         ((eq (car u) '!) ; ignore ! but keep WHATEVER follows it
+                          (if (setf u (cdr u))
+                              (push (car u) newu)))
+                         (t (push (car u) newu)))
+                   (setf u (cdr u)))))))
+       ;;
+       (compress-skip-spaces ()
+         (loop while (eq (car u) '| |) do (setq u (cdr u)))))
+    ;;
+    (compress)))
 
 (defun explode (u)                      ; PSL spec
   "(explode U:any): id-list expr
