@@ -131,7 +131,7 @@ echo +++++ Compiling sl-on-cl
 $runlisp << XXX &> log/sl-on-cl.blg
 (or (compile-file "sl-on-cl") (exit 1))
 XXX
-fi || (echo '***** Compilation failed'; exit)
+fi || { echo '***** Compilation failed'; exit; }
 
 if [ "trace.lisp" -nt "trace.$faslext" ]
 then
@@ -140,7 +140,7 @@ $runlisp << XXX &> log/trace.blg
 (load "sl-on-cl")
 (or (compile-file "trace") (exit 1))
 XXX
-fi || (echo '***** Compilation failed'; exit)
+fi || { echo '***** Compilation failed'; exit; }
 
 echo +++++ Creating the REDUCE image file
 
@@ -149,9 +149,6 @@ echo +++++ Creating the REDUCE image file
 # compile the non-core modules.
 
 $runlisp << XXX &> log/reduce.blg
-;(declaim (optimize debug)              ; same as (debug 3)
-;        (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
-
 (load "sl-on-cl") (load "trace") ; temporary -- until I can arrange autoloading!
 (standard-lisp)
 
@@ -160,8 +157,6 @@ $runlisp << XXX &> log/reduce.blg
 (setq !*verboseload t)
 (setq !*redefmsg nil)
 (cl:defvar !*argnochk t)        % check argument count
-
-% Load is expected to be a macro but isn't; does that matter?
 
 (load "module")                 % for definition of load-package
 (load "clprolo")                % initial CL specific code
@@ -233,9 +228,9 @@ else if '$p eq 'mrvlimit then load_package taylor
 % Temporary hack to avoid build errors:
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
-   switch usermode >>
+   switch usermode >>;
 % Temporary hack to partially fix a letter-case issue:
-else if '$p eq 'sstools then put('d,'prifn,'bigdpri); % 'd was '!d
+% else if '$p eq 'sstools then put('d,'prifn,'bigdpri); % 'd was '!d
 
 load remake;
 

@@ -17,10 +17,11 @@
 ;; (declaim (optimize (speed 3) (safety 0)))
 #+SBCL (declaim (optimize debug))       ; same as (debug 3)
 ;; CLISP seems to be *very* slow, so...
-;; #+CLISP (declaim (optimize speed))
+#+CLISP (declaim (optimize speed))
 
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
-#+CLISP (setf custom:*suppress-check-redefinition* t)
+#+CLISP (setq custom:*suppress-check-redefinition* t
+              custom:*compile-warnings* nil)
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
@@ -444,7 +445,7 @@ occurs:
                    (when (eq (car u) '\")
                      (setq u (cdr u))
                      (if (not (and u (eq (car u) '\"))) ; end of string
-                         (return-from 'compress
+                         (return-from compress
                            (%compress-list-to-inverted-string (nreverse newu)))))
                    (push (car u) newu))
               ;; String not terminated:
@@ -758,12 +759,15 @@ is returned."
               (let (f)
                 ;; Note that a CL function definition may contain
                 ;; declarations and a documentation string, and the
-                ;; body is wrapped in a block form, i.e.
+                ;; body MAY BE wrapped in a block form, i.e.
                 ;; (lambda params [decls] [doc] (block name body))
+                ;; [A compiled CLISP function may not contain a block!]
                 ;; Extract the function body:
-                (if (and (functionp (setq fname (symbol-function fname)))
-                         (setq f (function-lambda-expression fname)))
-                    (setq fname `(lambda ,(cadr f) ,(caddar (last f))))))
+                (when (and (functionp (setq fname (symbol-function fname)))
+                           (setq f (function-lambda-expression fname)))
+                  (setq fname (car (last f))) ; block or body form
+                  (if (eqcar fname 'block) (setq fname (caddr fname)))
+                  (setq fname `(lambda ,(cadr f) ,fname))))
               (cons 'expr fname)))))
 
 (defun putd (fname type body)
