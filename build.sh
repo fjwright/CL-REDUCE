@@ -203,8 +203,8 @@ $if_sbcl (setq sb-ext:*muffled-warnings* 'warning)
 % SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
 % (save!-lisp!-and!-die "fasl/reduce" !:executable t !:toplevel (lambda () (standard-lisp) (begin)))
 % For better debugging...
-$if_sbcl (save!-lisp!-and!-die "fasl/reduce.img"))
-$if_clisp (saveinitmem "fasl/reduce.mem"))
+$if_sbcl (save!-lisp!-and!-die "fasl/reduce.img")
+$if_clisp (saveinitmem "fasl/reduce.mem")
 
 XXX
 
@@ -228,9 +228,9 @@ else if '$p eq 'mrvlimit then load_package taylor
 % Temporary hack to avoid build errors:
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
-   switch usermode >>;
+   switch usermode >>
 % Temporary hack to partially fix a letter-case issue:
-% else if '$p eq 'sstools then put('d,'prifn,'bigdpri); % 'd was '!d
+else if 'sbcl memq lispsystem!* and '$p eq 'sstools then put('d,'prifn,'bigdpri); % 'd was '!d
 
 load remake;
 

@@ -862,8 +862,7 @@ from GLOBAL to FLUID is not permissible and results in the error:
 
 (defun fluidp (u)
   "FLUIDP(U:any):boolean eval, spread
-If U has been declared FLUID (by declaration only) T is returned,
-otherwise NIL is returned."
+If U has been declared fluid then t is returned, otherwise nil is returned."
   (get u 'fluid))
 
 (defun %%global (x)
@@ -900,9 +899,8 @@ results in the error:
 
 (defun globalp (u)
   "GLOBALP(U:any):boolean eval, spread
-If U has been declared GLOBAL or is the name of a defined function,
-T is returned, else NIL is returned."
-  (or (get u 'global) (fboundp u)))
+If U has been declared global then t is returned, otherwise nil is returned."
+  (get u 'global))                      ; PSL/CSL definition
 
 (import 'cs-cl:set)
 ;; Auto fluid not implemented!
@@ -946,11 +944,6 @@ in interpreted functions are automatically considered fluid."
 
 ;;; Program Feature Functions
 ;;; =========================
-
-;; **********************************************************************
-;; NB: In CL, tagbody, and hence prog, contents cannot be null. So
-;; prog probably needs modification as for EL.
-;; **********************************************************************
 
 (import 'cs-cl:go)
 ;; GO(LABEL:id) noeval, nospread
