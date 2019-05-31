@@ -200,7 +200,7 @@ Abort with an error if the answer is no.")
          (format *trace-output* "   ~a:  ~s~%" param arg))
 
     (if (and *trpause (not (y-or-n-p "Continue?")))
-        (cs-cl:error "Tracing aborted!")))
+        (error "Tracing aborted!"))
 
     (setq result
           (sl::errorset `(apply ,(eval result) ',args) nil nil))

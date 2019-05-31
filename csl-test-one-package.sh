@@ -10,6 +10,8 @@
 # Assume this script is run in the top-level CL REDUCE directory.
 # This script is normally run by csl-test-packages.sh.
 
+if [ ! "$reduce" ]; then export reduce=.; fi
+
 testfile=./packages/$1/$1.tst # most likely location
 if [ ! -e "$testfile" ]
 then

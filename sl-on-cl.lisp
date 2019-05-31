@@ -191,6 +191,22 @@ EXPR PROCEDURE CONSTANTP(U);
 ;; Returns T if U points to the same object as V. EQ is not a reliable
 ;; comparison between numeric arguments.
 
+;; The following code seems to cause problems if used in eq or equal.
+
+;; (defun eq (u v)
+;;   "EQ(U:any, V:any):boolean eval, spread
+;; Returns T if U points to the same object as V. EQ is not a reliable
+;; comparison between numeric arguments."
+;;   ;; After evaluating (setq gg intern(setq g (gensym))) in PSL/CSL
+;;   ;; then (eq g gg) gives true, but in Common Lisp the equivalent
+;;   ;; gives false, so...
+;;   (if (and (cs-cl:symbolp u) (cs-cl:symbolp v)) ; both symbols
+;;       ;; Look for both symbols NOW in the current package:
+;;       (let ((uu (find-symbol (symbol-name u)))
+;;             (vv (find-symbol (symbol-name v))))
+;;         (and uu vv (cs-cl:eq uu vv)))
+;;       (cs-cl:eq u v)))
+
 (defun eqn (u v)
   "EQN(U:any, V:any):boolean eval, spread
 Returns T if U and V are EQ or if U and V are numbers and have
@@ -681,19 +697,17 @@ Returns the removed property or NIL if there was no such indicator."
 ;; the property %%FTYPE with value EXPR just for symmetry, but this
 ;; property value is not actually used by GETD.
 
-(defmacro de (fname params fn)
-  "DE(FNAME:id, PARAMS:id-list, FN:any):id noeval, nospread
-The function FN with the formal parameter list PARAMS is added to
-the set of defined functions with the name FNAME. Any previous
-definitions of the function are lost. The function created is of
-type EXPR. If the !*COMP variable is non-NIL, the EXPR is first
-compiled. The name of the defined function is returned.
-FEXPR PROCEDURE DE(U);
-   PUTD(CAR U, 'EXPR, LIST('LAMBDA, CADR U, CADDR U));"
+(defmacro de (fname params &rest fn)    ; PSL definition
+  "(de Fname:id PARAMS:id-list [FN:form]): id macro
+Defines the function named FNAME, of type expr. The forms FN are made
+into a lambda expression with the formal parameter list PARAMS, and
+this is used as the body of the function.  Previous definitions of the
+function are lost. The name of the defined function, FNAME, is
+returned."
   `(progn
      (%%redefmsg ',fname)
      (put ',fname '%%ftype 'expr)
-     (defun ,fname ,params ,fn)
+     (defun ,fname ,params ,@fn)
      ;; It makes no sense to include code to compile this function
      ;; when the function definition is being compiled into a fasl
      ;; file, so examine *COMP when the macro is expanded/compiled and
@@ -1087,6 +1101,9 @@ dependent format."
         (cs-cl:error
             (err)
           (if msgp (format t "~&***** CL error: ~a~%" err))
+          ;; This doesn't really work because it breaks in the context
+          ;; of the errorset rather than the error!
+          (break "errorset(~a)" u)
           999))))
 
 
@@ -1534,19 +1551,19 @@ first element of V. The list U is copied, but V is not."
   ;; have any type:
   (if (consp u) (cs-cl:append u v) v))
 
-(defun assoc (u v)
-  "ASSOC(U:any, V:alist):{dotted-pair, NIL} eval, spread
-If U occurs as the CAR portion of an element of the alist V, the
-dotted-pair in which U occurred is returned, else NIL is
-returned.  ASSOC might not detect a poorly formed alist so an
-invalid construction may be detected by CAR or CDR.
-EXPR PROCEDURE ASSOC(U, V);
-   IF NULL V THEN NIL
-      ELSE IF ATOM CAR V THEN
-         ERROR(000, LIST(V, \"is a poorly formed alist\"))
-      ELSE IF U = CAAR V THEN CAR V
-      ELSE ASSOC(U, CDR V);"
-  (cs-cl:assoc u v :test #'equal))
+(defun assoc (u v)                      ; PSL definition
+  "(assoc U:any V:any): pair, nil expr
+If U occurs as the car portion of an element of the a-list V, the pair in which
+U occurred is returned, otherwise nil is returned. The function equal is used
+to test for equality.
+\(de assoc (u v)
+  (cond ((not (pairp v)) nil)
+        ((and (pairp (car v)) (equal u (caar v))) (car v))
+        (t (assoc u (cdr v)))))"
+  (and (consp v)
+       (loop for x in v do
+            (if (and (consp x) (equal u (car x)))
+                (return x)))))
 
 (defun deflist (u ind)
   "DEFLIST(U:dlist, IND:id):list eval, spread

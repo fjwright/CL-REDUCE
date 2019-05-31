@@ -30,7 +30,7 @@ if [ "$lisp" = 'sbcl' ]; then
     if_sbcl=''
     if_clisp='%'
 elif [ "$lisp" = 'clisp' ]; then
-    runlisp='clisp -ansi -modern'
+    runlisp='clisp -ansi -modern -norc'
     runbootstrap='clisp -q -norc -M fasl/bootstrap.mem'
     runreduce='clisp -q -norc -M fasl/reduce.mem'
     saveext='mem'
@@ -225,6 +225,7 @@ on verboseload;
 
 if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
 else if '$p eq 'mrvlimit then load_package taylor
+else if '$p eq 'rubi_red then flag('(flush),'rlisp)
 % Temporary hack to avoid build errors:
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
