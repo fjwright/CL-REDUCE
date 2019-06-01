@@ -19,6 +19,7 @@ do
 
 	for x in $packages
 	do
+        case $x in reduce4 | gnuplot | turtle | rubi_red | lalr ) continue;; esac
 		echo +++++ Testing $which package $x
 		echo $x >> csltestlog/test$which.log
 		./csl-test-one-package.sh $x
