@@ -26,11 +26,35 @@
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
 
+#-CLISP
+(defpackage :cs-common-lisp
+  (:nicknames :cs-cl)
+  (:documentation "Case-sensitive and case-inverting Common Lisp") ; but not yet!!!
+  (:use :common-lisp))
+
+#-CLISP
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; Based on CLISP source file "case-sensitive.lisp":
+  (let ((cs-cl-package (find-package :cs-common-lisp)))
+    ;; For each symbol standard-sym in CL find the same symbol cs-sym in
+    ;; CS-CL and export it:
+    (do-external-symbols (standard-sym :common-lisp)
+      (let ((cs-sym (find-symbol (symbol-name standard-sym) cs-cl-package)))
+        ;; (print cs-sym)
+        (export (list cs-sym) cs-cl-package)))))
+
+;; #-CLISP
+;; (defpackage :cs-common-lisp-user
+;;   (:nicknames :cs-cl-user)
+;;   (:documentation "Case-sensitive and case-inverting Common Lisp user")
+;;   (:use :common-lisp-user))
+
 (defpackage :standard-lisp
   (:nicknames :sl)
-  (:documentation "Lower-case Standard Lisp on Common Lisp")
-  (:modern t)
-  (:use :common-lisp)
+  #-CLISP (:documentation "Standard Lisp on Common Lisp")
+  #+CLISP (:documentation "Lower-case Standard Lisp on Common Lisp")
+  #-CLISP (:use :cs-common-lisp)
+  #+CLISP (:modern t) (:use :common-lisp)
 
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
@@ -52,9 +76,10 @@
 
 (in-package :standard-lisp)
 
-(defun %intern-character (c)
-  "Convert character C to an interned symbol."
-  (cs-cl:intern (string c)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun %intern-character (c)
+    "Convert character C to an interned symbol."
+    (cs-cl:intern (string c))))
 
 ;; The following definitions roughly follow the order in the Standard
 ;; Lisp Report.
@@ -110,7 +135,7 @@ through Standard LISP input functions will be converted to a standard
 case.  Currently, this is upper case on SBCL and lower case on CLISP.
 If !*RAISE is NIL characters will be input as is.")
 
-(defvar *printlower nil
+(defvar *printlower #+CLISP nil #-CLISP t
   ;; Calling this variable *lower causes problems bootstrapping rlisp
   ;; that I don't understand, but this switch is different from the
   ;; PSL/CSL lower switch anyway!
@@ -414,6 +439,7 @@ an out of range error occurs.
 (defun %character-inverted (c)
   "As `character', but case-inverted."
   (setq c (character c))
+  #+CLISP
   (if (alpha-char-p c)
       (if (lower-case-p c) (cs-cl:char-upcase c) (cs-cl:char-downcase c))
       c))
@@ -511,6 +537,7 @@ printing (using prin1) to a list.  E.g.
 \(!( a !  !. !  b !))"
   ;; Add support for vectors?  Share code with print routines?
   (if (consp u)
+      ;; Exploding a cons:
       (let ((ll (list (explode (car u)) (list '|(|))))
         (loop while (consp (setq u (cdr u)))
            do (push (list '| |) ll)
@@ -520,6 +547,7 @@ printing (using prin1) to a list.  E.g.
           (push (explode u) ll))
         (push (list '|)|) ll)
         (cs-cl:apply #'nconc (nreverse ll)))
+      ;; Exploding an atom:
       (cs-cl:map
        'list
        #'%intern-character
@@ -1103,7 +1131,8 @@ dependent format."
           (if msgp (format t "~&***** CL error: ~a~%" err))
           ;; This doesn't really work because it breaks in the context
           ;; of the errorset rather than the error!
-          (break "errorset(~a)" u)
+          ;; It also breaks building bootstrap REDUCE on SBCL!
+          ;; (break "errorset(~a)" u)
           999))))
 
 
@@ -2361,7 +2390,8 @@ Comments delimited by % and end-of-line are not transparent to READCH."
                (setq %%readch-escape (not %%readch-escape)) '!)
               (%%readch-escape
                (setq %%readch-escape nil) (%intern-character c))
-              (*raise (%intern-character (cs-cl:char-downcase c)))
+              (*raise (%intern-character
+                       (#+CLISP cs-cl:char-downcase #-CLISP cs-cl:char-upcase c)))
               (t (%intern-character c))))))
 
 (defun terpri ()
@@ -2827,7 +2857,7 @@ not sucessful, the value Nil is returned."
                                        (list (file-namestring dir))))))
   ;; Expand environment variables, "." and "..":
   (setq dir (substitute-in-file-name (namestring dir)))
-  (setq file (expand-file-name file))
+  (setq dir (expand-file-name dir))
   (setq dir (merge-pathnames dir))
   (and (probe-file dir)
        ;; Return a more useful value than t:
@@ -3025,7 +3055,7 @@ When all done, execute FASLEND;~2%" name))
   (standard-lisp)
   (begin))
 
-(import '(standard-lisp start-reduce) :cs-cl-user)
+(import '(standard-lisp start-reduce) #+CLISP :cs-cl-user #+SBCL :cl-user)
 
 (defun reset-readtable ()
   "Switch to Common Lisp read syntax."

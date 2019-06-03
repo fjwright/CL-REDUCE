@@ -34,7 +34,8 @@
 fluid '(!*savedef !*gc!-hook!* !*noinlines);
 
 global '(!*psl !*csl);					% CL is neither
-!*psl := t;                             % but pretend to be PSL!
+% ***** The following is needed for lower-case REDUCE only:
+% !*psl := t;                             % but pretend to be PSL!
 
 % Support for package creation.
 
@@ -97,7 +98,7 @@ flag('(yesp1),'lose);
 % and redefined in several files:
 flag('(red!-char!-downcase),'lose);
 
-% orderp is needed in rlisp/switch, so define it here and prevent if
+% orderp is needed in rlisp/switch, so define it here and prevent it
 % being redefined as it would be for PSL:
 remflag('(orderp),'lose);
 

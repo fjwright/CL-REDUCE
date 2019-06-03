@@ -391,6 +391,8 @@ symbolic procedure rename!-file(fromname, toname)$
 % identifiers but not to strings handled within this procedure until I
 % can think of a way to modify sl-on-cl that works.
 
+fluid '(nonterminals);
+
 remflag('(lalr_collect_terminals), 'lose);
 
 symbolic procedure lalr_collect_terminals grammar;

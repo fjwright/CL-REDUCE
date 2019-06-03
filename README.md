@@ -7,7 +7,7 @@ From the introductory chapter of [*Common Lisp the Language, 2nd edition,* by Gu
 
 > The goals of Common Lisp are thus very close to those of Standard Lisp and Portable Standard Lisp. Common Lisp differs from Standard Lisp primarily in incorporating more features, including a richer and more complicated set of data types and more complex control structures.
 
-**This code is currently experimental!  The references to SBCL do not apply to this revision, which runs only on CLISP.**
+**This code is currently experimental!  The test details below do not all apply to SBCL, which is still upper-case.**
 
 The files in this directory are intended to build and run the current distributed version of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support explicitly only
 
@@ -109,13 +109,13 @@ Timings
 
 I estimate that SBCL REDUCE is 3 or 4 times slower than PSL/CSL REDUCE, but note that it is currently built for comfort (of debugging) rather than speed!  CLISP is a lot slower than SBCL!
 
-Operation                               | CSL Time | Prev. SBCL | Prev. CLISP | Latest CLISP
-----------------------------------------|----------|------------|-------------|-------------
-Build bootstrap REDUCE image            |          | 4.1 secs   | 33.2 secs   | 21.3 secs
-Build final REDUCE image                |          | 0.4 secs   |  3.3 secs   |  3.3 secs
-Run alg.tst                             |  78 ms   | 282 ms     |  860 ms     |  828 ms
-Run (and check) all core test files     |  33 secs |  50 secs   |  4 m 25 s   |  4 m 21 s
-Run (and check) most noncore test files | 4 m 24 s |  17 mins   | 87 m 11 s   | 90 m 16 s
+Operation                               | CSL Time | Prev SBCL | Last SBCL | Prev CLISP | Last CLISP
+----------------------------------------|----------|-----------|-----------|------------|------------
+Build bootstrap REDUCE image            |          | 4.1 secs  | 4.1 secs  | 33.2 secs  | 21.3 secs
+Build final REDUCE image                |          | 0.4 secs  | 0.4 secs  |  3.3 secs  |  3.3 secs
+Run alg.tst                             |  78 ms   | 282 ms    | 282 ms    |  860 ms    |  828 ms
+Run (and check) all core test files     |  33 secs |  50 secs  |  50 secs  |  4 m 25 s  |  4 m 21 s
+Run (and check) most noncore test files | 4 m 24 s |  17 mins  | 15 m 32 s | 87 m 11 s  | 90 m 16 s
 
 The shorter times above are probably not very meaningful.  Most of the time building REDUCE goes in compiling the packages, which takes a few minutes, but I don't currently have any precise timings for this.  The CSL test times do not include checking, which involves running `diff`.  The time for the noncore tests does not include all packages as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
 
