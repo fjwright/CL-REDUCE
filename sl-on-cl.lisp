@@ -32,8 +32,7 @@
   (:nicknames :cs-cl)
   (:documentation "Case-sensitive and case-inverting Common Lisp")
   (:use :common-lisp)
-  (:shadow :symbol-name :intern :find-symbol
-           :princ-to-string :prin1-to-string))
+  (:shadow :symbol-name :intern :find-symbol))
 
 #-CLISP
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -93,15 +92,6 @@
   "find-symbol string => symbol"
   (cl:find-symbol (cs-cl::%string-invert-case s)))
 
-(defun cs-cl:princ-to-string (u)
-  "As cl:princ-to-string but invert case of a symbol."
-  (if (symbolp u) (cs-cl::%string-invert-case (cl:princ-to-string u))
-      (cl:princ-to-string u)))
-
-(defun cs-cl:prin1-to-string (u)
-  "As cl:prin1-to-string but invert case of a symbol."
-  (if (symbolp u) (cs-cl::%string-invert-case (cl:prin1-to-string u))
-      (cl:prin1-to-string u)))
 )                               ; end progn setting up :cs-common-lisp
 
 
@@ -192,12 +182,6 @@ Follow the PSL convention: If !*RAISE is non-NIL all characters input
 through Standard LISP input functions will be converted to a standard
 case.  Currently, this is upper case on SBCL and lower case on CLISP.
 If !*RAISE is NIL characters will be input as is.")
-
-(defvar *printlower nil
-  ;; Calling this variable *lower causes problems bootstrapping rlisp
-  ;; that I don't understand, but this switch is different from the
-  ;; PSL/CSL lower switch anyway!
-  "If non-nil then all identifiers are printed using lower case.")
 
 (import 't)
 ;; T = T global
@@ -611,7 +595,9 @@ printing (using prin1) to a list.  E.g.
        (cond ((or (stringp u) (numberp u)) (prin1-to-string u))
              ;; Assume identifier -- must insert ! before a leading digit and
              ;; before any special characters in string without \ escapes:
-             (t (loop with s = (princ-to-string u) and ss and e
+             (t (loop with s = (cs-cl::%string-invert-case
+                                (cl:princ-to-string u))
+                   and ss and e
                    for i below (cs-cl:length s) do
                      (setf e (aref s i))
                      (if (not (or (and (not (eql i 0)) (digit-char-p e))
@@ -1111,6 +1097,12 @@ in interpreted functions are automatically considered fluid."
 
 ;; THIS CODE COULD BE IMPROVED!
 
+(defun %princ-to-string (u)
+  ;; Used only in error and princ (which is not used in REDUCE).
+  "As cl:princ-to-string but invert case of a symbol."
+  (if (symbolp u) (cs-cl::%string-invert-case (cl:princ-to-string u))
+      (cl:princ-to-string u)))
+
 (defun error (number message)
   "ERROR(NUMBER:integer, MESSAGE:any) eval, spread
 NUMBER and MESSAGE are passed back to a surrounding ERRORSET (the
@@ -1123,11 +1115,11 @@ variables are not affected by the process."
       (setq message
             (let ((*print-case* :downcase))
               (cs-cl:apply #'concatenate 'string
-                        (cons (princ-to-string (car message))
+                        (cons (%princ-to-string (car message))
                               (loop
                                  for x in (cdr message)
                                  collect " "
-                                 collect (princ-to-string x)))))))
+                                 collect (%princ-to-string x)))))))
   (setf emsg* message)
   ;; (cs-cl:error "***** SL error ~a: ~a" number message)
   ;; Do not include number in the output:
@@ -2155,13 +2147,15 @@ This is the only function that actually produces graphical output."
     (cs-cl:princ s)))
 
 (defun princ (u)
+  ;; Not used in REDUCE since redefined in rlisp/rsupport.red as
+  ;; symbolic procedure princ u; prin2 u;
   "PRINC(U:id):id eval, spread
 U must be a single character id such as produced by EXPLODE or
 read by READCH or the value of !$EOL!$. The effect is the character
 U displayed upon the currently selected output device. The value of
 !$EOL!$ causes termination of the current line like a call to TERPRI."
   (cond ((eq u $eol$) (terpri))
-        (t (%%prin-string (princ-to-string u))))
+        (t (%%prin-string (%princ-to-string u))))
   u)
 
 (defun print (u)
@@ -2201,15 +2195,14 @@ in vector-notation.  The value of U is returned."
   (cond ((symbolp u) (%%prin-string (%%prin2-id-to-string u)))
         ((floatp u) (%%prin-string (%%prin-float-to-string u)))
         ((vectorp u) (%%prin-vector u #'prin2))
-        ((atom u) (%%prin-string (princ-to-string u)))
+        ((atom u) (%%prin-string (cl:princ-to-string u)))
         ((eq (car u) 'quote) (%%prin-string "'") (prin2 (cadr u)))
         (t (%%prin-cons u #'prin2)))
   u)
 
 (defun %%prin1-id-to-string (u)
-  "Convert identifier U to a string including appropriate `!' escapes.
-Convert to lower case if *printlower is non-nil; otherwise to upper case."
-  (setf u (%%princ-to-string u))
+  "Convert identifier U to a string including appropriate `!' escapes."
+  (setf u (%%princ-id-to-string u))
   (loop with newu and c
      for i below (cs-cl:length u) do
        (setf c (aref u i))
@@ -2221,16 +2214,13 @@ Convert to lower case if *printlower is non-nil; otherwise to upper case."
      finally (return (coerce (nreverse newu) 'string))))
 
 (defun %%prin2-id-to-string (u)
-  "Convert identifier U to a string excluding inappropriate `!' escapes.
-Convert to lower case if *printlower is non-nil; otherwise to upper case."
-  (setf u (%%princ-to-string u))
+  "Convert identifier U to a string excluding inappropriate `!' escapes."
+  (setf u (%%princ-id-to-string u))
   (if (string= "!:" u :end2 1) (subseq u 1) u))
 
-(defun %%princ-to-string (u)
-  "Print identifier U to a string without any escapes.
-Convert to lower case if *printlower is non-nil; otherwise to upper case."
-  (let ((*print-case* (if *printlower :downcase :upcase)))
-    (cs-cl:princ-to-string u)))
+(defun %%princ-id-to-string (u)
+  "Print identifier U to a string without any escapes."
+  (cs-cl::%string-invert-case (cl:princ-to-string u)))
 
 (defun %%prin1-string-to-string (u)
   "Add delimiting \"s and escape internal \"s as \"\" in string U."
@@ -2278,7 +2268,7 @@ If nil then floats are printed without any additional rounding.")
   "Print a float to a string rounded to include only significant digits."
   ;; Rescale u so that the significant digits form the integer part,
   ;; round that and then undo the rescaling.
-  (let ((s (princ-to-string
+  (let ((s (cl:princ-to-string
             (if (and *float-print-precision* (not (zerop u)))
                 (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
                        ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
@@ -2630,7 +2620,8 @@ A function hung on the garbage collection hook."
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."
-  (cs-cl:map 'list #'%intern-character (princ-to-string u)))
+  (cs-cl:map 'list #'%intern-character
+             (cs-cl::%string-invert-case (cl:princ-to-string u))))
 
 (defun explode2uc (u)                   ; defined in "pslrend.red"
   "Upper-case version of explode2."
