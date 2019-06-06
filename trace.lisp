@@ -27,7 +27,7 @@
   (:nicknames :sl-trace)
   (:documentation "Lower-case Standard Lisp on Common Lisp trace facilities")
   #-CLISP (:use :cs-common-lisp)
-  #+CLISP (:modern t) (:use :common-lisp)
+  #+CLISP (:modern t) #+CLISP (:use :common-lisp)
   (:import-from :sl :eqcar :put)
   (:export :tr :untr :trst :untrst))
 

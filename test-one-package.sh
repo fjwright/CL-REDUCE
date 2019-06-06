@@ -52,7 +52,6 @@ out "testlog/$1.rlg";
 
 load_package $1;
 
-if 'sbcl memq lispsystem!* and '$1 eq 'rlfi then in "rlfi.tst" else % *** UPPER-CASE VERSION ***
 in "$testfile";
 
 symbolic begin

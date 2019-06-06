@@ -60,6 +60,8 @@ $runbootstrap << XXX &> log/build.blg
 (begin)
 symbolic; $force
 
+off redefmsg;
+
 package!-remake2('clprolo, nil);
 package!-remake2('revision, 'support);
 package!-remake2('clrend, nil);
@@ -105,6 +107,8 @@ $runbootstrap << XXX &> log/$p.blg
 (standard-lisp)
 (begin)
 symbolic; $force
+
+off redefmsg;
 
 begin
   scalar w, i, s;
@@ -225,13 +229,11 @@ on verboseload;
 
 if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
 else if '$p eq 'mrvlimit then load_package taylor
+% Temporary hacks to avoid build errors:
 else if '$p eq 'rubi_red then flag('(flush),'rlisp)
-% Temporary hack to avoid build errors:
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
-   switch usermode >>
-% Temporary hack to partially fix a letter-case issue:
-else if 'sbcl memq lispsystem!* and '$p eq 'sstools then put('d,'prifn,'bigdpri); % 'd was '!d
+   switch usermode >>;
 
 load remake;
 

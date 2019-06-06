@@ -34,8 +34,7 @@
 fluid '(!*savedef !*gc!-hook!* !*noinlines);
 
 global '(!*psl !*csl);					% CL is neither
-% ***** The following is needed for lower-case REDUCE only:
-% !*psl := t;                             % but pretend to be PSL!
+!*psl := t;                             % but pretend to be PSL!
 
 % Support for package creation.
 
