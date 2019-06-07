@@ -13,6 +13,8 @@
 ;; of PSL and CSL in a package called STANDARD-LISP with nickname SL.
 ;; It does not provide a Standard Lisp REPL and is intended primarily
 ;; for running REDUCE (which provides its own REPL) on Common Lisp.
+;; This implementation of Standard Lisp is lower-case.  It uses case
+;; inversion of symbol names and is case-sensitive internally.
 
 ;; (declaim (optimize (speed 3) (safety 0)))
 #+SBCL (declaim (optimize debug))       ; same as (debug 3)
@@ -31,8 +33,7 @@
 (defpackage :cs-common-lisp
   (:nicknames :cs-cl)
   (:documentation "Case-sensitive and case-inverting Common Lisp")
-  (:use :common-lisp)
-  (:shadow :symbol-name :intern :find-symbol))
+  (:use :common-lisp))
 
 #-CLISP
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -45,55 +46,6 @@
         ;; (print cs-sym)
         (export (list cs-sym) cs-cl-package)))))
 
-;; #-CLISP
-;; (defpackage :cs-common-lisp-user
-;;   (:nicknames :cs-cl-user)
-;;   (:documentation "Case-sensitive and case-inverting Common Lisp user")
-;;   (:use :common-lisp-user))
-
-;; The CLISP "CS-COMMON-LISP" package provides several case-inverted
-;; functions, among which I only use the following:
-
-;; cs-cl:symbol-name
-;;   returns the case-inverted symbol name.
-;; cs-cl:intern
-;; cs-cl:find-symbol
-;;   work consistently with cs-cl:symbol-name.
-;; cs-cl:shadow
-;;   converts a SYMBOL to a STRING and therefore exist in a variant
-;;   that uses cs-cl:symbol-name instead of SYMBOL-NAME.
-
-;; (in-package :cs-common-lisp)
-
-#-CLISP
-(eval-when (:compile-toplevel :load-toplevel :execute)
-
-(defun cs-cl::%string-invert-case (s)
-  "Invert the case of each letter in a string."
-  ;; The consequences are undefined if a symbol name is ever modified.
-  ;; Hence the following copy is necessary, at least in SBCL...
-  (setq s (copy-seq s))
-  (loop for i below (length s) with c do
-       (setq c (aref s i))
-       (if (both-case-p c)
-           (setf (aref s i)
-                 (if (lower-case-p c) (char-upcase c) (char-downcase c)))))
-  s)
-
-(defun cs-cl:symbol-name (s)
-  "symbol-name symbol => name"
-  (cs-cl::%string-invert-case (cl:symbol-name s)))
-
-(defun cs-cl:intern (s)
-  "intern string => symbol"
-  (cl:intern (cs-cl::%string-invert-case s)))
-
-(defun cs-cl:find-symbol (s)
-  "find-symbol string => symbol"
-  (cl:find-symbol (cs-cl::%string-invert-case s)))
-
-)                               ; end progn setting up :cs-common-lisp
-
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
@@ -101,7 +53,6 @@
 (defpackage :standard-lisp
   (:nicknames :sl)
   (:documentation "Lower-case Standard Lisp on Common Lisp")
-  #+CLISP (:case-sensitive t) #+CLISP (:case-inverted t)
   (:use :cs-common-lisp)
 
   ;; Best to use the shadow option here and not separate calls of the
@@ -114,7 +65,7 @@
            :function :close :open :princ :print :prin1 :read
            :terpri :complexp :union :compile-file :load :time
            :char-downcase :char-upcase :string-downcase :mod
-           :char-code)
+           :char-code :symbol-name)
 
   #+SBCL (:import-from :sb-ext :exit :quit :save-lisp-and-die :gc)
   #+SBCL (:import-from :sb-posix :getenv)
@@ -125,9 +76,41 @@
 (in-package :standard-lisp)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun %intern-character (c)
-    "Convert character C to an interned symbol."
-    (cs-cl:intern (string c))))
+
+(defun %string-invert-case (s)
+  "Invert the case of each letter in a string."
+  ;; The consequences are undefined if a symbol name is ever modified.
+  ;; Hence the following copy is necessary, at least in SBCL...
+  (setq s (copy-seq s))
+  (loop for i below (cl:length s) with c do
+       (setq c (aref s i))
+       (if (cl:both-case-p c)
+           (setf (aref s i)
+                 (if (cl:lower-case-p c)
+                     (cl:char-upcase c)
+                     (cl:char-downcase c)))))
+  s)
+
+;; (defun %character-invert-case (c)
+;;   "Invert the case of letter character."
+;;   (if (cl:both-case-p c)
+;;       (if (cl:lower-case-p c)
+;;           (cl:char-upcase c)
+;;           (cl:char-downcase c))
+;;       c))
+
+;; (defun %string-invert-case (s)
+;;   "Invert the case of each letter in a string."
+;;   ;; The consequences are undefined if a symbol name is ever modified.
+;;   ;; Hence the following copy is necessary, at least in SBCL...
+;;   (cl:map 'string #'%character-invert-case s))
+
+;; ***** THIS CAN PROBABLY BE HANDLED BETTER *****
+(defun %intern-character (c)
+  "Convert character C to an interned symbol."
+  (cl:intern (%string-invert-case (string c))))
+
+)
 
 ;; The following definitions roughly follow the order in the Standard
 ;; Lisp Report.
@@ -595,7 +578,7 @@ printing (using prin1) to a list.  E.g.
        (cond ((or (stringp u) (numberp u)) (prin1-to-string u))
              ;; Assume identifier -- must insert ! before a leading digit and
              ;; before any special characters in string without \ escapes:
-             (t (loop with s = (cs-cl::%string-invert-case
+             (t (loop with s = (%string-invert-case
                                 (cl:princ-to-string u))
                    and ss and e
                    for i below (cs-cl:length s) do
@@ -613,7 +596,7 @@ printing (using prin1) to a list.  E.g.
 ;; Defined this way so that I can overwrite it in faslout.
 
 (defun gensymp (u)                      ; from pslrend
-  (and (symbolp u) (not (find-symbol (symbol-name u)))))
+  (and (symbolp u) (not (cl:find-symbol (cl:symbol-name u)))))
 
 (defun intern (u)
   "INTERN(U:{id,string}):id eval, spread
@@ -625,7 +608,9 @@ returned. If U has more than the maximum number of characters
 permitted by the implementation (the minimum number is 24) an
 error occurs:
 ***** Too many characters to INTERN"
-  (cs-cl:intern (if (symbolp u) (symbol-name u) u)))
+  (cl:intern (if (symbolp u)
+                 (cl:symbol-name u)
+                 (%string-invert-case u))))
 
 (defun remob (u)
   "REMOB(U:id):id eval, spread
@@ -1100,7 +1085,7 @@ in interpreted functions are automatically considered fluid."
 (defun %princ-to-string (u)
   ;; Used only in error and princ (which is not used in REDUCE).
   "As cl:princ-to-string but invert case of a symbol."
-  (if (symbolp u) (cs-cl::%string-invert-case (cl:princ-to-string u))
+  (if (symbolp u) (%string-invert-case (cl:princ-to-string u))
       (cl:princ-to-string u)))
 
 (defun error (number message)
@@ -2213,14 +2198,16 @@ in vector-notation.  The value of U is returned."
        (push c newu)
      finally (return (coerce (nreverse newu) 'string))))
 
-(defun %%prin2-id-to-string (u)
-  "Convert identifier U to a string excluding inappropriate `!' escapes."
-  (setf u (%%princ-id-to-string u))
-  (if (string= "!:" u :end2 1) (subseq u 1) u))
+;; (defun %%prin2-id-to-string (u)
+;;   "Convert identifier U to a string excluding inappropriate `!' escapes."
+;;   (setf u (%%princ-id-to-string u))
+;;   (if (string= "!:" u :end2 1) (subseq u 1) u))
 
 (defun %%princ-id-to-string (u)
   "Print identifier U to a string without any escapes."
-  (cs-cl::%string-invert-case (cl:princ-to-string u)))
+  (%string-invert-case (cl:princ-to-string u)))
+
+(defalias '%%prin2-id-to-string '%%princ-id-to-string)
 
 (defun %%prin1-string-to-string (u)
   "Add delimiting \"s and escape internal \"s as \"\" in string U."
@@ -2620,8 +2607,11 @@ A function hung on the garbage collection hook."
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."
-  (cs-cl:map 'list #'%intern-character
-             (cs-cl::%string-invert-case (cl:princ-to-string u))))
+  (cs-cl:map 'list
+             #'(lambda (c) (cl:intern (cl:string c)))
+             (if (not (symbolp u)) ; (or (stringp u) (floatp u)) ?????
+                 (%string-invert-case (cl:princ-to-string u))
+                 (cl:princ-to-string u))))
 
 (defun explode2uc (u)                   ; defined in "pslrend.red"
   "Upper-case version of explode2."
@@ -2711,13 +2701,15 @@ function with string-upper-bound, documented below.")
 
 (defun char-downcase (c)                ; CSL
   "Convert single-character identifier C to lower case."
-  (cs-cl:intern (cs-cl:string-downcase (symbol-name c))))
+  ;; NB: upcase because of symbol name case inversion!
+  (cl:intern (cl:string-upcase (cl:symbol-name c))))
 
 (defalias 'red-char-downcase 'char-downcase) ; PSL
 
 (defun char-upcase (c)                  ; CSL
   "Convert single-character identifier C to lower case."
-  (cs-cl:intern (cs-cl:string-upcase (symbol-name c))))
+  ;; NB: downcase because of symbol name case inversion!
+  (cl:intern (cl:string-downcase (cl:symbol-name c))))
 
 (defun int2id (i)                       ; PSL
   "(int2id I:integer): id expr
@@ -2738,13 +2730,13 @@ Returns the id space position of D as a LISP integer."
   ;; inline procedure id2int x; % Gets first octet of UTF-8 form of name
   ;;   car string2list x;
   ;; (if d (cs-cl:char-code (aref (symbol-name d) 0)) 128)
-  (cs-cl:char-code (aref (symbol-name d) 0)))
+  (cs-cl:char-code (aref (%string-invert-case (cl:symbol-name d)) 0)))
 
 (defun char-code (c)                    ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
   (cs-cl:char-code (character c)))
 
-(defalias 'id2string 'symbol-name       ; PSL
+(defun id2string (d)                    ; PSL
   "(id2string D:id): string expr
 Get name from id space. Id2string returns the print name of its argument
 as a string. This is not a copy, so destructive operations should not be performed
@@ -2753,11 +2745,14 @@ which contain special characters. Any character which follows the character
 ! is considered to be an alphabetic character. In the example, notice that the
 character ! does not appear in the result.
 1 lisp> (id2string 'is-!%)
-\"is-%\"")
+\"is-%\""
+  (%string-invert-case (cl:symbol-name d)))
+
+(defalias 'symbol-name 'id2string)
 
 (defun string-downcase (u)
   "Convert identifier or string U to a lower-case string."
-  (cs-cl:string-downcase (if (symbolp u) (symbol-name u) u)))
+  (cs-cl:string-downcase (if (symbolp u) (cl:symbol-name u) u)))
 
 (defalias 'land 'cs-cl:logand           ; PSL
   "(land U:integer V:integer): integer expr
@@ -2969,7 +2964,7 @@ Load a \".sl\" file using Standard Lisp read syntax."
         (progn
           (if (cs-cl:member file options*) (return-from load)) ; already loaded
           (push file options*)
-          (setq file (cs-cl:string-downcase (symbol-name file))))
+          (setq file (cs-cl:string-downcase (cl:symbol-name file))))
         (if (string-equal (pathname-type file) "sl")
             (setq *readtable* *sl-readtable*)))
     ;; Look in "." and "./fasl" and if not found then throw an error:
@@ -3131,11 +3126,11 @@ interpret otherwise.  The default is compile."
 (import
  '(lambda warning
    unwind-protect evenp oddp
-   string-not-greaterp symbol-name y-or-n-p ; used in clprolo
-   force-output                             ; used in clrend
-   file-write-date                          ; used in remake
-   catch throw                              ; used in rubi_red
-   sleep                                    ; used in crack
+   string-not-greaterp y-or-n-p         ; used in clprolo
+   force-output                         ; used in clrend
+   file-write-date                      ; used in remake
+   catch throw                          ; used in rubi_red
+   sleep                                ; used in crack
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for
@@ -3146,7 +3141,7 @@ interpret otherwise.  The default is compile."
 ;; shadowing all external CL symbols:
 (do-external-symbols (s :cl)
   (multiple-value-bind (symbol status)
-      (find-symbol (symbol-name s))
+      (cl:find-symbol (cl:symbol-name s))
     ;; (if (eq status :internal) (print symbol))
     (if (eq status :inherited) (shadow symbol))))
 
