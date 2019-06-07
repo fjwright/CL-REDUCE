@@ -2833,6 +2833,14 @@ Returns the union of sets X and Y."
 (defalias 'lcmn 'cs-cl:lcm)
 (defalias 'yesp1 'cs-cl:y-or-n-p)
 
+(defun orderp (u v)
+  "This CL-specific definition of ORDERP is designed to work in
+lexicographical order.  It assumes arguments are truly id's, which
+should be true with current REDUCE.  Ignore case."
+  ;; Previously defined in clprolo, but I want to use cl:symbol-name
+  ;; to avoid unnecessary case inversions.
+  (string-not-greaterp (cl:symbol-name u) (cl:symbol-name v)))
+
 
 ;;; Operating system interface
 ;;; ==========================

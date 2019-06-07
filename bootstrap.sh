@@ -43,7 +43,7 @@ fi || { echo '***** Compilation failed'; exit; }
 
 echo +++++ Building bootstrap REDUCE
 
-$runlisp << XXX &> log/bootstrap.blg
+time $runlisp << XXX &> log/bootstrap.blg
 (load "sl-on-cl")
 (standard-lisp)
 

@@ -99,13 +99,13 @@ flag('(red!-char!-downcase),'lose);
 
 % orderp is needed in rlisp/switch, so define it here and prevent it
 % being redefined as it would be for PSL:
-remflag('(orderp),'lose);
+% remflag('(orderp),'lose);
 
-symbolic procedure orderp(u,v);
-   % This CL-specific definition of ORDERP is designed to work in
-   % lexicographical order.  It assumes arguments are truly id's,
-   % which should be true with current REDUCE.  Ignore case.
-   string!-not!-greaterp(symbol!-name u, symbol!-name v);
+%% symbolic procedure orderp(u,v);
+%%    % This CL-specific definition of ORDERP is designed to work in
+%%    % lexicographical order.  It assumes arguments are truly id's,
+%%    % which should be true with current REDUCE.  Ignore case.
+%%    string!-not!-greaterp(symbol!-name u, symbol!-name v);
 
 flag('(orderp),'lose);
 
