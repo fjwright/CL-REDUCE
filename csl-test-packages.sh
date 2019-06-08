@@ -12,18 +12,20 @@ mkdir -p csltestlog
 
 for which in core noncore
 do
-	hostname > csltestlog/test$which.log
-	date >> csltestlog/test$which.log
+    time {
+	    # hostname > csltestlog/test$which.log
+	    # date >> csltestlog/test$which.log
 
-	packages="$(< fasl/$which-packages.dat)"
+	    packages="$(< fasl/$which-packages.dat)"
 
-	for x in $packages
-	do
-        case $x in reduce4 | gnuplot | turtle | rubi_red | lalr ) continue;; esac
-		echo +++++ Testing $which package $x
-		echo $x >> csltestlog/test$which.log
-		./csl-test-one-package.sh $x
-	done
+	    for x in $packages
+	    do
+            case $x in reduce4 | gnuplot | turtle | rubi_red ) continue;; esac
+		    echo +++++ Testing $which package $x
+		    # echo $x >> csltestlog/test$which.log
+		    ./csl-test-one-package.sh $x
+	    done
 
-	date >> csltestlog/test$which.log
+	    # date >> csltestlog/test$which.log
+    }
 done

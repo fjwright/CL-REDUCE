@@ -109,13 +109,13 @@ Timings
 
 I estimate that SBCL REDUCE is 3 or 4 times slower than PSL/CSL REDUCE, but note that it is currently built for comfort (of debugging) rather than speed!  CLISP is a lot slower than SBCL!
 
-Operation                               | CSL Time ||  UC SBCL  | Prev SBCL | New SBCL  || Prev CLISP | Last CLISP
-----------------------------------------|----------||-----------|-----------|-----------||------------|------------
-Build bootstrap REDUCE image            |          || 4.1 secs  | 5.4 secs  | 4.5 secs  || 33.2 secs  | 21.3 secs
-Build final REDUCE image                |          || 0.4 secs  | 0.5 secs  | 0.4 secs  ||  3.3 secs  |  3.3 secs
-Run alg.tst                             |  78 ms   || 282 ms    | 360 ms    | 297 ms    ||  860 ms    |  828 ms
-Run (and check) all core test files     |  33 secs ||  50 secs  |  64 secs  |  52 secs  ||  4 m 25 s  |  4 m 21 s
-Run (and check) most noncore test files | 4 m 24 s ||  17 mins  | 21 m 53 s | 16 m 56 s || 87 m 11 s  | 90 m 16 s
+Operation                               | CSL Time ||  UC SBCL  | Prev SBCL | New SBCL  || Prev CLISP | Last CLISP | New CLISP
+----------------------------------------|----------||-----------|-----------|-----------||------------|------------|----------
+Build bootstrap REDUCE image            |          || 4.1 secs  | 5.4 secs  | 4.5 secs  || 33.2 secs  | 21.3 secs  | 18.0 secs
+Build final REDUCE image                |          || 0.4 secs  | 0.5 secs  | 0.4 secs  ||  3.3 secs  |  3.3 secs  |  2.7 secs
+Run alg.tst                             |  78 ms   || 282 ms    | 360 ms    | 297 ms    ||  860 ms    |  828 ms    | 704 ms
+Run (and check) all core test files     |  33 secs ||  50 secs  |  64 secs  |  48 secs  ||  4 m 25 s  |  4 m 21 s  |  3m 30s
+Run (and check) most noncore test files | 4 m 24 s ||  17 mins  | 21 m 53 s | 16 m 24 s || 87 m 11 s  | 90 m 16 s  | 72m 13s
 
 The shorter times above are probably not very meaningful.  Most of the time building REDUCE goes in compiling the packages, which takes a few minutes, but I don't currently have any precise timings for this.  The CSL test times do not include checking, which involves running `diff`.  The time for the noncore tests does not include all packages as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
 

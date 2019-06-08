@@ -30,7 +30,7 @@ if [ "$lisp" = 'sbcl' ]; then
     if_sbcl=''
     if_clisp='%'
 elif [ "$lisp" = 'clisp' ]; then
-    runlisp='clisp -ansi -modern -norc'
+    runlisp='clisp -ansi -norc'
     runbootstrap='clisp -q -norc -M fasl/bootstrap.mem'
     runreduce='clisp -q -norc -M fasl/reduce.mem'
     saveext='mem'
@@ -55,7 +55,7 @@ alias grep_errors=\
 "grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log/\$p.blg | uniq"
 
 # First, compile fasl files for non-package source files:
-time $runbootstrap << XXX &> log/build.blg
+$runbootstrap << XXX &> log/build.blg
 (standard-lisp)
 (begin)
 symbolic; $force
