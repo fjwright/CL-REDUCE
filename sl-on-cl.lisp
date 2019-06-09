@@ -16,10 +16,7 @@
 ;; This implementation of Standard Lisp is lower-case.  It uses case
 ;; inversion of symbol names and is case-sensitive internally.
 
-;; (declaim (optimize (speed 3) (safety 0)))
-#+SBCL (declaim (optimize debug))       ; same as (debug 3)
-;; CLISP seems to be *very* slow, so...
-#+CLISP (declaim (optimize speed))
+(declaim (optimize speed))
 
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 #+CLISP (setq custom:*suppress-check-redefinition* t
@@ -170,7 +167,11 @@ determined by DEFINITION.  The return value is undefined."
   ;; The consequences are undefined if a symbol name is ever modified!
   (cl:map 'string #'%character-invert-case s))
 
-(defun %intern-character (c)
+(defun %intern-character-preserve-case (c)
+  "Convert character C to an interned (case-preserved) symbol."
+  (cl:intern (string c)))
+
+(defun %intern-character-invert-case (c)
   "Convert character C to an interned (case-inverted) symbol."
   (cl:intern (string (%character-invert-case c))))
 
@@ -532,22 +533,22 @@ printing (using prin1) to a list.  E.g.
         (push (list '|)|) ll)
         (cl:apply #'nconc (nreverse ll)))
       ;; Exploding an atom:
-      (cl:map
-       'list
-       #'%intern-character
-       (cond ((or (stringp u) (numberp u)) (prin1-to-string u))
-             ;; Assume identifier -- must insert ! before a leading digit and
-             ;; before any special characters in string without \ escapes:
-             (t (loop with s = (%string-invert-case
-                                (cl:princ-to-string u))
-                   and ss and e
-                   for i below (cl:length s) do
-                     (setf e (aref s i))
-                     (if (not (or (and (not (eql i 0)) (digit-char-p e))
-                                  (alpha-char-p e)))
-                         (push #\! ss))
-                     (push e ss)
-                   finally (return (nreverse ss))))))))
+      (cond ((or (stringp u) (numberp u))
+             (cl:map 'list #'%intern-character-invert-case
+                     (prin1-to-string u)))
+            ;; Assume identifier -- must insert ! before a leading digit and
+            ;; before any special characters in string without \ escapes:
+            (t
+             (cl:map 'list #'%intern-character-preserve-case
+                     (loop with s = (cl:princ-to-string u)
+                        and ss and e
+                        for i below (cl:length s) do
+                          (setf e (aref s i))
+                          (if (not (or (and (not (eql i 0)) (digit-char-p e))
+                                       (alpha-char-p e)))
+                              (push #\! ss))
+                          (push e ss)
+                        finally (return (nreverse ss))))))))
 
 (defalias 'gensym 'cl:gensym)
 ;; GENSYM():identifier eval, spread
@@ -569,8 +570,8 @@ permitted by the implementation (the minimum number is 24) an
 error occurs:
 ***** Too many characters to INTERN"
   (cl:intern (if (symbolp u)
-                 (cl:symbol-name u)
-                 (%string-invert-case u))))
+                 (cl:symbol-name u)         ; symbol
+                 (%string-invert-case u)))) ; string
 
 (defun remob (u)
   "REMOB(U:id):id eval, spread
@@ -2376,9 +2377,10 @@ Comments delimited by % and end-of-line are not transparent to READCH."
         (cond ((eq c #\!)
                (setq %%readch-escape (not %%readch-escape)) '!)
               (%%readch-escape
-               (setq %%readch-escape nil) (%intern-character c))
-              (*raise (%intern-character (cl:char-downcase c)))
-              (t (%intern-character c))))))
+               (setq %%readch-escape nil) (%intern-character-invert-case c))
+              ;; (*raise (%intern-character-invert-case (cl:char-downcase c)))
+              (*raise (%intern-character-preserve-case (cl:char-upcase c)))
+              (t (%intern-character-invert-case c))))))
 
 (defun terpri ()
   "TERPRI():NIL
@@ -2557,13 +2559,10 @@ A function hung on the garbage collection hook."
   #+SBCL (- (sb-ext:dynamic-space-size) (sb-ext:get-bytes-consed))
   #+CLISP (%%nth-room-value 1))
 
-(defun %intern-character-preserving-case (c)
-  (cl:intern (cl:string c)))
-
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."
-  (cl:map 'list #'%intern-character-preserving-case
+  (cl:map 'list #'%intern-character-preserve-case
           (if (or (stringp u) (floatp u))
               (%string-invert-case (cl:princ-to-string u))
               (cl:princ-to-string u))))
@@ -2571,7 +2570,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 (defun explode2uc (u)                   ; defined in "pslrend.red"
   "Upper-case version of explode2."
   ;; NB: downcase because of symbol name case inversion!
-  (cl:map 'list #'%intern-character-preserving-case
+  (cl:map 'list #'%intern-character-preserve-case
           (cl:string-downcase (cl:princ-to-string u))))
 
 (defun concat2 (s1 s2)
@@ -2675,7 +2674,7 @@ id NIL is always found by (int2id 128)."
   ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
   ;;   intern list2string list x;
   ;; (unless (= i 128) (%intern-character (code-char i)))
-  (%intern-character (code-char i)))
+  (%intern-character-invert-case (code-char i)))
 
 (defun id2int (d)                       ; PSL
   "(id2int D:id): integer expr
@@ -2684,7 +2683,7 @@ Returns the id space position of D as a LISP integer."
   ;; inline procedure id2int x; % Gets first octet of UTF-8 form of name
   ;;   car string2list x;
   ;; (if d (cl:char-code (aref (symbol-name d) 0)) 128)
-  (cl:char-code (aref (%string-invert-case (cl:symbol-name d)) 0)))
+  (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0))))
 
 (defun char-code (c)                    ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
@@ -2937,8 +2936,13 @@ Load a \".sl\" file using Standard Lisp read syntax."
 ;;; Faslout/faslend interface
 ;;; =========================
 
+(defconstant %faslout-header
+  "(cl:declaim (cl:optimize cl:speed))"
+  "Header string written at the top of every Lisp file generated by `faslout'
+or nil, meaning no header.")
+
 (defvar *writingfaslfile nil
-  "REDUCE variable set to t by FASLOUT and reset to nil by FASLEND.")
+  "REDUCE variable set to t by `faslout' and reset to nil by `faslend'.")
 (defvar *int)
 
 (defvar %%faslout-name.lisp)
@@ -2976,10 +2980,10 @@ When all done, execute FASLEND;~2%" name))
                      :direction :output :if-exists :supersede
                      :external-format #+SBCL :UTF-8 #+CLISP charset:UTF-8))
     (cl:error "Faslout: cannot open ~a" %%faslout-name.lisp))
-
+  (if %faslout-header
+      (cl:princ %faslout-header %%faslout-stream))
   (setf %%faslout-saved-prettyprint (symbol-function 'prettyprint)
         (symbol-function 'prettyprint) (symbol-function '%%faslout-prettyprint))
-
   (setq *defn t
         *writingfaslfile t))
 
