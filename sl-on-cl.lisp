@@ -533,21 +533,30 @@ printing (using prin1) to a list.  E.g.
         (push (list '|)|) ll)
         (cl:apply #'nconc (nreverse ll)))
       ;; Exploding an atom:
-      (cond ((or (stringp u) (numberp u))
-             (cl:map 'list #'%intern-character-invert-case
-                     (prin1-to-string u)))
-            ;; Assume identifier -- must insert ! before a leading digit and
-            ;; before any special characters in string without \ escapes:
+      (cond ((stringp u)
+             ;; Add leading and trailing " and convert internal " to "":
+             (nconc
+              (list '\")
+              (loop for c across u
+                 collect (%intern-character-invert-case c)
+                 when (char= c #\") collect '\")
+              (list '\")))
+            ((numberp u)
+             (cl:map 'list #'%intern-character-invert-case ; might not be portable!
+                     (princ-to-string u)))
+            ;; Assume identifier -- insert ! before a leading digit,
+            ;; upper-case letter or special character (except _):
             (t
              (cl:map 'list #'%intern-character-preserve-case
-                     (loop with s = (cl:princ-to-string u)
-                        and ss and e
+                     (loop with s = (cl:symbol-name u)
+                        and ss and c
                         for i below (cl:length s) do
-                          (setf e (aref s i))
-                          (if (not (or (and (not (eql i 0)) (digit-char-p e))
-                                       (alpha-char-p e)))
+                          (setf c (aref s i))
+                          (if (not (or (and (not (eql i 0)) (digit-char-p c))
+                                       (upper-case-p c)
+                                       (char= c #\_)))
                               (push #\! ss))
-                          (push e ss)
+                          (push c ss)
                         finally (return (nreverse ss))))))))
 
 (defalias 'gensym 'cl:gensym)
@@ -2126,7 +2135,8 @@ of U is returned."
         ((floatp u) (%%prin-string (%%prin-float-to-string u)))
         ((vectorp u) (%%prin-vector u #'prin1))
         ((atom u) (%%prin-string (prin1-to-string u)))
-        ((eq (car u) 'quote) (%%prin-string "'") (prin1 (cadr u)))
+        ;; ((eq (car u) 'quote) (%%prin-string "'") (prin1 (cadr u)))
+        ;; CSL doesn't treat quote specially
         (t (%%prin-cons u #'prin1)))
   u)
 
@@ -2142,7 +2152,8 @@ in vector-notation.  The value of U is returned."
         ((floatp u) (%%prin-string (%%prin-float-to-string u)))
         ((vectorp u) (%%prin-vector u #'prin2))
         ((atom u) (%%prin-string (cl:princ-to-string u)))
-        ((eq (car u) 'quote) (%%prin-string "'") (prin2 (cadr u)))
+        ;; ((eq (car u) 'quote) (%%prin-string "'") (prin2 (cadr u)))
+        ;; CSL doesn't treat quote specially
         (t (%%prin-cons u #'prin2)))
   u)
 
@@ -2152,11 +2163,12 @@ in vector-notation.  The value of U is returned."
 
 (defun %%prin1-id-to-string (u)
   "Convert identifier U to a string including appropriate `!' escapes."
+  ;; Must include ! in mixed!Case.
   (setf u (%%princ-id-to-string u))
   (loop with newu and c
      for i below (cl:length u) do
        (setf c (aref u i))
-       (unless (or (alpha-char-p c)
+       (unless (or (lower-case-p c)     ; case-inverted!
                    (and (> i 0) (digit-char-p c))
                    (char= c #\_))
          (push #\! newu))
@@ -2378,7 +2390,6 @@ Comments delimited by % and end-of-line are not transparent to READCH."
                (setq %%readch-escape (not %%readch-escape)) '!)
               (%%readch-escape
                (setq %%readch-escape nil) (%intern-character-invert-case c))
-              ;; (*raise (%intern-character-invert-case (cl:char-downcase c)))
               (*raise (%intern-character-preserve-case (cl:char-upcase c)))
               (t (%intern-character-invert-case c))))))
 
