@@ -98,11 +98,11 @@ The process described above should build all of REDUCE without any obvious error
 
 All available test files produce output that agrees with CSL except for timings and minor numerical and/or implementation differences, except for the following:
 
-* `reduce4` fails in a similar way as on CSL &ndash; excluded from regular testing;
-* `ibalp` fails on CLISP with a program stack overflow error and just stops abruptly on SBCL;
-* `pasf` output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!);
-* `rubi_red` is very slow, generates very much output, and timeouts can't work on CLISP (see below) and currently don't work on SBCL, but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing;
-* `lalr` output appears to be correct apart from a few minor cosmetic differences.
+* The `reduce4` test fails in a similar way as on CSL &ndash; excluded from regular testing.
+* The `ibalp` test fails on CLISP with a program stack overflow error; it just stops abruptly on SBCL.
+* The `pasf` test output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!).
+* The `rubi_red` test is very slow, generates very much output, and timeouts can't work on CLISP (see below), but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing.  On SBCL, the the first error is similar to that shown on CSL, but SBCL REDUCE does not recover after this error, probably due to the currently crude general error handling.
+* The `lalr` test output appears to be correct apart from a few (currently 8) minor cosmetic differences.
 
 Timings
 -------
@@ -119,9 +119,7 @@ The CSL test times do not include checking, which involves running `diff`.  The 
 Known bugs
 ----------
 
-I cannot see any way to support the facilities for limiting execution time on CLISP.  In more detail: The file "rlisp/inter.red" defines procedures `with!-timeout` and similar that use garbage collection to provide an interrupt by assigning a function to the variable `!*gc!-hook!*`, but no garbage collection hooks exist in CLISP.  The procedures `with!-timeout` and similar just run without any limit so don't use CLISP REDUCE is you need this facility!  It should work on SBCL.  This affects `rubi_red` and possibly other packages.
-
-PSL and CSL prettyprint `_` without an escape (unless it appears alone), whereas CL REDUCE always prettyprints `_` with an escape.  This appears to be because CL REDUCE uses "rprint/pretty.red", whereas PSL and CSL don't!
+I cannot see any way to support the facilities for limiting execution time on CLISP.  In more detail: the file "rlisp/inter.red" defines procedures `with!-timeout` and similar that use garbage collection to provide an interrupt by assigning a function to the variable `!*gc!-hook!*`, but no garbage collection hooks exist in CLISP.  The procedures `with!-timeout` and similar just run without any limit so don't use CLISP REDUCE is you need this facility!  This affects `rubi_red` and possibly other packages.  It works on SBCL!
 
 To do
 -----

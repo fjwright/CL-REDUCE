@@ -544,20 +544,18 @@ printing (using prin1) to a list.  E.g.
             ((numberp u)
              (cl:map 'list #'%intern-character-invert-case ; might not be portable!
                      (princ-to-string u)))
-            ;; Assume identifier -- insert ! before a leading digit,
-            ;; upper-case letter or special character (except _):
             (t
-             (cl:map 'list #'%intern-character-preserve-case
-                     (loop with s = (cl:symbol-name u)
-                        and ss and c
-                        for i below (cl:length s) do
-                          (setf c (aref s i))
-                          (if (not (or (and (not (eql i 0)) (digit-char-p c))
-                                       (upper-case-p c)
-                                       (char= c #\_)))
-                              (push #\! ss))
-                          (push c ss)
-                        finally (return (nreverse ss))))))))
+             ;; Assume identifier -- insert ! before an upper-case
+             ;; letter, leading digit or _, or special character
+             ;; (except _):
+             (loop with s = (cl:symbol-name u) and c
+                for i below (cl:length s)
+                do (setq c (aref s i))
+                unless (or (upper-case-p c) ; case-inverted!
+                           (and (not (eql i 0))
+                                (or (digit-char-p c) (char= c #\_))))
+                collect '\!
+                collect (%intern-character-preserve-case c))))))
 
 (defalias 'gensym 'cl:gensym)
 ;; GENSYM():identifier eval, spread
@@ -2149,31 +2147,33 @@ character does not prefix special characters and strings are not
 enclosed in \"...\".  Lists are displayed in list-notation and vectors
 in vector-notation.  The value of U is returned."
   (cond ((symbolp u) (%%prin-string (%%princ-id-to-string u)))
+        ((stringp u) (%%prin-string u))
         ((floatp u) (%%prin-string (%%prin-float-to-string u)))
         ((vectorp u) (%%prin-vector u #'prin2))
-        ((atom u) (%%prin-string (cl:princ-to-string u)))
+        ((atom u) (%%prin-string (princ-to-string u)))
         ;; ((eq (car u) 'quote) (%%prin-string "'") (prin2 (cadr u)))
         ;; CSL doesn't treat quote specially
         (t (%%prin-cons u #'prin2)))
   u)
 
 (defun %%princ-id-to-string (u)
-  "Print identifier U to a string without any escapes."
-  (%string-invert-case (cl:princ-to-string u)))
+  "Convert identifier U to a string without any escapes."
+  (%string-invert-case (cl:symbol-name u)))
 
 (defun %%prin1-id-to-string (u)
   "Convert identifier U to a string including appropriate `!' escapes."
-  ;; Must include ! in mixed!Case.
-  (setf u (%%princ-id-to-string u))
-  (loop with newu and c
-     for i below (cl:length u) do
-       (setf c (aref u i))
-       (unless (or (lower-case-p c)     ; case-inverted!
-                   (and (> i 0) (digit-char-p c))
-                   (char= c #\_))
-         (push #\! newu))
-       (push c newu)
-     finally (return (coerce (nreverse newu) 'string))))
+  ;; Insert ! before an upper-case letter, leading digit or _, or
+  ;; special character (except _):
+  (coerce
+   (loop with s = (cl:symbol-name u) and c
+      for i below (cl:length s)
+      do (setq c (aref s i))
+      unless (or (upper-case-p c)       ; case-inverted!
+                 (and (not (eql i 0))
+                      (or (digit-char-p c) (char= c #\_))))
+      collect #\!
+      collect (%character-invert-case c))
+   'string))
 
 (defun %%prin1-string-to-string (u)
   "Add delimiting \"s and escape internal \"s as \"\" in string U."
@@ -2380,18 +2380,23 @@ for input. Two special cases occur. If all the characters in an input
 record have been read, the value of !$EOL!$ is returned. If the file
 selected for input has all been read the value of !$EOF!$ is returned.
 Comments delimited by % and end-of-line are not transparent to READCH."
-  ;; This function must perform any required case change.
+  ;; This function must perform any required case conversion.
   (let ((c (read-char (%%read-stream) nil $eof$)))
     (if (eq c $eof$)
         (progn
           (setq %%readch-escape nil)
           $eof$)
-        (cond ((eq c #\!)
-               (setq %%readch-escape (not %%readch-escape)) '!)
-              (%%readch-escape
-               (setq %%readch-escape nil) (%intern-character-invert-case c))
-              (*raise (%intern-character-preserve-case (cl:char-upcase c)))
-              (t (%intern-character-invert-case c))))))
+        (progn
+          (when *echo                   ; track output position
+            (setq %%posn (if (char= c #\Newline) 0 (1+ %%posn))))
+          (cond ((char= c #\!)
+                 (setq %%readch-escape (not %%readch-escape)) '!)
+                (%%readch-escape        ; preserve case
+                 (setq %%readch-escape nil) (%intern-character-invert-case c))
+                (*raise                 ; down-case
+                 (%intern-character-preserve-case (cl:char-upcase c)))
+                (t                      ; preserve case
+                 (%intern-character-invert-case c)))))))
 
 (defun terpri ()
   "TERPRI():NIL
@@ -2548,10 +2553,11 @@ Records the number of times that the garbage collector has been
 invoked.  Gcknt* may be reset to another value to record counts
 incrementally, as desired.")
 
+#+SBCL (progn                           ; use sb-ext:*after-gc-hooks*
+
 (defvar *previous-gc-run-time* 0
   "Total (internal) GC time up to previous garbage collection.")
 
-#+SBCL
 (defun %%gc-reporting ()
   "Increment garbage collection count and optionally output a report.
 A function hung on the garbage collection hook."
@@ -2563,7 +2569,21 @@ A function hung on the garbage collection hook."
                         +milliseconds-per-internal-time-unit+))))
   (setq *previous-gc-run-time* sb-ext:*gc-run-time*))
 
-#+SBCL (pushnew '%%gc-reporting sb-ext:*after-gc-hooks*)
+(push #'%%gc-reporting sb-ext:*after-gc-hooks*)
+
+;; The file "rlisp/inter.red" defines procedures `with!-timeout` and
+;; similar that use garbage collection to provide an interrupt by
+;; assigning a function to the variable `!*gc!-hook!*`:
+
+(defvar *gc-hook*)
+
+(defun %run-gc-hook ()
+  "Run the REDUCE procedure (if any) assigned to the variable *gc-hook*."
+  (and (fboundp *gc-hook*) (funcall *gc-hook* nil)))
+
+(push #'%run-gc-hook sb-ext:*after-gc-hooks*)
+
+)                                       ; use sb-ext:*after-gc-hooks*
 
 (defun gtheap ()
   "Size of the free dynamic space in bytes."
