@@ -1667,9 +1667,12 @@ to A."
   ;; This is the PSl definition, which accepts *anything* as its second argument!
   ;; REDUCE (crack in particular) requires this flexibility.
   ;; In Common Lisp, the second argument must be a proper list.
-  (cond ((atom l) nil)
-        ((equal a (car l)) l)
-        (t (member a (cdr l)))))
+  ;; (cond ((atom l) nil)
+  ;;       ((equal a (car l)) l)
+  ;;       (t (member a (cdr l))))
+  (loop for tail on l do
+       (if (atom tail) (return-from member nil))
+       (if (equal a (car tail)) (return-from member tail))))
 
 (defun memq (a l)
   "(memq A:any L:any): extra-boolean expr
@@ -1679,9 +1682,12 @@ to A."
   ;; This is the PSl definition, which accepts *anything* as its second argument!
   ;; REDUCE probably requires this flexibility.
   ;; In Common Lisp, the second argument must be a proper list.
-  (cond ((atom l) nil)
-        ((eq a (car l)) l)
-        (t (memq a (cdr l)))))
+  ;; (cond ((atom l) nil)
+  ;;       ((eq a (car l)) l)
+  ;;       (t (memq a (cdr l))))
+  (loop for tail on l do
+       (if (atom tail) (return-from memq nil))
+       (if (eq a (car tail)) (return-from memq tail))))
 
 (import 'cl:nconc)
 ;; NCONC(U:list, V:list):list eval, spread
