@@ -58,15 +58,13 @@ The build process should create two sub-directories in the build directory calle
 Running REDUCE
 --------------
 
-SBCL REDUCE can be run by double-clicking the file `reduce.bat`, or from a Windows command prompt with the build directory current by executing the command
+*SBCL REDUCE* can be run by double-clicking the file `reduce.bat`, or from a Windows command prompt with the build directory current by executing the command
 
     reduce
 
-At present, the current directory when REDUCE is run must be the build directory, but I will remove that restriction at some later date.
-
 (Don't try to run Windows SBCL interactively under `bash` because you'll probably find that input editing doesn't work as you would wish; fortunately, it runs fine in batch mode under `bash`.)
 
-CLISP REDUCE can be run by executing the `bash` command
+*CLISP REDUCE* can be run by executing the `bash` command
 
     clisp -q -M fasl/reduce.mem
 
@@ -75,6 +73,8 @@ and then evaluating the Lisp form
     (start-reduce)
 
 (I will provide a more elegant start-up procedure eventually.)
+
+At present, the current directory when REDUCE is run must be the build directory, but I will remove that restriction at some later date.
 
 On both Lisps, interrupting REDUCE (with Control-C) invokes the Lisp debugger and aborting that enters Lisp, which is very useful for low-level debugging!  Evaluate `(begin)` to get back into REDUCE.
 
@@ -96,13 +96,13 @@ Current status
 
 The process described above should build all of REDUCE without any obvious errors.  So far, I have avoided the need to customise the main REDUCE source code (apart from the file `gnuintfc.red`).
 
-All available test files produce output that agrees with CSL except for timings and minor numerical and/or implementation differences, except for the following:
+All available test files produce output that agrees with CSL REDUCE apart for timings and minor numerical and/or implementation differences, except for the following:
 
 * The `reduce4` test fails in a similar way as on CSL &ndash; excluded from regular testing.
 * The `ibalp` test fails on CLISP with a program stack overflow error; it just stops abruptly on SBCL.
 * The `pasf` test output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!).
+* The `lalr` test output appears to be correct apart from two issues causing minor cosmetic differences.
 * The `rubi_red` test is very slow, generates very much output, and timeouts can't work on CLISP (see below), but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing.  On SBCL, the the first error is similar to that shown on CSL, but SBCL REDUCE does not recover after this error, probably due to the currently crude general error handling.
-* The `lalr` test output appears to be correct apart from a few (currently 8) minor cosmetic differences.
 
 Timings
 -------
@@ -110,16 +110,16 @@ Timings
 New timing methodology uses the bash time command.  "Best" means the fastest previous time.
 
 Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
-----------------------------------------|-----------|-----------|-----------|------------|----------
-Run (and check) all core test files     | 44.9 secs | 48.1 secs | 54.9 secs |  3 m 30 s  |
-Run (and check) most noncore test files |  7 m 00 s | 16 m 24 s | 18m 7.7 s | 72 m 13 s  |
+----------------------------------------|-----------|-----------|-----------|------------|-----------
+Run (and check) all core test files     |  30 secs  |  48 secs  |  47 secs  |  3 m 30 s  |  3 m 23 s
+Run (and check) most noncore test files |  4 m 13 s | 16 m 24 s | 15 m 14 s | 72 m 13 s  | 67 m 27 s
 
-The CSL test times do not include checking, which involves running `diff`.  The time for the noncore tests does not include `reduce4` or `rubi_red` as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
+The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4` or `rubi_red` as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
 
-Known bugs
-----------
+Known limitations
+-----------------
 
-I cannot see any way to support the facilities for limiting execution time on CLISP.  In more detail: the file "rlisp/inter.red" defines procedures `with!-timeout` and similar that use garbage collection to provide an interrupt by assigning a function to the variable `!*gc!-hook!*`, but no garbage collection hooks exist in CLISP.  The procedures `with!-timeout` and similar just run without any limit so don't use CLISP REDUCE is you need this facility!  This affects `rubi_red` and possibly other packages.  It works on SBCL!
+I cannot see any way to support the facilities for restricting execution time on CLISP.  In more detail: the file "rlisp/inter.red" defines procedures `with!-timeout` and similar that use garbage collection to provide an interrupt by assigning a function to the variable `!*gc!-hook!*`, but no garbage collection hooks exist in CLISP.  The procedures `with!-timeout` and similar just run without any restriction so don't use CLISP REDUCE is you need this facility!  This affects `rubi_red` and possibly other packages.  It works on SBCL!
 
 To do
 -----
@@ -139,3 +139,5 @@ Implement a proper Lisp init function (and possibly dump an executable file).
 Replace shell scripts with Common Lisp code to build REDUCE portably?
 
 Allow REDUCE to be run with a current directory other than the build directory.
+
+Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
