@@ -3,7 +3,7 @@ REDUCE on Common Lisp
 
 Francis Wright, June 2019
 
-From the introductory chapter of [*Common Lisp the Language, 2nd edition,* by Guy L. Steele Jr.](https://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html):
+From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Guy L. Steele Jr.](https://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html):
 
 > The goals of Common Lisp are thus very close to those of Standard Lisp and Portable Standard Lisp. Common Lisp differs from Standard Lisp primarily in incorporating more features, including a richer and more complicated set of data types and more complex control structures.
 
@@ -102,7 +102,9 @@ All available test files produce output that agrees with CSL REDUCE apart for ti
 * The `ibalp` test fails on CLISP with a program stack overflow error; it just stops abruptly on SBCL.
 * The `pasf` test output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!).
 * The `lalr` test output appears to be correct apart from two issues causing minor cosmetic differences.
-* The `rubi_red` test is very slow, generates very much output, and timeouts can't work on CLISP (see below), but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing.  On SBCL, the the first error is similar to that shown on CSL, but SBCL REDUCE does not recover after this error, probably due to the currently crude general error handling.
+* The `rubi_red` test is very slow, generates very much output, and timeouts can't work on CLISP (see below), but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing.  On SBCL, the first error is similar to that shown on CSL, but SBCL REDUCE does not recover after this error, probably due to the currently crude general error handling.
+
+Note that the `xcolor` test file only runs to completion (only tested on SBCL) with `(declaim (optimize speed))`. I think this is because it involves a highly recursive procedure (color1), which runs out of stack on the most complicated examples at the end of the test file unless optimized for maximum speed.
 
 Timings
 -------

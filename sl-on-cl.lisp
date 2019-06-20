@@ -40,7 +40,7 @@
            :function :close :open :princ :print :prin1 :read
            :terpri :complexp :union :compile-file :load :time
            :char-downcase :char-upcase :string-downcase :mod
-           :char-code :symbol-name)
+           :char-code :symbol-name :number)
 
   #+SBCL (:import-from :sb-ext :exit :quit :save-lisp-and-die :gc)
   #+SBCL (:import-from :sb-posix :getenv)
@@ -137,6 +137,12 @@ is printed whenever a function is redefined by PUTD.")
 ;;; FUNCTIONS
 ;;; =========
 
+(deftype function (&rest etc) `(or symbol cons (cl:function ,@etc)))
+
+(deftype filehandle () '(or null cons))
+
+(deftype number () '(or integer double-float))
+
 ;; First, some utility functions used only internally:
 
 (defmacro defalias (symbol definition &optional docstring)
@@ -144,6 +150,7 @@ is printed whenever a function is redefined by PUTD.")
 The optional third argument DOCSTRING specifies the documentation string
 for SYMBOL; if it is omitted or nil, SYMBOL uses the documentation string
 determined by DEFINITION.  The return value is undefined."
+  (declare (list symbol definition) ((or null simple-string) docstring))
   `(setf ,@(if docstring `((documentation ,symbol 'cl:function) ,docstring))
          (symbol-function ,symbol) (symbol-function ,definition)))
 
@@ -155,23 +162,27 @@ determined by DEFINITION.  The return value is undefined."
 
 (defun %character-invert-case (c)
   "Invert the case of character C (if it is a letter)."
-  (if (cl:both-case-p c)
-      (if (cl:lower-case-p c)
-          (cl:char-upcase c)
-          (cl:char-downcase c))
-      c))
+  (declare (character c))
+  (the character (if (cl:both-case-p c)
+                     (if (cl:lower-case-p c)
+                         (cl:char-upcase c)
+                         (cl:char-downcase c))
+                     c)))
 
 (defun %string-invert-case (s)
   "Return a copy of string S with the case of each letter inverted."
   ;; The consequences are undefined if a symbol name is ever modified!
+  (declare (simple-string s))
   (cl:map 'string #'%character-invert-case s))
 
 (defun %intern-character-preserve-case (c)
   "Convert character C to an interned (case-preserved) symbol."
+  (declare (character c))
   (values (cl:intern (string c))))
 
 (defun %intern-character-invert-case (c)
   "Convert character C to an interned (case-inverted) symbol."
+  (declare (character c))
   (values (cl:intern (string (%character-invert-case c)))))
 
 
@@ -252,7 +263,11 @@ pointers must have EQ values. Other atoms must be EQN equal."
                           ((cl:numberp u) (eql u v))
                           ((cl:stringp u) (string= u v))
                           ((cl:vectorp u) (equalp u v)))
-           (and (equal (car u) (car v)) (equal (cdr u) (cdr v))))))
+           ;; (and (equal (car u) (car v)) (equal (cdr u) (cdr v)))
+           (loop for utail on u for vtail on v
+              unless (equal (car utail) (car vtail)) do (return nil)
+              while (and (consp (cdr utail)) (consp (cdr vtail)))
+              finally (return (equal (cdr utail) (cdr vtail)))))))
 
 (defalias 'fixp 'cl:integerp
   "FIXP(U:any):boolean eval, spread
@@ -398,6 +413,7 @@ fewer than N elements, an out of range error occurs.
 Note that this definition is not compatible with Common LISP. The
 Common LISP definition reverses the arguments and defines the car
 of a list to be the \"zeroth\" element."
+  (declare (list l) ((integer 1) n))
   (cl:nth (1- n) l))
 
 (defun pnth (l n)                       ; inlined
@@ -411,26 +427,17 @@ an out of range error occurs.
     (cond ((onep n) l)
           ((not (pairp l)) (range-error))
           (t (pnth (rest l) (sub1 n)))))"
+  (declare (list l) ((integer 1) n))
   (nthcdr (1- n) l))
 
 
 ;;; Identifiers
 ;;; ===========
 
-(defun %compress-list-to-string (u)
-  "Convert a list of single-character symbols to a string."
-  (cl:map 'string #'character u))
-
-(defun %character-inverted (c)
+(defun %id-to-char-invert-case (c)
   "As `character', but case-inverted."
-  (setq c (character c))
-  (if (alpha-char-p c)
-      (if (lower-case-p c) (cl:char-upcase c) (cl:char-downcase c))
-      c))
-
-(defun %compress-list-to-inverted-string (u)
-  "Convert a list of single-character symbols to a case-inverted string."
-  (cl:map 'string #'%character-inverted u))
+  (declare (symbol c))
+  (the character (%character-invert-case (character c))))
 
 (defun compress (u)                     ; PSL spec
   "COMPRESS(U:id-list):{atom-vector} eval, spread
@@ -441,6 +448,7 @@ characters.  Identifiers are not interned.  Function pointers may not
 be compressed.  If an entity cannot be parsed out of U an error
 occurs:
 ***** Poorly formed atom in COMPRESS"
+  (declare (list u))
   (labels
       ((compress () ; This internal function recursively process lists.
          ;; Concatenate the characters into a string and then handle any !
@@ -472,7 +480,8 @@ occurs:
                      (setq u (cdr u))
                      (if (not (and u (eq (car u) '\"))) ; end of string
                          (return-from compress
-                           (%compress-list-to-inverted-string (nreverse newu)))))
+                           (cl:map 'string #'%id-to-char-invert-case
+                                   (nreverse newu)))))
                    (push (car u) newu))
               ;; String not terminated:
               (cl:error "Poorly formed S-expression in COMPRESS"))
@@ -480,7 +489,7 @@ occurs:
              ((or (digit u0) (char= (character u0) #\-))
               ;; (eq u0 '-) fails because u0 is in SL but - is (an operator) in CL.
               (multiple-value-bind (obj pos)
-                  (read-from-string (%compress-list-to-string u))
+                  (read-from-string (cl:map 'string #'character u))
                 (setq u (nthcdr pos u))
                 obj))
              ;; IDENTIFIER
@@ -497,7 +506,7 @@ occurs:
                                          '(\  \" \' \( \) \, \% \[ \\ \] \`)))
                           (return
                             (make-symbol ; uninterned symbol
-                             (%compress-list-to-string (nreverse newu)))))
+                             (cl:map 'string #'character (nreverse newu)))))
                          ((eq (car u) '!) ; ignore ! but keep WHATEVER follows it
                           (if (setf u (cdr u))
                               (push (car u) newu)))
@@ -520,41 +529,42 @@ printing (using prin1) to a list.  E.g.
 2 lisp> (explode '(a . b))
 \(!( a !  !. !  b !))"
   ;; Add support for vectors?  Share code with print routines?
-  (if (consp u)
-      ;; Exploding a cons:
-      (let ((ll (list (explode (car u)) (list '|(|))))
-        (loop while (consp (setq u (cdr u)))
-           do (push (list '| |) ll)
-           do (push (explode (car u)) ll))
-        (when u
-          (push (list '| | '|.| '| |) ll)
-          (push (explode u) ll))
-        (push (list '|)|) ll)
-        (cl:apply #'nconc (nreverse ll)))
-      ;; Exploding an atom:
-      (cond ((stringp u)
-             ;; Add leading and trailing " and convert internal " to "":
-             (nconc
-              (list '\")
-              (loop for c across u
-                 collect (%intern-character-invert-case c)
-                 when (char= c #\") collect '\")
-              (list '\")))
-            ((numberp u)
-             (cl:map 'list #'%intern-character-invert-case ; might not be portable!
-                     (princ-to-string u)))
-            (t
-             ;; Assume identifier -- insert ! before an upper-case
-             ;; letter, leading digit or _, or special character
-             ;; (except _):
-             (loop with s = (cl:symbol-name u) and c
-                for i below (cl:length s)
-                do (setq c (aref s i))
-                unless (or (upper-case-p c) ; case-inverted!
-                           (and (not (eql i 0))
-                                (or (digit-char-p c) (char= c #\_))))
-                collect '\!
-                collect (%intern-character-preserve-case c))))))
+  (the list
+       (if (consp u)
+           ;; Exploding a cons:
+           (let ((ll (list (explode (car u)) (list '|(|))))
+             (loop while (consp (setq u (cdr u)))
+                do (push (list '| |) ll)
+                do (push (explode (car u)) ll))
+             (when u
+               (push (list '| | '|.| '| |) ll)
+               (push (explode u) ll))
+             (push (list '|)|) ll)
+             (cl:apply #'nconc (nreverse ll)))
+           ;; Exploding an atom:
+           (cond ((stringp u)
+                  ;; Add leading and trailing " and convert internal " to "":
+                  (nconc
+                   (list '\")
+                   (loop for c across u
+                      collect (%intern-character-invert-case c)
+                      when (char= c #\") collect '\")
+                   (list '\")))
+                 ((numberp u)
+                  (cl:map 'list #'%intern-character-invert-case ; might not be portable!
+                          (princ-to-string u)))
+                 (t
+                  ;; Assume identifier -- insert ! before an upper-case
+                  ;; letter, leading digit or _, or special character
+                  ;; (except _):
+                  (loop with s = (cl:symbol-name u) and c
+                     for i below (cl:length s)
+                     do (setq c (aref s i))
+                     unless (or (upper-case-p c) ; case-inverted!
+                                (and (not (eql i 0))
+                                     (or (digit-char-p c) (char= c #\_))))
+                     collect '\!
+                     collect (%intern-character-preserve-case c)))))))
 
 (defalias 'gensym 'cl:gensym)
 ;; GENSYM():identifier eval, spread
@@ -575,6 +585,7 @@ returned. If U has more than the maximum number of characters
 permitted by the implementation (the minimum number is 24) an
 error occurs:
 ***** Too many characters to INTERN"
+  (declare ((or symbol simple-string) u))
   (values (cl:intern (if (symbolp u)
                          (cl:symbol-name u)          ; symbol
                          (%string-invert-case u))))) ; string
@@ -583,8 +594,9 @@ error occurs:
   "REMOB(U:id):id eval, spread
 If U is present on the OBLIST it is removed. This does not affect U
 having properties, flags, functions and the like. U is returned."
+  (declare (symbol u))
   (unintern u)
-  u)
+  (the symbol u))
 
 
 ;;; Property List Functions
@@ -627,10 +639,12 @@ Its value should normally be nil, except while ON DEFN.")
 (defun %save-plist (symbol)
   "Save property list of symbol SYMBOL if not already saved.
 Do not do this if Lisp file load in progress."
+  (declare (symbol symbol))
   (or *load-pathname*
       (cl:assoc symbol %saved-plist-alist :test #'eq)
       (push (cons symbol (cl:copy-tree (symbol-plist symbol)))
-            %saved-plist-alist)))
+            %saved-plist-alist))
+  nil)
 
 (defun %reinstate-plists ()
   "Reinstate all saved property lists.
@@ -638,7 +652,8 @@ Do not do this if Lisp file load in progress."
   (unless *load-pathname*
     (cl:mapc #'(lambda (s) (setf (symbol-plist (car s)) (cdr s)))
              %saved-plist-alist)
-    (setf %saved-plist-alist nil)))
+    (setf %saved-plist-alist nil))
+  nil)
 
 (defun flag (u v)
   "FLAG(U:id-list, V:id):NIL eval, spread
@@ -646,6 +661,7 @@ U is a list of ids which are flagged with V. The effect of FLAG is
 that FLAGP will have the value T for those ids of U which were
 flagged. Both V and all the elements of U must be identifiers or the
 type mismatch error occurs."
+  (declare (list u) (symbol v))
   (if *defn (cl:mapc #'%save-plist u))
   (cl:mapc #'(lambda (x) (put x v t)) u)
   nil)
@@ -663,6 +679,7 @@ property list of U. If U does not have indicator IND, NIL is
 returned.  GET cannot be used to access functions (use GETD
 instead)."
   ;; MUST return nil if u is not a symbol.
+  (declare (symbol ind))
   (if (symbolp u) (cl:get u ind)))
 
 (defun put (u ind prop)
@@ -672,6 +689,7 @@ property list of the id U. If the action of PUT occurs, the value
 of PROP is returned. If either of U and IND are not ids the type
 mismatch error will occur and no property will be placed. PUT
 cannot be used to define functions (use PUTD instead)."
+  (declare (symbol u ind))
   (setf (cl:get u ind) prop))
 
 (defun remflag (u v)
@@ -679,6 +697,7 @@ cannot be used to define functions (use PUTD instead)."
 Removes the flag V from the property list of each member of the
 list U. Both V and all the elements of U must be ids or the type
 mismatch error will occur."
+  (declare (list u) (symbol v))
   (if *defn (cl:mapc #'%save-plist u))
   (cl:mapc #'(lambda (x) (cl:remprop x v)) u)
   nil)
@@ -687,6 +706,7 @@ mismatch error will occur."
   "REMPROP(U:any, IND:any):any eval, spread
 Removes the property with indicator IND from the property list of U.
 Returns the removed property or NIL if there was no such indicator."
+  (declare (symbol ind))
   (prog1
       (get u ind)
     (if *defn (%save-plist u))
@@ -727,6 +747,7 @@ into a lambda expression with the formal parameter list PARAMS, and
 this is used as the body of the function.  Previous definitions of the
 function are lost. The name of the defined function, FNAME, is
 returned."
+  (declare (symbol fname) (list params fn))
   `(progn
      (%redefmsg ',fname)
      (put ',fname '%ftype 'expr)
@@ -756,6 +777,7 @@ definitions of the function are overwritten. The function created
 is of type MACRO. The name of the macro is returned.
 FEXPR PROCEDURE DM(U);
    PUTD(CAR U, 'MACRO, LIST('LAMBDA, CADR U, CADDR U));"
+  (declare (symbol mname) (list param fn))
   `(progn
      (%redefmsg ',mname)
      (put ',mname '%ftype 'macro)
@@ -773,39 +795,39 @@ FEXPR PROCEDURE DM(U);
 
 (defun getd (fname)
   "GETD(FNAME:any):{NIL, dotted-pair} eval, spread
-If FNAME is not the name of a defined function, NIL is returned. If
-FNAME is a defined function then the dotted-pair
-\(TYPE:ftype . DEF:{function-pointer, lambda})
-is returned."
-  (and (symbolp fname) (fboundp fname)
-       ;; Assume expr unless fname was defined using SL dm macro.
-       (cond ((eq (cl:get fname '%ftype) 'macro)
-              ;; ;; Return the (uncompiled) SL macro form:
-              ;; (cl:get fname '%macro)
-              ;; This may need more work.
-              ;; A CL macro expansion needs an environment.
-              ;; Try the null environment (nil) initially.
-              ;; (The parameter x should perhaps be a gensym.)
-              (cons 'macro
-                    `(lambda (x)
-                       (funcall ,(macro-function fname) x nil))))
-             (t
-              ;; Return a lambda expression if possible, since this is
-              ;; most useful (although perhaps not most efficient in
-              ;; some cases):
-              (let (f)
-                ;; Note that a CL function definition may contain
-                ;; declarations and a documentation string, and the
-                ;; body MAY BE wrapped in a block form, i.e.
-                ;; (lambda params [decls] [doc] (block name body))
-                ;; [A compiled CLISP function may not contain a block!]
-                ;; Extract the function body:
-                (when (and (functionp (setq fname (symbol-function fname)))
-                           (setq f (function-lambda-expression fname)))
-                  (setq fname (car (last f))) ; block or body form
-                  (if (eqcar fname 'block) (setq fname (caddr fname)))
-                  (setq fname `(lambda ,(cadr f) ,fname))))
-              (cons 'expr fname)))))
+If FNAME is not the name of a defined function, return NIL. If
+FNAME is a defined function then return the dotted-pair
+\(TYPE:ftype . DEF:{function-pointer, lambda})."
+  (the list
+       (and (symbolp fname) (fboundp fname)
+            ;; Assume expr unless fname was defined using SL dm macro.
+            (cond ((eq (cl:get fname '%ftype) 'macro)
+                   ;; ;; Return the (uncompiled) SL macro form:
+                   ;; (cl:get fname '%macro)
+                   ;; This may need more work.
+                   ;; A CL macro expansion needs an environment.
+                   ;; Try the null environment (nil) initially.
+                   ;; (The parameter x should perhaps be a gensym.)
+                   (cons 'macro
+                         `(lambda (x)
+                            (funcall ,(macro-function fname) x nil))))
+                  (t
+                   ;; Return a lambda expression if possible, since this is
+                   ;; most useful (although perhaps not most efficient in
+                   ;; some cases):
+                   (let (f)
+                     ;; Note that a CL function definition may contain
+                     ;; declarations and a documentation string, and the
+                     ;; body MAY BE wrapped in a block form, i.e.
+                     ;; (lambda params [decls] [doc] (block name body))
+                     ;; [A compiled CLISP function may not contain a block!]
+                     ;; Extract the function body:
+                     (when (and (functionp (setq fname (symbol-function fname)))
+                                (setq f (function-lambda-expression fname)))
+                       (setq fname (car (last f))) ; block or body form
+                       (if (eqcar fname 'block) (setq fname (caddr fname)))
+                       (setq fname `(lambda ,(cadr f) ,fname))))
+                   (cons 'expr fname))))))
 
 (defun putd (fname type body)
   "PUTD(FNAME:id, TYPE:ftype, BODY:function):id eval, spread
@@ -822,6 +844,7 @@ already exists a warning message will appear:
 *** FNAME redefined
 The function defined by PUTD will be compiled before definition if
 the !*COMP global variable is non-NIL."
+  (declare (symbol fname type) (function body))
   (if (or (cl:get fname 'global)        ; only if explicitly declared
           (fluidp fname))
       (cl:error "~a is a non-local variable" fname))
@@ -849,7 +872,7 @@ the !*COMP global variable is non-NIL."
                  ;;  (put fname '%ftype 'macro))
                  (t (cl:error "Invalid macro body in PUTD"))))
           (t (cl:error "Invalid type in PUTD"))))
-  fname)
+  (the symbol fname))
 
 (defun remd (fname)
   "REMD(FNAME:id):{NIL, dotted-pair} eval, spread
@@ -857,11 +880,13 @@ Removes the function named FNAME from the set of defined
 functions. Returns the (ftype . function) dotted-pair or NIL as
 does GETD. The global/function attribute of FNAME is removed and
 the name may be used subsequently as a variable."
-  (let ((def (getd fname)))
-    (when def
-      (fmakunbound fname)
-      (cl:remprop fname '%ftype))
-    def))
+  (declare (symbol fname))
+  (the list
+       (let ((def (getd fname)))
+         (when def
+           (fmakunbound fname)
+           (cl:remprop fname '%ftype))
+         def)))
 
 
 ;;; Variables and Bindings
@@ -869,13 +894,15 @@ the name may be used subsequently as a variable."
 
 (defun %fluid (x)
   "If id X is already GLOBAL then display a warning; otherwise flag X as FLUID."
+  (declare (symbol x))
   (unless (fluidp x)
     (if (globalp x)
         (warn "GLOBAL ~a cannot be changed to FLUID" x)
-      (progn
-        ;; defvar is a macro, so ...
-        (cl:eval `(defvar ,x nil "Standard LISP fluid variable."))
-        (put x 'fluid t)))))
+        (progn
+          ;; defvar is a macro, so ...
+          (cl:eval `(defvar ,x nil "Standard LISP fluid variable."))
+          (put x 'fluid t))))
+  nil)
 
 (defmacro fluid (idlist)
   "FLUID(IDLIST:id-list):NIL eval, spread
@@ -885,17 +912,19 @@ already declared FLUID are ignored. Changing a variable's type
 from GLOBAL to FLUID is not permissible and results in the error:
 ***** ID cannot be changed to FLUID"
   ;; A warning, as for PSL, is more convenient than an error!
-  (if (eqcar idlist 'quote)
-      ;; Assume a top-level call that needs to output `defvar' forms
-      ;; at compile time.
-      (cons 'prog1
-            (cons nil
-                  (cl:mapcan
-                   #'(lambda (x) `((%fluid ',x)))
-                   (cl:eval idlist))))
-    ;; Assume a run-time call.
-    `(prog1 nil
-       (cl:mapc #'%fluid ,idlist))))
+  (declare ((or list symbol) idlist))
+  (the list
+       (if (eqcar idlist 'quote)
+           ;; Assume a top-level call that needs to output `defvar' forms
+           ;; at compile time.
+           (cons 'prog1
+                 (cons nil
+                       (cl:mapcan
+                        #'(lambda (x) `((%fluid ',x)))
+                        (cl:eval idlist))))
+           ;; Assume a run-time call.
+           `(prog1 nil
+              (cl:mapc #'%fluid ,idlist)))))
 
 (defun fluidp (u)
   "FLUIDP(U:any):boolean eval, spread
@@ -904,14 +933,16 @@ If U has been declared fluid then t is returned, otherwise nil is returned."
 
 (defun %global (x)
   "If id X is already FLUID then display a warning; otherwise flag X as GLOBAL."
+  (declare (symbol x))
   (unless (globalp x)
     (if (fluidp x)
         (warn "FLUID ~a cannot be changed to GLOBAL" x)
-      (progn
-        ;; defvar is a macro, so ...
-        (unless (cl:constantp x)        ; nil, t, $eol$, $eof$, etc.
-          (cl:eval `(defvar ,x nil "Standard LISP global variable.")))
-        (put x 'global t)))))
+        (progn
+          ;; defvar is a macro, so ...
+          (unless (cl:constantp x)      ; nil, t, $eol$, $eof$, etc.
+            (cl:eval `(defvar ,x nil "Standard LISP global variable.")))
+          (put x 'global t))))
+  nil)
 
 (defmacro global (idlist)
   "GLOBAL(IDLIST:id-list):NIL eval, spread
@@ -922,17 +953,19 @@ variables type from FLUID to GLOBAL is not permissible and
 results in the error:
 ***** ID cannot be changed to GLOBAL"
   ;; A warning, as for PSL, is more convenient than an error!
-  (if (eqcar idlist 'quote)
-      ;; Assume a top-level call that needs to output `defvar' forms
-      ;; at compile time.
-      (cons 'prog1
-            (cons nil
-                  (cl:mapcan
-                   #'(lambda (x) `((%global ',x)))
-                   (cl:eval idlist))))
-    ;; Assume a run-time call.
-    `(prog1 nil
-       (cl:mapc #'%global ,idlist))))
+  (declare ((or list symbol) idlist))
+  (the list
+       (if (eqcar idlist 'quote)
+           ;; Assume a top-level call that needs to output `defvar' forms
+           ;; at compile time.
+           (cons 'prog1
+                 (cons nil
+                       (cl:mapcan
+                        #'(lambda (x) `((%global ',x)))
+                        (cl:eval idlist))))
+           ;; Assume a run-time call.
+           `(prog1 nil
+              (cl:mapc #'%global ,idlist)))))
 
 (defun globalp (u)
   "GLOBALP(U:any):boolean eval, spread
@@ -970,6 +1003,7 @@ The variables in IDLIST that have been declared as FLUID
 variables are no longer considered as fluid variables. Others are
 ignored. This affects only compiled functions as free variables
 in interpreted functions are automatically considered fluid."
+  (declare (list idlist))
   (cl:mapc #'(lambda (x) (if (fluidp x) (cl:remprop x 'fluid)))
            idlist)
   nil)
@@ -1052,8 +1086,9 @@ in interpreted functions are automatically considered fluid."
 (defun %princ-to-string (u)
   ;; Used only in error and princ (which is not used in REDUCE).
   "As cl:princ-to-string but invert case of a symbol."
-  (if (symbolp u) (%string-invert-case (cl:princ-to-string u))
-      (cl:princ-to-string u)))
+  (the simple-string
+       (if (symbolp u) (%string-invert-case (cl:princ-to-string u))
+           (cl:princ-to-string u))))
 
 (defun error (number message)
   "ERROR(NUMBER:integer, MESSAGE:any) eval, spread
@@ -1139,23 +1174,26 @@ dependent format."
 ;;; Vectors
 ;;; =======
 
-(defalias 'getv 'aref
+(defun getv (v index)
   "GETV(V:vector, INDEX:integer):any eval, spread
 Returns the value stored at position INDEX of the vector V. The
 type mismatch error may occur. An error occurs if the INDEX does
 not lie within 0...UPBV(V) inclusive:
-***** INDEX subscript is out of range")
+***** INDEX subscript is out of range"
+  (declare (simple-vector v) (fixnum index))
+  (aref v index))
 
-(defalias 'igetv 'aref)
+(defalias 'igetv 'getv)
 
-(defun mkvect (uplim)
-  "MKVECT(UPLIM:integer):vector eval, spread
-Defines and allocates space for a vector with UPLIM+1 elements
-accessed as 0...UPLIM. Each element is initialized to NIL. An error
-will occur if UPLIM is < 0 or there is not enough space for a vector
-of this size:
+(defun mkvect (uplim)                   ; PSL
+  "(mkvect UPLIM:integer): vector expr
+Defines and allocates space for a vector with UPLIM+1 elements accessed
+as 0 ... UPLIM. Each element is initialized to nil. If UPLIM is -1, an
+empty vector is returned. An error occurs if UPLIM is less than -1 or if the
+amount of available memory is insufficient for a vector of this size:
 ***** A vector of size UPLIM cannot be allocated"
-  (make-array (1+ uplim) :initial-element nil))
+  (declare (fixnum uplim))
+  (the simple-vector (make-array (1+ uplim) :initial-element nil)))
 
 (defun putv (v index value)
   "PUTV(V:vector, INDEX:integer, VALUE:any):any eval, spread
@@ -1163,6 +1201,7 @@ Stores VALUE into the vector V at position INDEX. VALUE is
 returned. The type mismatch error may occur. If INDEX does not
 lie in 0...UPBV(V) an error occurs:
 ***** INDEX subscript is out of range"
+  (declare (simple-vector v) (fixnum index))
   (setf (aref v index) value))
 
 (defalias 'iputv 'putv)
@@ -1170,19 +1209,36 @@ lie in 0...UPBV(V) an error occurs:
 (defun upbv (u)
   "UPBV(U:any):NIL,integer eval, spread
 Returns the upper limit of U if U is a vector, or NIL if it is not."
-  (if (vectorp u) (1- (cl:length u))))
+  (the (or null fixnum)
+       (and (vectorp u) (1- (cl:length u)))))
+
+(defun getv8 (v index)                  ; CSL
+  (declare ((simple-array (signed-byte 8) (*)) v) (fixnum index))
+  (the (signed-byte 8) (aref v index)))
 
 (defun mkvect8 (uplim)                  ; CSL
   "Make a vector of 8-bit signed integers, cf. mkvect."
-  (make-array (1+ uplim) :element-type '(signed-byte 8) :initial-element 0))
-(defalias 'getv8 'aref)                 ; CSL
-(defalias 'putv8 'putv)                 ; CSL
+  (declare (fixnum uplim))
+  (the (simple-array (signed-byte 8) (*))
+       (make-array (1+ uplim) :element-type '(signed-byte 8) :initial-element 0)))
+
+(defun putv8 (v index value)            ; CSL
+  (declare ((simple-array (signed-byte 8) (*)) v) (fixnum index) ((signed-byte 8) value))
+  (the (signed-byte 8) (setf (aref v index) value)))
+
+(defun getv16 (v index)           ; CSL
+  (declare ((simple-array (signed-byte 16) (*)) v) (fixnum index))
+  (the (signed-byte 16) (aref v index)))
 
 (defun mkvect16 (uplim)                 ; CSL
   "Make a vector of 16-bit signed integers, cf. mkvect."
-  (make-array (1+ uplim) :element-type '(signed-byte 16) :initial-element 0))
-(defalias 'getv16 'aref)                ; CSL
-(defalias 'putv16 'putv)                ; CSL
+  (declare (fixnum uplim))
+  (the (simple-array (signed-byte 16) (*))
+       (make-array (1+ uplim) :element-type '(signed-byte 16) :initial-element 0)))
+
+(defun putv16 (v index value)           ; CSL
+  (declare ((simple-array (signed-byte 16) (*)) v) (fixnum index) ((signed-byte 16) value))
+  (the (signed-byte 16) (setf (aref v index) value)))
 
 
 ;;; Boolean Functions and Conditionals
@@ -1238,7 +1294,7 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;;; Arithmetic Functions
 ;;; ====================
 
-;; Use double precision floats.
+;; All floats should be double precision.
 
 (import 'cl:abs)
 ;; ABS(U:number):number eval, spread
@@ -1281,7 +1337,8 @@ attempted:
 ***** Attempt to divide by 0 in DIVIDE
 EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
-  (multiple-value-call #'cons (truncate u v)))
+  (declare (number u v))
+  (the cons (multiple-value-call #'cons (truncate u v))))
 
 (defun expt (u v)
   ;; Defined explicitly so that it can be redefined in arith/math
@@ -1289,14 +1346,16 @@ EXPR PROCEDURE DIVIDE(U, V);
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
 exponentiation."
-  (cl:expt u v))
+  (declare (number u) (integer v))
+  (the number (cl:expt u v)))
 
 (defun fix (u)
   "FIX(U:number):integer eval, spread
 Returns an integer which corresponds to the truncated value of U.
 The result of conversion must retain all significant portions of U. If
 U is an integer it is returned unchanged."
-  (values (truncate u)))
+  (declare (number u))
+  (the integer (values (truncate u))))
 
 (defun float (u)
   "FLOAT(U:number):floating eval, spread
@@ -1308,7 +1367,8 @@ unchanged.  If U is too large to represent in floating point an
 error occurs:
 ***** Argument to FLOAT is too large"
   ;; Floats must be double precision:
-  (cl:float u 1d0))
+  (declare (number u))
+  (the double-float (cl:float u 1d0)))
 
 (defalias 'greaterp 'cl:>
   "GREATERP(U:number, V:number):boolean eval, spread
@@ -1376,9 +1436,11 @@ the negative truncation of the absolute value of U divided by the
 absolute value of V. An error occurs if division by zero is attempted:
 ***** Attempt to divide by 0 in QUOTIENT"
   ;; Can probably implement this better using generic functions!
-  (if (or (floatp u) (floatp v))
-      (/ u v)
-      (values (truncate u v))))
+  (declare (number u v))
+  (the number
+       (if (or (floatp u) (floatp v))
+           (/ u v)
+           (values (truncate u v)))))
 
 (defalias 'remainder 'cl:rem
   "REMAINDER(U:number, V:number):number eval, spread
@@ -1507,60 +1569,59 @@ Returns the product of U and V.")
 ;;; Map Composite Functions
 ;;; =======================
 
-(defun %lam2fn (fn)
-  "Make a lambda expression acceptable as a function by evaluating it."
-  (if (eqcar fn 'lambda) (eval fn) fn))
-
 (defun map (x fn)
   "MAP(X:list, FN:function):any eval, spread
-Applies FN to successive CDR segments of X. NIL is returned.
+Applies FN to successive CDR segments of X and returns NIL.
 EXPR PROCEDURE MAP(X, FN);
    WHILE X DO << FN X; X := CDR X >>;"
+  (declare (list x) (function fn))
   (cl:mapl fn x)
   nil)
 
 (defun mapc (x fn)
   "MAPC(X:list, FN:function):any eval, spread
-FN is applied to successive CAR segments of list X. NIL is returned.
+Applies FN to successive CAR segments of X and returns NIL.
 EXPR PROCEDURE MAPC(X, FN);
    WHILE X DO << FN CAR X; X := CDR X >>;"
+  (declare (list x) (function fn))
   (cl:mapc fn x)
   nil)
 
 (defun mapcan (x fn)
   "MAPCAN(X:list, FN:function):any eval, spread
-A concatenated list of FN applied to successive CAR elements of X
-is returned.
+Returns a concatenated list of FN applied to successive CAR elements of X.
 EXPR PROCEDURE MAPCAN(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN CAR X, MAPCAN(CDR X, FN));"
-  (cl:mapcan fn x))
+  (declare (list x) (function fn))
+  (the list (cl:mapcan fn x)))
 
 (defun mapcar (x fn)
   "MAPCAR(X:list, FN:function):any eval, spread
-Returned is a constructed list of FN applied to each CAR of list X.
+Returns a constructed list of FN applied to each CAR of list X.
 EXPR PROCEDURE MAPCAR(X, FN);
    IF NULL X THEN NIL
       ELSE FN CAR X . MAPCAR(CDR X, FN);"
-  (cl:mapcar fn x))
+  (declare (list x) (function fn))
+  (the list (cl:mapcar fn x)))
 
 (defun mapcon (x fn)
   "MAPCON(X:list, FN:function):any eval, spread
-Returned is a concatenated list of FN applied to successive CDR
-segments of X.
+Returns a concatenated list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPCON(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN X, MAPCON(CDR X, FN));"
-  (cl:mapcon fn x))
+  (declare (list x) (function fn))
+  (the list (cl:mapcon fn x)))
 
 (defun maplist (x fn)
   "MAPLIST(X:list, FN:function):any eval, spread
-Returns a constructed list of FN applied to successive CDR segments
-of X.
+Returns a constructed list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPLIST(X, FN);
    IF NULL X THEN NIL
       ELSE FN X . MAPLIST(CDR X, FN);"
-  (cl:maplist fn x))
+  (declare (list x) (function fn))
+  (the list (cl:maplist fn x)))
 
 
 ;;; Composite Functions
@@ -1574,12 +1635,13 @@ EXPR PROCEDURE MAPLIST(X, FN);
 ;; argument.
 
 (defun append (u v)
-  "(append U:list V:list): list expr
+  "(append U:any V:any):any expr
 Returns a constructed list in which the last element of U is followed by the
 first element of V. The list U is copied, but V is not."
   ;; Some REDUCE code assumes the PSL definition, which allows U to
   ;; have any type:
-  (if (consp u) (cl:append u v) v))
+  (declare (t u v))
+  (the t (if (consp u) (cl:append u v) v)))
 
 (defun assoc (u v)                      ; PSL definition
   "(assoc U:any V:any): pair, nil expr
@@ -1590,10 +1652,12 @@ to test for equality.
   (cond ((not (pairp v)) nil)
         ((and (pairp (car v)) (equal u (caar v))) (car v))
         (t (assoc u (cdr v)))))"
-  (and (consp v)
-       (loop for x in v do
-            (if (and (consp x) (equal u (car x)))
-                (return x)))))
+  (declare (t u v))
+  (the list
+       (and (consp v)
+            (loop for x in v do
+                 (if (and (consp x) (equal u (car x)))
+                     (return x))))))
 
 (defun deflist (u ind)
   "DEFLIST(U:dlist, IND:id):list eval, spread
@@ -1606,20 +1670,23 @@ EXPR PROCEDURE DEFLIST(U, IND);
    IF NULL U THEN NIL
       ELSE << PUT(CAAR U, IND, CADAR U);
               CAAR U >> . DEFLIST(CDR U, IND);"
-  (cl:mapcar #'(lambda (x)
-                 (if *defn (%save-plist (car x)))
-                 (put (car x) ind (cadr x))
-                 (car x))
-             u))
+  (declare (list u) (symbol ind))
+  (the list
+       (cl:mapcar #'(lambda (x)
+                      (if *defn (%save-plist (car x)))
+                      (put (car x) ind (cadr x))
+                      (car x))
+                  u)))
 
 (defun delete (u v)
-  "DELETE(U:any, V:list ):list eval, spread
+  "DELETE(U:any, V:list):list eval, spread
 Returns V with the first top level occurrence of U removed from it.
 EXPR PROCEDURE DELETE(U, V);
    IF NULL V THEN NIL
       ELSE IF CAR V = U THEN CDR V
       ELSE CAR V . DELETE(U, CDR V);"
-  (cl:remove u v :test #'equal :count 1))
+  (declare (list v))
+  (the list (cl:remove u v :test #'equal :count 1)))
 
 (defun digit (u)
   "DIGIT(U:any):boolean eval, spread
@@ -1640,10 +1707,11 @@ EXPR PROCEDURE LENGTH(X);
   ;; atoms or dotted pairs!
   ;; This iterative implementation is based on the description of
   ;; list-length in the CLHS:
-  (do ((n 0 (1+ n))    ; counter
-       (p x (cdr p)))  ; pointer
-      ;; When pointer hits an atom, return the count:
-      ((atom p) n)))
+  (the (integer 0)
+       (do ((n 0 (1+ n))                ; counter
+            (p x (cdr p)))              ; pointer
+           ;; When pointer hits an atom, return the count:
+           ((atom p) n))))
 
 (defun liter (u)
   "LITER(U:any):boolean eval, spread
@@ -1666,13 +1734,14 @@ otherwise it returns the remainder of L whose first element is equal
 to A."
   ;; This is the PSl definition, which accepts *anything* as its second argument!
   ;; REDUCE (crack in particular) requires this flexibility.
-  ;; In Common Lisp, the second argument must be a proper list.
+  ;; The second argument to Common Lisp member must be a proper list.
   ;; (cond ((atom l) nil)
   ;;       ((equal a (car l)) l)
   ;;       (t (member a (cdr l))))
-  (loop for tail on l do
-       (if (atom tail) (return-from member nil))
-       (if (equal a (car tail)) (return-from member tail))))
+  (the list
+       (loop for tail on l do
+            (if (atom tail) (return-from member nil))
+            (if (equal a (car tail)) (return-from member tail)))))
 
 (defun memq (a l)
   "(memq A:any L:any): extra-boolean expr
@@ -1681,13 +1750,14 @@ otherwise it returns the remainder of L whose first element is equal
 to A."
   ;; This is the PSl definition, which accepts *anything* as its second argument!
   ;; REDUCE probably requires this flexibility.
-  ;; In Common Lisp, the second argument must be a proper list.
+  ;; The second argument to Common Lisp member must be a proper list.
   ;; (cond ((atom l) nil)
   ;;       ((eq a (car l)) l)
   ;;       (t (memq a (cdr l))))
-  (loop for tail on l do
-       (if (atom tail) (return-from memq nil))
-       (if (eq a (car tail)) (return-from memq tail))))
+  (the list
+       (loop for tail on l do
+            (if (atom tail) (return-from memq nil))
+            (if (eq a (car tail)) (return-from memq tail)))))
 
 (import 'cl:nconc)
 ;; NCONC(U:list, V:list):list eval, spread
@@ -1716,9 +1786,11 @@ EXPR PROCEDURE PAIR(U, V);
       ELSE IF OR(U, V) THEN ERROR(000,
          \"Different length lists in PAIR\")
       ELSE NIL;"
-  (if (/= (cl:length u) (cl:length v))
-      (cl:error "000 Different length lists in PAIR")
-      (cl:map 'cl:list #'cl:cons u v)))
+  (declare (list u v))
+  (the list
+       (if (/= (cl:length u) (cl:length v))
+           (cl:error "000 Different length lists in PAIR")
+           (cl:map 'list #'cons u v))))
 
 (import 'cl:reverse)
 ;; REVERSE(U:list):list eval, spread
@@ -1740,6 +1812,7 @@ EXPR PROCEDURE SASSOC(U, V, FN);
    IF NULL V THEN FN()
       ELSE IF U = CAAR V THEN CAR V
       ELSE SASSOC(U, CDR V, FN);"
+  (declare (list v) (ftype (function ()) fn))
   (or (cl:assoc u v :test #'equal) (funcall fn)))
 
 (defun sublis (x y)
@@ -1756,6 +1829,7 @@ EXPR PROCEDURE SUBLIS(X, Y);
                         ELSE SUBLIS(X, CAR Y) .
                              SUBLIS(X, CDR Y)
                  END;"
+  (declare (list x))
   (cl:sublis x y :test #'equal))
 
 (defun subst (u v w)
@@ -1775,6 +1849,7 @@ EXPR PROCEDURE SUBST(U, V, W);
 (defun rassoc (key list)
   "Return non-nil if KEY is equal to the cdr of an element of LIST.
 The value is actually the first element of LIST whose cdr equals KEY."
+  (declare (list list))
   (cl:rassoc key list :test #'equal))
 
 
@@ -1788,10 +1863,21 @@ The value is actually the first element of LIST whose cdr equals KEY."
 ;; It might be better to add the function call to the code in reval,
 ;; but try this for now...
 
+;; (defun %lam2fn (fn)
+;;   "Make a lambda expression acceptable as a function by evaluating it."
+;;   (declare ((or list function) fn))
+;;   (the function (if (eqcar fn 'lambda) (eval fn) fn)))
+
+;; (defun apply (fn args)
+;;   "Treat a lambda expression as an operator.
+;; Otherwise revert to the Common Lisp apply."
+;;   (cl:apply (%lam2fn fn) args))
+
 (defun apply (fn args)
   "Treat a lambda expression as an operator.
 Otherwise revert to the Common Lisp apply."
-  (cl:apply (%lam2fn fn) args))
+  (declare (ftype function fn))
+  (cl:apply (coerce fn 'cl:function) args))
 
 ;; APPLY(FN:{id,function}, ARGS:any-list):any eval, spread
 ;; APPLY returns the value of FN with actual parameters ARGS. The
@@ -1867,7 +1953,8 @@ EVLIS returns a list of the evaluation of each element of U.
 EXPR PROCEDURE EVLIS(U);
    IF NULL U THEN NIL
       ELSE EVAL CAR U . EVLIS CDR U;"
-  (cl:mapcar #'eval u))
+  (declare (list u))
+  (the list (cl:mapcar #'eval u)))
 
 (defun expand (l fn)
   "EXPAND(L:list, FN:function):list eval, spread
@@ -1878,6 +1965,7 @@ where n is the number of elements in L, Li is the ith element of L.
 EXPR PROCEDURE EXPAND(L,FN);
    IF NULL CDR L THEN CAR L
       ELSE LIST(FN, CAR L, EXPAND(CDR L, FN));"
+  (declare (list l) (function fn))
   (if (null (cdr l))
       (car l)
     (list fn (car l) (expand (cdr l) fn))))
@@ -1928,25 +2016,27 @@ the value of FILEHANDLE. An error occurs if the file can not be
 closed.
 ***** FILEHANDLE could not be closed"
   ;; A null filehandle represents standard IO; ignore it.
-  (if filehandle
-      (prog1 filehandle
-        (cond
-          ((eq (car filehandle) 'file)
-           ;; Output file stream ('file output-stream):
-           (cl:close (cadr filehandle)))
-          #+SBCL
-          ((eq (car filehandle) 'pipe)
-           ;; Output pipe stream ('pipe output-stream . process):
-           (sb-ext:process-close (cddr filehandle)) ; closes output-stream
-           (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
-          #+CLISP
-          ((eq (car filehandle) 'pipe)
-           ;; Output pipe stream ('pipe output-stream):
-           (cl:close (cadr filehandle))) ; closes output-stream
-          (t
-           ;; Input filehandle -- close echo stream then input stream:
-           (cl:close (cdr filehandle))
-           (cl:close (car filehandle)))))))
+  (declare (filehandle filehandle))
+  (the filehandle
+       (if filehandle
+           (prog1 filehandle
+             (cond
+               ((eq (car filehandle) 'file)
+                ;; Output file stream ('file output-stream):
+                (cl:close (cadr filehandle)))
+               #+SBCL
+               ((eq (car filehandle) 'pipe)
+                ;; Output pipe stream ('pipe output-stream . process):
+                (sb-ext:process-close (cddr filehandle)) ; closes output-stream
+                (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
+               #+CLISP
+               ((eq (car filehandle) 'pipe)
+                ;; Output pipe stream ('pipe output-stream):
+                (cl:close (cadr filehandle))) ; closes output-stream
+               (t
+                ;; Input filehandle -- close echo stream then input stream:
+                (cl:close (cdr filehandle))
+                (cl:close (car filehandle))))))))
 
 (defun eject ()
   "EJECT():NIL eval, spread
@@ -1968,11 +2058,13 @@ returns the current line length and does not cause it to be reset. An
 error occurs if the requested line length is too large for the currently
 selected output file or LEN is negative or zero.
 ***** LEN is an invalid line length"
-  (if len
-      (if (or (not (integerp len)) (<= len 0))
-          (cl:error "~a is an invalid line length" len)
-        (prog1 %linelength (setq %linelength len)))
-    %linelength))
+  (declare ((or null (integer 1)) len))
+  (the (integer 1)
+       (if len
+           (if (or (not (integerp len)) (<= len 0))
+               (cl:error "~a is an invalid line length" len)
+               (prog1 %linelength (setq %linelength len)))
+           %linelength)))
 
 (defun lposn ()
   "LPOSN():integer eval, spread
@@ -1987,6 +2079,7 @@ non-alphanumeric character by its value.  Called by `open'."
   ;; A simplified version of the Elisp function
   ;; `substitute-in-file-name'.
   ;; Replace environment variables with their values:
+  (declare ((or simple-string pathname) filename))
   (loop
      with beg and end = 0 and l
      while
@@ -2011,6 +2104,7 @@ parent.  Called by `open' on SBCL."
   ;; A simplified version of the Elisp function `expand-file-name'.
   ;; sb-ext:native-pathname seems necessary to preserve odd characters
   ;; such as ^ in a filename:
+  (declare ((or simple-string pathname) filename))
   #+SBCL (setq filename (sb-ext:native-pathname filename))
   (let ((d (pathname-directory filename)))
     (when (eq (car d) :relative)
@@ -2028,7 +2122,7 @@ parent.  Called by `open' on SBCL."
            (setq filename (merge-pathnames
                            (make-pathname :directory d :defaults filename)
                            (make-pathname :directory cwd))))))
-  filename)
+  (the (or simple-string pathname) filename))
 
 ;; CLISP user variable CUSTOM:*DEVICE-PREFIX* controls translation
 ;; between Cygwin pathnames (e.g., #P"/cygdrive/c/gnu/clisp/") and
@@ -2044,20 +2138,22 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
+  (declare ((or simple-string pathname) file) (symbol how))
   (setq file (substitute-in-file-name file)) ; substitute environment variables
   #+SBCL (setq file (expand-file-name file)) ; expand . and ..
   ;; #+cygwin (setq file (win-to-cyg file))
   #+cygwin (setq file (parse-namestring file)) ; convert Windows filename to Cygwin format
-  (cond ((eq how 'input)
-         (let ((fh (cl:open file :direction :input)))
-           ;; An input filehandle is a pair of the form
-           ;; (input-stream . echo-stream):
-           (cons fh (make-echo-stream fh *standard-output*))))
-        ((eq how 'output)
-         (list 'file
-               (cl:open file :direction :output
-                           :if-exists :supersede :if-does-not-exist :create)))
-        (t (cl:error "~a is not option for OPEN" how))))
+  (the filehandle
+       (cond ((eq how 'input)
+              (let ((fh (cl:open file :direction :input)))
+                ;; An input filehandle is a pair of the form
+                ;; (input-stream . echo-stream):
+                (cons fh (make-echo-stream fh *standard-output*))))
+             ((eq how 'output)
+              (list 'file
+                    (cl:open file :direction :output
+                             :if-exists :supersede :if-does-not-exist :create)))
+             (t (cl:error "~a is not option for OPEN" how)))))
 
 (defun pagelength (len)
   (declare (ignore len))
@@ -2078,14 +2174,14 @@ It's value should be between 0 and `%linelength' inclusive.")
   "POSN():integer eval, spread
 Returns the number of characters in the output buffer. When the
 buffer is empty, 0 is returned."
-  %posn)
+  (the (integer 0) %posn))
 
 (defvar %prin-space-maybe nil
   "True if there is a pending space to print.")
 
 (defun %prin-space-maybe ()
-  "Record that a space should be printed unless at the beginning or
-end of a line."
+  "Record that a space should be printed and return t unless at the
+beginning of a line."
   (if (> %posn 0)
       (setq %prin-space-maybe t)))
 
@@ -2093,6 +2189,7 @@ end of a line."
   "Print string S preceded by a space or newline if necessary.
 Check and update `%posn' to keep it <= `%linelength'.
 This is the only function that actually produces graphical output."
+  (declare (simple-string s))
   (let ((len (cl:length s)))
     (if %prin-space-maybe (incf %posn))
     (incf %posn len)                   ; posn after printing s
@@ -2102,7 +2199,8 @@ This is the only function that actually produces graphical output."
           (setq %posn len))            ; posn after printing s
         (if %prin-space-maybe (cl:princ #\Space)))
     (setq %prin-space-maybe nil)
-    (cl:princ s)))
+    (cl:princ s))
+  nil)
 
 (defun princ (u)
   ;; Not used in REDUCE since redefined in rlisp/rsupport.red as
@@ -2163,35 +2261,40 @@ in vector-notation.  The value of U is returned."
 
 (defun %princ-id-to-string (u)
   "Convert identifier U to a string without any escapes."
-  (%string-invert-case (cl:symbol-name u)))
+  (declare (symbol u))
+  (the simple-string (%string-invert-case (cl:symbol-name u))))
 
 (defun %prin1-id-to-string (u)
   "Convert identifier U to a string including appropriate `!' escapes."
   ;; Insert ! before an upper-case letter, leading digit or _, or
   ;; special character (except _):
-  (coerce
-   (loop with s = (cl:symbol-name u) and c
-      for i below (cl:length s)
-      do (setq c (aref s i))
-      unless (or (upper-case-p c)       ; case-inverted!
-                 (and (not (eql i 0))
-                      (or (digit-char-p c) (char= c #\_))))
-      collect #\!
-      collect (%character-invert-case c))
-   'string))
+  (declare (symbol u))
+  (the simple-string
+       (coerce
+        (loop with s = (cl:symbol-name u) and c
+           for i below (cl:length s)
+           do (setq c (aref s i))
+           unless (or (upper-case-p c)  ; case-inverted!
+                      (and (not (eql i 0))
+                           (or (digit-char-p c) (char= c #\_))))
+           collect #\!
+           collect (%character-invert-case c))
+        'string)))
 
-(defun %prin1-string-to-string (u)
-  "Add delimiting \"s and escape internal \"s as \"\" in string U."
-  (loop with p = 0 and q and v = (list "\"")
-     ;; v must be a new cons to allow destructive reverse
-     do
-       (setq q (position #\" u :start p))
-       (if q (incf q))
-       (setq v (cons "\"" (cons (subseq u p q) v))
-             p q)
-     while q
-     finally (return
-               (cl:apply #'concatenate 'string (nreverse v)))))
+(defun %prin1-string-to-string (s)
+  "Add delimiting \"s and escape internal \"s as \"\" in string S."
+  (declare (simple-string s))
+  (the simple-string
+       (loop with p = 0 and q and v = (list "\"")
+          ;; v must be a new cons to allow destructive reverse
+          do
+            (setq q (position #\" s :start p))
+            (if q (incf q))
+            (setq v (cons "\"" (cons (subseq s p q) v))
+                  p q)
+          while q
+          finally (return
+                    (cl:apply #'concatenate 'string (nreverse v))))))
 
 (defparameter *float-print-precision* 12
   ;; The choice of 12 is somewhat arbitrary.  Algebraic output seems
@@ -2226,6 +2329,7 @@ If nil then floats are printed without any additional rounding.")
   "Print a float to a string rounded to include only significant digits."
   ;; Rescale u so that the significant digits form the integer part,
   ;; round that and then undo the rescaling.
+  (declare (double-float u))
   (let ((s (cl:princ-to-string
             (if (and *float-print-precision* (not (zerop u)))
                 (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
@@ -2243,34 +2347,40 @@ If nil then floats are printed without any additional rounding.")
       (incf p)
       (unless (char-equal (aref s p) #\-)
         (setq s (concatenate 'string (subseq s 0 p) "+" (subseq s p)))))
-    s))
+    (the simple-string s)))
 
 (defun %prin-vector (u prinfn)
   "Print vector U delimited by [ and ] using PRINFN to print each element."
+  (declare (simple-vector u) (cl:function prinfn))
   (loop
      initially (%prin-string "[") (funcall prinfn (aref u 0))
      for i from 1 below (cl:length u) do
        (%prin-space-maybe) (funcall prinfn (aref u i))
-     finally (%prin-string "]")))
+     finally (%prin-string "]"))
+  nil)
 
 (defun %prin-cons (u prinfn)
   "Print cons cell U using PRINFN."
+  (declare (cons u) (cl:function prinfn))
   (%prin-string "(")
   (funcall prinfn (car u))
   (%prin-cdr (cdr u) prinfn)
-  (%prin-string ")"))
+  (%prin-string ")")
+  nil)
 
 (defun %prin-cdr (u prinfn)
   "If U is non-nil then print it or its elements spaced appropriately.
 U is the cdr of a cons cell: nil, an atom or another cons cell.
 Cons cell elements are printed using PRINFN."
+  (declare (cl:function prinfn))
   (cond ((null u))                      ; do nothing
         ((atom u)
          (%prin-space-maybe) (%prin-string ".")
          (%prin-space-maybe) (funcall prinfn u))
         (t (%prin-space-maybe)
            (funcall prinfn (car u))
-           (%prin-cdr (cdr u) prinfn))))
+           (%prin-cdr (cdr u) prinfn)))
+  nil)
 
 (defun %default-read-stream ()
   "The default read stream using the current value of *standard-input*."
@@ -2289,7 +2399,8 @@ CLISP memory image.")
 
 (defun %read-stream ()
   "Return the appropriate input stream depending on the value of *echo."
-  (or (and *echo (cdr %read-stream)) (car %read-stream)))
+  (the stream
+       (or (and *echo (cdr %read-stream)) (car %read-stream))))
 
 (defun rds (filehandle)
   "RDS(FILEHANDLE:any):any eval, spread
@@ -2302,12 +2413,14 @@ input device is reselected. When end of file occurs on the
 standard input device the Standard LISP reader terminates. RDS
 returns the internal name of the previously selected input file.
 ***** FILEHANDLE could not be selected for input"
-  (prog1
-      %read-stream
-    (setq %read-stream
-          (if (and filehandle (open-stream-p (car filehandle)))
-              filehandle
-              +default-read-stream+))))
+  (declare (filehandle filehandle))
+  (the filehandle
+       (prog1
+           %read-stream
+         (setq %read-stream
+               (if (and filehandle (open-stream-p (car filehandle)))
+                   filehandle
+                   +default-read-stream+)))))
 
 (defparameter *sl-readtable* (copy-readtable)
   "Readtable implementing Standard Lisp syntax.
@@ -2335,7 +2448,7 @@ No escape characters are defined.")
   ;; This accumulates chars until it sees same char that invoked it,
   ;; namely closech. See the function read-string in
   ;; "sbcl-1.4.14/src/code/reader.lisp".
-  (declare (character closech))
+  (declare (stream stream) (character closech))
   (let* ((*readtable* *string-readtable*)
          (s (%cl-read-string stream closech)))
     (loop while ;; following character is "
@@ -2345,7 +2458,7 @@ No escape characters are defined.")
        ;; then read and concatenate the following string
          (setq s (concatenate 'string s (string closech)
                               (%cl-read-string stream closech))))
-    s))
+    (the simple-string s)))
 
 (set-macro-character #\" #'%sl-read-string nil *sl-readtable*)
 
@@ -2386,22 +2499,23 @@ record have been read, the value of !$EOL!$ is returned. If the file
 selected for input has all been read the value of !$EOF!$ is returned.
 Comments delimited by % and end-of-line are not transparent to READCH."
   ;; This function must perform any required case conversion.
-  (let ((c (read-char (%read-stream) nil $eof$)))
-    (if (eq c $eof$)
-        (progn
-          (setq %readch-escape nil)
-          $eof$)
-        (progn
-          (when *echo                   ; track output position
-            (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
-          (cond ((char= c #\!)
-                 (setq %readch-escape (not %readch-escape)) '!)
-                (%readch-escape        ; preserve case
-                 (setq %readch-escape nil) (%intern-character-invert-case c))
-                (*raise                 ; down-case
-                 (%intern-character-preserve-case (cl:char-upcase c)))
-                (t                      ; preserve case
-                 (%intern-character-invert-case c)))))))
+  (the symbol
+       (let ((c (read-char (%read-stream) nil $eof$)))
+         (if (eq c $eof$)
+             (progn
+               (setq %readch-escape nil)
+               $eof$)
+             (progn
+               (when *echo              ; track output position
+                 (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
+               (cond ((char= c #\!)
+                      (setq %readch-escape (not %readch-escape)) '!)
+                     (%readch-escape    ; preserve case
+                      (setq %readch-escape nil) (%intern-character-invert-case c))
+                     (*raise            ; down-case
+                      (%intern-character-preserve-case (cl:char-upcase c)))
+                     (t                 ; preserve case
+                      (%intern-character-invert-case c))))))))
 
 (defun terpri ()
   "TERPRI():NIL
@@ -2412,7 +2526,7 @@ The current print line is terminated."
 
 (defun %default-write-stream ()
   "The default write stream using the current value of *standard-output*."
-  (list 'file *standard-output*))
+  (the filehandle (list 'file *standard-output*)))
 
 (defparameter +default-write-stream+ (%default-write-stream)
   "The default write stream using the initial value of *standard-output*.
@@ -2434,54 +2548,61 @@ opened for output. If FILEHANDLE is NIL the standard output
 device is selected. WRS returns the internal name of the previously
 selected output file.
 ***** FILEHANDLE could not be selected for output"
-  (prog1
-      %write-stream
-    ;; This fails to compile (report as SBCL bug?):
-    ;; (setq *standard-output* (cdr +default-write-stream+)
-    ;;    %write-stream +default-write-stream+)
-    ;; But this version compiles OK:
-    (setq %write-stream +default-write-stream+
-          *standard-output* (cadr %write-stream))
-    (when filehandle
-      (cond
-        ((eq (car filehandle) 'file)
-         ;; Output file stream ('file output-stream):
-         (if (open-stream-p (cadr filehandle))
-             (setq *standard-output* (cadr filehandle)
-                   %write-stream filehandle)))
-        ((eq (car filehandle) 'pipe)
-         ;; Output pipe stream ('pipe output-stream . process):
-         (if (open-stream-p (cadr filehandle))
-             (setq *standard-output* (cadr filehandle)
-                   %write-stream filehandle)))))))
+  (declare (filehandle filehandle))
+  (the filehandle
+       (prog1
+           %write-stream
+         ;; This fails to compile (report as SBCL bug?):
+         ;; (setq *standard-output* (cdr +default-write-stream+)
+         ;;    %write-stream +default-write-stream+)
+         ;; But this version compiles OK:
+         (setq %write-stream +default-write-stream+
+               *standard-output* (cadr %write-stream))
+         (when filehandle
+           (cond
+             ((eq (car filehandle) 'file)
+              ;; Output file stream ('file output-stream):
+              (if (open-stream-p (cadr filehandle))
+                  (setq *standard-output* (cadr filehandle)
+                        %write-stream filehandle)))
+             ((eq (car filehandle) 'pipe)
+              ;; Output pipe stream ('pipe output-stream . process):
+              (if (open-stream-p (cadr filehandle))
+                  (setq *standard-output* (cadr filehandle)
+                        %write-stream filehandle))))))))
 
 (defun pipe-open (command how)
   "Run COMMAND asynchronously with input via the pipe returned as a
 stream by this function."
-  (cond ((eq how 'output)
-         #+SBCL
-         ;; An output filehandle is a dotted-list of the form ('file .
-         ;; output-stream) or ('pipe output-stream . process):
-         (let ((p (sb-ext:run-program "cmd" (list "/c" command)
-                                      :wait nil :search t :input :stream
-                                      :escape-arguments nil)))
-           (cons 'pipe (cons (sb-ext:process-input p) p)))
-         #+CLISP
-         ;; An output filehandle is a dotted-list of the form ('file .
-         ;; output-stream) or ('pipe output-stream . nil):
-         ;; (list 'pipe (ext:run-shell-command command :input :stream :wait nil)))
-         (list 'pipe (ext:make-pipe-output-stream command)))
-        (t (cl:error "~a is not (currently) an option for PIPE-OPEN" how))))
+  (declare (simple-string command) (symbol how))
+  (the filehandle
+       (cond ((eq how 'output)
+              #+SBCL
+              ;; An output filehandle is a dotted-list of the form ('file .
+              ;; output-stream) or ('pipe output-stream . process):
+              (let ((p (sb-ext:run-program "cmd" (list "/c" command)
+                                           :wait nil :search t :input :stream
+                                           :escape-arguments nil)))
+                (cons 'pipe (cons (sb-ext:process-input p) p)))
+              #+CLISP
+              ;; An output filehandle is a dotted-list of the form ('file .
+              ;; output-stream) or ('pipe output-stream . nil):
+              ;; (list 'pipe (ext:run-shell-command command :input :stream :wait nil)))
+              (list 'pipe (ext:make-pipe-output-stream command)))
+             (t (cl:error "~a is not (currently) an option for PIPE-OPEN" how)))))
 
 (defun channelflush (filehandle)        ; PSL
+  (declare (filehandle filehandle))
   "Flush FILEHANDLE if it is a pipe stream."
   ;; filehandle = ('pipe output-stream . process)
   (if (eq (car filehandle) 'pipe)
-      (finish-output (cadr filehandle))))
+      (finish-output (cadr filehandle)))
+  nil)
 
 (defun flush ()                         ; CSL
   "Flush the current output stream."
-  (finish-output (cadr %write-stream)))
+  (finish-output (cadr %write-stream))
+  nil)
 
 
 ;;; PSL/CSL functions and some other required functions
@@ -2500,25 +2621,27 @@ stream by this function."
 
 (defun date-and-time ()                 ; CSL
   "Return a string of the form \"Fri Feb 01 18:38:36 2019\"."
-  (multiple-value-bind
-        (second minute hour date month year day)
-      (get-decoded-time)
-    (format nil "~a ~a ~2,'0d ~2,'0d:~2,'0d:~2,'0d ~d"
-            (aref +short-day-names+ day)
-            (aref +short-month-names+ (1- month))
-            date hour minute second year)))
+  (the simple-string
+       (multiple-value-bind
+             (second minute hour date month year day)
+           (get-decoded-time)
+         (format nil "~a ~a ~2,'0d ~2,'0d:~2,'0d:~2,'0d ~d"
+                 (aref +short-day-names+ day)
+                 (aref +short-month-names+ (1- month))
+                 date hour minute second year))))
 
 (defun date ()                          ; PSL
   "(date): string expr
 The date in the form \"day-month-year\"
 1 lisp> (date)
 \"21-Jan-1997\""
-  (multiple-value-bind
-        (second minute hour date month year)
-      (get-decoded-time)
-    (declare (ignore second minute hour))
-    (format nil "~2,'0d-~a-~d"
-            date (aref +short-month-names+ (1- month)) year)))
+  (the simple-string
+       (multiple-value-bind
+             (second minute hour date month year)
+           (get-decoded-time)
+         (declare (ignore second minute hour))
+         (format nil "~2,'0d-~a-~d"
+                 date (aref +short-month-names+ (1- month)) year))))
 
 (defalias 'datestamp 'get-universal-time
   "The number of seconds that have elapsed since some epoch.
@@ -2536,8 +2659,9 @@ used to determine an absolute date or time!")
   "(time): integer expr
 Elapsed time from some arbitrary initial point in milliseconds."
   ;; This is used for timing computations, so use run time.
-  (values (round (* (get-internal-run-time)
-                    +milliseconds-per-internal-time-unit+))))
+  (the (integer 0)
+       (values (round (* (get-internal-run-time)
+                         +milliseconds-per-internal-time-unit+)))))
 
 #+CLISP
 (defun %nth-room-value (n)
@@ -2548,9 +2672,10 @@ Suppress the printed output."
 
 (defun gctime ()
   "The total time (in milliseconds) spent in garbage collection."
-  (values (round (* #+SBCL sb-ext:*gc-run-time*
-                    #+CLISP (%nth-room-value 5)
-                    +milliseconds-per-internal-time-unit+))))
+  (the (integer 0)
+       (values (round (* #+SBCL sb-ext:*gc-run-time*
+                         #+CLISP (%nth-room-value 5)
+                         +milliseconds-per-internal-time-unit+)))))
 
 (defvar gcknt* 0
   "gcknt* = [Initially: 0] global
@@ -2572,7 +2697,8 @@ A function hung on the garbage collection hook."
               gcknt*
               (round (* (- sb-ext:*gc-run-time* *previous-gc-run-time*)
                         +milliseconds-per-internal-time-unit+))))
-  (setq *previous-gc-run-time* sb-ext:*gc-run-time*))
+  (setq *previous-gc-run-time* sb-ext:*gc-run-time*)
+  nil)
 
 (push #'%gc-reporting sb-ext:*after-gc-hooks*)
 
@@ -2584,7 +2710,8 @@ A function hung on the garbage collection hook."
 
 (defun %run-gc-hook ()
   "Run the REDUCE procedure (if any) assigned to the variable *gc-hook*."
-  (and (fboundp *gc-hook*) (funcall *gc-hook* nil)))
+  (if (fboundp *gc-hook*) (funcall *gc-hook* nil))
+  nil)
 
 (push #'%run-gc-hook sb-ext:*after-gc-hooks*)
 
@@ -2592,8 +2719,9 @@ A function hung on the garbage collection hook."
 
 (defun gtheap ()
   "Size of the free dynamic space in bytes."
-  #+SBCL (- (sb-ext:dynamic-space-size) (sb-ext:get-bytes-consed))
-  #+CLISP (%nth-room-value 1))
+  (the integer                          ; should be (integer 0) !!!!!
+       #+SBCL (- (sb-ext:dynamic-space-size) (sb-ext:get-bytes-consed))
+       #+CLISP (%nth-room-value 1)))
 
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
@@ -2611,12 +2739,14 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 
 (defun concat2 (s1 s2)
   "Concatenates its two string arguments, returning the newly created string."
-  (concatenate 'string s1 s2))
+  (declare (simple-string s1 s2))
+  (the simple-string (concatenate 'string s1 s2)))
 
 (defun concat (&rest s)
   "Concatenates all of its string arguments, returning the newly created string."
   ;; Flagged variadic in clprolo.
-  (cl:apply #'concatenate 'string s))
+  (declare (list s))
+  (the simple-string (cl:apply #'concatenate 'string s)))
 
 ;; (defalias 'allocate-string 'cl:make-string ; PSL
 ;;   "(allocate-string SIZE:integer): string expr
@@ -2629,20 +2759,23 @@ Creates a list of length (add1 (size S)), converting the ASCII
 characters into small integers.
 lisp> (string2list \"STRING\")
 \(83 84 82 73 78 71)"
+  (declare (simple-string s))
   (cl:map 'list
              #'(lambda (x) (cl:char-code x))
              s))
 
 (defun %character (x)
   "Generalize cl:character to accept also a character code."
-  (if (integerp x)
-      (if (and (<= 0 x) (<= x 255))
-          ;; Was 127, but then reading rlisp/tok.red fails!
-          ;; Should 128 -> nil as specified for PSL?
-          (code-char x)
-          (cl:error
-           "***** SL error in `%character': ~d is not a character code" x))
-      (%character-inverted x)))
+  (declare ((or (integer 0 255) symbol) x))
+  (the character
+       (if (integerp x)
+           (if (<= 0 x 255)             ; (and (<= 0 x) (<= x 255))
+               ;; Was 127, but then reading rlisp/tok.red fails!
+               ;; Should 128 -> nil as specified for PSL?
+               (code-char x)
+               (cl:error
+                "***** SL error in `%character': ~d is not a character code" x))
+           (%id-to-char-invert-case x))))
 
 (defun list2string (l)                  ; PSL
   "(list2string L:inum-list): string expr
@@ -2652,6 +2785,7 @@ range of 0 ... 127 will result in an error.
 lisp> (list2string '(83 84 82 73 78 71))
 \"STRING\"
 Identifiers are case-inverted."
+  (declare (list l))
   (cl:map 'string #'%character l))
 
 (defun list2widestring (u)
@@ -2663,9 +2797,11 @@ Identifiers are case-inverted."
   ;; This is a re-implementation of the procedure in rlisp/tok.red.
   ;; It must be flagged lose in clprolo.
   ;; It should make string!-store etc. redundant.
+  (declare (list u))
   (cl:map 'string
-             #'(lambda (x) (if (integerp x) (code-char x) (%character-inverted x)))
-             u))
+          #'(lambda (x)
+              (if (integerp x) (code-char x) (%id-to-char-invert-case x)))
+          u))
 
 (defun widestring2list (u)
   "Given a string U that may contain bytes that are over 127, return a
@@ -2675,6 +2811,7 @@ are not valid UTF-8 is to be considered undefined."
   ;; This is a re-implementation of the procedure in rlisp/tok.red.
   ;; It must be flagged lose in clprolo.
   ;; It should make moan!-if!-truncated etc. redundant.
+  (declare (simple-string u))
   (cl:map 'list #'cl:char-code u))
 
 ;; (defun string-store (s i x)              ; PSL
@@ -2682,7 +2819,7 @@ are not valid UTF-8 is to be considered undefined."
 ;; Stores into a PSL string. String indexes start with 0."
 ;;   (setf (aref s i) (%character x)))
 
-(defalias 'string-length 'cl:length  ; PSL
+(defalias 'string-length 'cl:length     ; PSL
   "(string-length S:string): integer expr
 Returns the number of elements in a PSL string. Since indexes start with
 index 0, the size is one larger than the greatest legal index. Compare this
@@ -2691,14 +2828,18 @@ function with string-upper-bound, documented below.")
 (defun char-downcase (c)                ; CSL
   "Convert single-character identifier C to lower case."
   ;; NB: upcase because of symbol name case inversion!
-  (values (cl:intern (cl:string-upcase (cl:symbol-name c)))))
+  (declare (symbol c))
+  (the symbol
+       (values (cl:intern (cl:string-upcase (cl:symbol-name c))))))
 
 (defalias 'red-char-downcase 'char-downcase) ; PSL
 
 (defun char-upcase (c)                  ; CSL
   "Convert single-character identifier C to lower case."
   ;; NB: downcase because of symbol name case inversion!
-  (values (cl:intern (cl:string-downcase (cl:symbol-name c)))))
+  (declare (symbol c))
+  (the symbol
+       (values (cl:intern (cl:string-downcase (cl:symbol-name c))))))
 
 (defun int2id (i)                       ; PSL
   "(int2id I:integer): id expr
@@ -2710,7 +2851,8 @@ id NIL is always found by (int2id 128)."
   ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
   ;;   intern list2string list x;
   ;; (unless (= i 128) (%intern-character (code-char i)))
-  (%intern-character-invert-case (code-char i)))
+  (declare ((integer 0 255) i))
+  (the symbol (%intern-character-invert-case (code-char i))))
 
 (defun id2int (d)                       ; PSL
   "(id2int D:id): integer expr
@@ -2719,11 +2861,15 @@ Returns the id space position of D as a LISP integer."
   ;; inline procedure id2int x; % Gets first octet of UTF-8 form of name
   ;;   car string2list x;
   ;; (if d (cl:char-code (aref (symbol-name d) 0)) 128)
-  (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0))))
+  (declare (symbol d))
+  (the (integer 0 255)
+       (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0)))))
 
 (defun char-code (c)                    ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
-  (cl:char-code (character c)))
+  (declare (symbol c))
+  (the (integer 0 255)
+       (cl:char-code (character c))))
 
 (defun id2string (d)                    ; PSL
   "(id2string D:id): string expr
@@ -2735,13 +2881,15 @@ which contain special characters. Any character which follows the character
 character ! does not appear in the result.
 1 lisp> (id2string 'is-!%)
 \"is-%\""
-  (%string-invert-case (cl:symbol-name d)))
+  (declare (symbol d))
+  (the simple-string (%string-invert-case (cl:symbol-name d))))
 
 (defalias 'symbol-name 'id2string)
 
 (defun string-downcase (u)
   "Convert identifier or string U to a lower-case string."
-  (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u)))
+  (declare ((or symbol simple-string) u))
+  (the simple-string (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u))))
 
 (defalias 'land 'cl:logand           ; PSL
   "(land U:integer V:integer): integer expr
@@ -2761,7 +2909,8 @@ shifts do not resemble division by a power of 2.")
 Copy the elements of the list into a vector of the same size.
 1 lisp> (list2vector '(V E C T O R))
 [V E C T O R]"
-  (cl:apply #'cl:vector l))
+  (declare (list l))
+  (the simple-vector (cl:apply #'cl:vector l)))
 
 (defalias 'list-to-vector 'list2vector)
 
@@ -2771,7 +2920,8 @@ Create a list of the same size as V, the elements are copied in a left to right
 order.
 1 lisp> (vector2list [L I S T])
 \(L I S T)"
-  (cl:map 'list #'cl:identity v))
+  (declare (simple-vector v))
+  (the list (cl:map 'list #'cl:identity v)))
 
 (defalias 'copy 'cl:copy-tree        ; PSL
   "(copy X:any): any expr
@@ -2803,6 +2953,7 @@ elements (for example ids, strings, and vectors) are not.")
 (defun setprop (u l)                    ; PSL
   "(setprop U:id L:any): L:any expr
 Store item L as the property list of U."
+  (declare (symbol u))
   (setf (symbol-plist u) l))
 
 ;; CL union and intersection return different orderings that those in
@@ -2815,7 +2966,8 @@ Store item L as the property list of U."
 (defun union (x y)                      ; PSL
   "(union X:list Y:list): list expr
 Returns the union of sets X and Y."
-  (cl:union x y :test #'equal))
+  (declare (list x y))
+  (the list (cl:union x y :test #'equal)))
 
 (defalias 'mod 'cl:mod) ; not just imported because cali redefines mod
 (defalias 'gcdn 'cl:gcd)
@@ -2828,6 +2980,7 @@ lexicographical order.  It assumes arguments are truly id's, which
 should be true with current REDUCE.  Ignore case."
   ;; Previously defined in clprolo, but I want to use cl:symbol-name
   ;; to avoid unnecessary case inversions.
+  (declare (symbol u v))
   (string-not-greaterp (cl:symbol-name u) (cl:symbol-name v)))
 
 
@@ -2855,12 +3008,14 @@ should be true with current REDUCE.  Ignore case."
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
 COMMAND to the interpreter and return the process exit code."
-  #+SBCL (sb-ext:process-exit-code
-          (sb-ext:run-program "cmd" (list "/c" command)
-                              :search t :output t :escape-arguments nil))
-  ;; Cygwin CLISP behaves as if running on Unix, not Windows.
-  ;; ext:shell returns nil for normal exit with status 0!
-  #+CLISP (or (ext:shell command) 0))
+  (declare (simple-string command))
+  (the integer
+       #+SBCL (sb-ext:process-exit-code
+               (sb-ext:run-program "cmd" (list "/c" command)
+                                   :search t :output t :escape-arguments nil))
+       ;; Cygwin CLISP behaves as if running on Unix, not Windows.
+       ;; ext:shell returns nil for normal exit with status 0!
+       #+CLISP (or (ext:shell command) 0)))
 
 #+SBCL
 (defun system-to-string (command)       ; experimental - not tested!
@@ -2875,8 +3030,9 @@ COMMAND to the interpreter and return the process exit code."
 (defun pwd ()                           ; PSL
   "(pwd):STRING expr
 Return the current working directory in system specific format."
-  #+SBCL (sb-ext:native-namestring *default-pathname-defaults*)
-  #+CLISP (namestring (ext:cd)))
+  (the simple-string
+       #+SBCL (sb-ext:native-namestring *default-pathname-defaults*)
+       #+CLISP (namestring (ext:cd))))
 
 #+SBCL
 (defun cd (dir)                         ; PSL
@@ -2884,6 +3040,7 @@ Return the current working directory in system specific format."
 Set the current working directory to DIR after expanding the filename
 according to the rules of the operating system.  If this operation is
 not sucessful, the value Nil is returned."
+  (declare ((or simple-string pathname) dir))
   (setq dir (pathname dir))
   ;; Allow dir not to end with a separator:
   (if (string/= (file-namestring dir) "")
@@ -2894,10 +3051,11 @@ not sucessful, the value Nil is returned."
   (setq dir (substitute-in-file-name (namestring dir)))
   (setq dir (expand-file-name dir))
   (setq dir (merge-pathnames dir))
-  (and (probe-file dir)
-       ;; Return a more useful value than t:
-       (sb-ext:native-namestring
-        (setq *default-pathname-defaults* dir))))
+  (the (or null pathname)
+       (and (probe-file dir)
+            ;; Return a more useful value than t:
+            (sb-ext:native-namestring
+             (setq *default-pathname-defaults* dir)))))
 
 #+CLISP
 (defun cd (dir)                         ; PSL
@@ -2907,7 +3065,9 @@ according to the rules of the operating system.  If this operation is
 not sucessful, the value Nil is returned."
   ;; Expand environment variables, "." and "..":
   ;; In CLISP, MAKE-PATHNAME canonicalizes the PATHNAME directory component.
-  (namestring (ext:cd (expand-file-name dir))))
+  (declare (simple-string dir))
+  (the (or null simple-string)
+       (namestring (ext:cd (expand-file-name dir)))))
 
 (defalias 'filep 'probe-file)           ; PSL
 
@@ -2917,6 +3077,9 @@ not sucessful, the value Nil is returned."
 
 ;;; Compile and load
 ;;; ================
+
+;; Probably only need to reset the readtable to CL syntax.  I think
+;; the rest of this definition is redundant:
 
 (defun compile-file (input-file &rest other-args)
   ;; (compile-file input-file &key output-file verbose print
@@ -2954,6 +3117,7 @@ from loadextensions* is used.
 Load a \".sl\" file using Standard Lisp read syntax."
   ;; filename defaults are taken from *default-pathname-defaults*,
   ;; which defaults to the directory in which SBCL was started.
+  (declare ((or symbol simple-string) file))
   (let ((*readtable* (copy-readtable nil)) ; normal CL syntax
         (*load-verbose* *verboseload)
         (*redefmsg *verboseload))
@@ -3006,6 +3170,7 @@ NAME should be an identifier or string.  (The actual extension of fasl
 files depends on the version of Common Lisp.)"
   ;; Output subsequent code as Common Lisp to a temporary file until
   ;; FASLEND evaluated.
+  (declare ((or symbol simple-string) name))
   (setq name (string-downcase name))
   (if *int
       (format t "FASLOUT ~a: IN files$ or type in expressions.
@@ -3021,7 +3186,8 @@ When all done, execute FASLEND;~2%" name))
   (setf %faslout-saved-prettyprint (symbol-function 'prettyprint)
         (symbol-function 'prettyprint) (symbol-function '%faslout-prettyprint))
   (setq *defn t
-        *writingfaslfile t))
+        *writingfaslfile t)
+  nil)
 
 (flag '(faslout) 'opfn)
 (flag '(faslout) 'noval)
@@ -3074,30 +3240,33 @@ When all done, execute FASLEND;~2%" name))
 
 (defun standard-lisp ()
   "Switch to STANDARD LISP mode."
-  (prog1
-      (in-package :sl)
-    (setq *readtable* *sl-readtable*
-          ;; The REDUCE source code implies that 64-bit IEEE
-          ;; arithmetic is expected and it seems to be necessary to
-          ;; read the constant 1.0e300 in arith/paraset.red:
-          *read-default-float-format* 'double-float
-          ;; These must be re-set when Standard Lisp is started to
-          ;; work in a saved CLISP memory image:
-          +default-read-stream+ (%default-read-stream)
-          %read-stream +default-read-stream+
-          +default-write-stream+ (%default-write-stream)
-          %write-stream +default-write-stream+)))
+  (the package
+       (prog1
+           (in-package :sl)
+         (setq *readtable* *sl-readtable*
+               ;; The REDUCE source code implies that 64-bit IEEE
+               ;; arithmetic is expected and it seems to be necessary to
+               ;; read the constant 1.0e300 in arith/paraset.red:
+               *read-default-float-format* 'double-float
+               ;; These must be re-set when Standard Lisp is started to
+               ;; work in a saved CLISP memory image:
+               +default-read-stream+ (%default-read-stream)
+               %read-stream +default-read-stream+
+               +default-write-stream+ (%default-write-stream)
+               %write-stream +default-write-stream+))))
 
 (defun start-reduce ()
   "Switch to STANDARD LISP mode and start REDUCE."
   (standard-lisp)
-  (begin))
+  (begin)
+  nil)
 
 (import '(standard-lisp start-reduce) :cl-user)
 
 (defun reset-readtable ()
   "Switch to Common Lisp read syntax."
-  (setq *readtable* (copy-readtable nil)))
+  (setq *readtable* (copy-readtable nil))
+  nil)
 
 (pushnew :standard-lisp *features*)
 
@@ -3115,8 +3284,9 @@ A list of identifiers indicating system properties.")
 (defun compilation (on)
   "Set the SBCL evaluation mode to compile if ON is non-nil and to
 interpret otherwise.  The default is compile."
-  (setq sb-ext:*evaluator-mode*
-        (if on :compile :interpret)))
+  (the symbol
+       (setq sb-ext:*evaluator-mode*
+             (if on :compile :interpret))))
 
 ;; In SBCL, inhibit printing of package prefixes in the debugger
 ;; (which doesn't seem to work):
@@ -3146,3 +3316,8 @@ interpret otherwise.  The default is compile."
     (if (eq status :inherited) (shadow symbol))))
 
 ;;; sl-on-cl.lisp ends here
+
+;; To do:
+;; Avoid need to use type `(or string pathname)'
+;; gtheap should not return a negative value
+;; Revise documentation strings and function order to follow PSL manual more closely.
