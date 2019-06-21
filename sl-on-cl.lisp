@@ -16,8 +16,9 @@
 ;; This implementation of Standard Lisp is lower-case.  It uses case
 ;; inversion of symbol names and is case-sensitive internally.
 
-(declaim (optimize speed))
-
+;; (push :debug *features*)
+#-DEBUG (declaim (optimize speed))
+#+DEBUG (declaim (optimize debug safety))
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 #+CLISP (setq custom:*suppress-check-redefinition* t
               custom:*compile-warnings* nil)
@@ -232,10 +233,10 @@ EXPR PROCEDURE CONSTANTP(U);
   "EQN(U:any, V:any):boolean eval, spread
 Returns T if U and V are EQ or if U and V are numbers and have
 the same value and type."               ; i.e. the same SL type!
-  (or (eql u v)
-      ;;  eql may not be true of two floats even when they represent
-      ;;  the same value. = is used to compare mathematical values.
-      (and (floatp u) (floatp v) (= u v))))
+  ;;  eql/equal may not be true of two floats even when they represent
+  ;;  the same value.  = is used to compare mathematical values.
+  ;;  (eql/equal -0.0 0.0) is false in SBCL although true in CLISP!
+  (if (and (floatp u) (floatp v)) (= u v) (eql u v)))
 
 ;; (defun equal (u v)
 ;;   "EQUAL(U:any, V:any):boolean eval, spread
@@ -413,7 +414,7 @@ fewer than N elements, an out of range error occurs.
 Note that this definition is not compatible with Common LISP. The
 Common LISP definition reverses the arguments and defines the car
 of a list to be the \"zeroth\" element."
-  (declare (list l) ((integer 1) n))
+  (declare (list l) (fixnum n))
   (cl:nth (1- n) l))
 
 (defun pnth (l n)                       ; inlined
@@ -427,7 +428,7 @@ an out of range error occurs.
     (cond ((onep n) l)
           ((not (pairp l)) (range-error))
           (t (pnth (rest l) (sub1 n)))))"
-  (declare (list l) ((integer 1) n))
+  (declare (list l) (fixnum n))
   (nthcdr (1- n) l))
 
 
@@ -2058,8 +2059,8 @@ returns the current line length and does not cause it to be reset. An
 error occurs if the requested line length is too large for the currently
 selected output file or LEN is negative or zero.
 ***** LEN is an invalid line length"
-  (declare ((or null (integer 1)) len))
-  (the (integer 1)
+  (declare ((or null fixnum) len))
+  (the fixnum
        (if len
            (if (or (not (integerp len)) (<= len 0))
                (cl:error "~a is an invalid line length" len)
@@ -2174,7 +2175,7 @@ It's value should be between 0 and `%linelength' inclusive.")
   "POSN():integer eval, spread
 Returns the number of characters in the output buffer. When the
 buffer is empty, 0 is returned."
-  (the (integer 0) %posn))
+  (the fixnum %posn))
 
 (defvar %prin-space-maybe nil
   "True if there is a pending space to print.")
@@ -2720,7 +2721,12 @@ A function hung on the garbage collection hook."
 (defun gtheap ()
   "Size of the free dynamic space in bytes."
   (the integer                          ; should be (integer 0) !!!!!
-       #+SBCL (- (sb-ext:dynamic-space-size) (sb-ext:get-bytes-consed))
+       #+SBCL (- (sb-ext:dynamic-space-size)
+                 (let* ((s (with-output-to-string (*standard-output*)
+                             (room nil)))
+                        (p (position-if #'digit-char-p s)))
+                   (read-from-string
+                    (remove #\, (subseq s p (position #\Space s :start p))))))
        #+CLISP (%nth-room-value 1)))
 
 (defun explode2 (u)                     ; PSL
@@ -2766,7 +2772,7 @@ lisp> (string2list \"STRING\")
 
 (defun %character (x)
   "Generalize cl:character to accept also a character code."
-  (declare ((or (integer 0 255) symbol) x))
+  (declare ((or (unsigned-byte 8) symbol) x))
   (the character
        (if (integerp x)
            (if (<= 0 x 255)             ; (and (<= 0 x) (<= x 255))
@@ -2851,7 +2857,7 @@ id NIL is always found by (int2id 128)."
   ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
   ;;   intern list2string list x;
   ;; (unless (= i 128) (%intern-character (code-char i)))
-  (declare ((integer 0 255) i))
+  (declare ((unsigned-byte 8) i))
   (the symbol (%intern-character-invert-case (code-char i))))
 
 (defun id2int (d)                       ; PSL
@@ -2862,13 +2868,13 @@ Returns the id space position of D as a LISP integer."
   ;;   car string2list x;
   ;; (if d (cl:char-code (aref (symbol-name d) 0)) 128)
   (declare (symbol d))
-  (the (integer 0 255)
+  (the (unsigned-byte 8)
        (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0)))))
 
 (defun char-code (c)                    ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
   (declare (symbol c))
-  (the (integer 0 255)
+  (the (unsigned-byte 8)
        (cl:char-code (character c))))
 
 (defun id2string (d)                    ; PSL
@@ -3137,7 +3143,8 @@ Load a \".sl\" file using Standard Lisp read syntax."
 ;;; =========================
 
 (defconstant %faslout-header
-  "(cl:declaim (cl:optimize cl:speed))"
+  #-DEBUG "(cl:declaim (cl:optimize cl:speed))"
+  #+DEBUG "(cl:declaim (cl:optimize cl:debug cl:safety))"
   "Header string written at the top of every Lisp file generated by `faslout'
 or nil, meaning no header.")
 
@@ -3319,5 +3326,4 @@ interpret otherwise.  The default is compile."
 
 ;; To do:
 ;; Avoid need to use type `(or string pathname)'
-;; gtheap should not return a negative value
 ;; Revise documentation strings and function order to follow PSL manual more closely.

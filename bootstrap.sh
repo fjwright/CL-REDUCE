@@ -44,9 +44,9 @@ fi || { echo '***** Compilation failed'; exit; }
 echo +++++ Building bootstrap REDUCE
 
 time $runlisp << XXX &> log/bootstrap.blg
-(declaim (optimize speed))
-
 (load "sl-on-cl")
+#-DEBUG (declaim (optimize speed))
+#+DEBUG (declaim (optimize debug safety))
 (standard-lisp)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

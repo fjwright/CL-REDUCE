@@ -56,8 +56,7 @@ alias grep_errors=\
 
 # First, compile fasl files for non-package source files:
 $runbootstrap << XXX &> log/build.blg
-(standard-lisp)
-(begin)
+(start-reduce)
 symbolic; $force
 
 off redefmsg;
@@ -104,8 +103,7 @@ do
 echo +++++ Remaking core package $p
 
 $runbootstrap << XXX &> log/$p.blg
-(standard-lisp)
-(begin)
+(start-reduce)
 symbolic; $force
 
 off redefmsg;
@@ -220,8 +218,7 @@ do
 echo +++++ Remaking noncore package $p
 
 $runreduce << XXX &> log/$p.blg
-(standard-lisp)
-(begin)
+(start-reduce)
 symbolic; $force
 
 %load compiler;
@@ -251,8 +248,8 @@ end;
 
 package!-remake '$p;
 
-% Hack to make gnuplot work:
-if '$p eq 'gnuplot then
+% Hack to make gnuplot package work on MS Windows:
+if '$p eq 'gnuplot and ('win32 memq lispsystem!* or 'cygwin memq lispsystem!*) then
    begin scalar !*int, !*forcecompile; !*forcecompile := t;
       update!-fasl2('gnuintfc, nil);
    end;

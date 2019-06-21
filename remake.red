@@ -159,13 +159,6 @@ symbolic procedure package!-remake2(u,v);
       new_inline_definitions := nil;
       update!-fasl2(u,v);
       evload list u;
-	  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	  if u eq 'ibalp then
-		 for each v in
-			'(!A !B !C !D !E !F !G !H !I !J !K !L !M
-			   !N !O !P !Q !R !S !T !U !V !W !X !Y !Z) do
-				  remprop(v,'stat);
-	  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       loaded!-modules!* := union(loaded!-modules!*, list u);
       y := get(u,'package);
       if y then y := cdr y;
