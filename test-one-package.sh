@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Run one test file in CL REDUCE and check its test log against CSL.
 
@@ -21,10 +21,15 @@ else
     exit
 fi
 
+if [ ! -v reduce ]; then
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    fi
+fi
+
 # Create log directory if necessary:
 mkdir -p testlog
-
-if [ ! "$reduce" ]; then export reduce=.; fi
 
 testfile=$reduce/packages/$1/$1.tst # most likely location
 if [ ! -e "$testfile" ]

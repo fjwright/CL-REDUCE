@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Run all core and/or noncore test files in CL REDUCE and check each
 # test log against CSL.
@@ -27,6 +27,13 @@ fi
 
 shift $n
 
+if [ ! -v reduce ]; then
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    fi
+fi
+
 # Create log directory if necessary:
 mkdir -p testlog
 
@@ -41,21 +48,13 @@ echo 'Packages to test:' ${*:-$whichdefault}
 for which in ${*:-$whichdefault}
 do
     time {
-        # hostname > testlog/test$which.log
-        # date >> testlog/test$which.log
-
         rm -f testlog/check$which.log
-
         packages="$(< fasl/$which-packages.dat)"
-
         for x in $packages
         do
-            case $x in reduce4 | gnuplot | turtle | rubi_red ) continue;; esac
+            case $x in reduce4 | ibalp | gnuplot | turtle | rubi_red ) continue;; esac
             echo +++++ Testing $which package $x
-            # echo $x >> testlog/test$which.log
             ./test-one-package.sh -l $lisp $x >> testlog/check$which.log
         done
-
-        # date >> testlog/test$which.log
     }
 done

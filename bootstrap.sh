@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Build a bootstrap version of REDUCE on Common Lisp.
 # Based on "psl/bootstrap.sh".
@@ -28,7 +28,12 @@ else
     exit
 fi
 
-if [ ! "$reduce" ]; then export reduce=.; fi
+if [ ! -v reduce ]; then
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    fi
+fi
 
 mkdir -p log                 # -p avoids complaint if directory exists
 mkdir -p fasl
@@ -47,6 +52,10 @@ time $runlisp << XXX &> log/bootstrap.blg
 (load "sl-on-cl")
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
+#+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+#+CLISP (setq custom:*suppress-check-redefinition* t
+              custom:*compile-warnings* nil)
+
 (standard-lisp)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -66,7 +75,9 @@ time $runlisp << XXX &> log/bootstrap.blg
 % away (i.e. discard) uses of fluid variables that are needed later in
 % the build process!
 
-(load "boot.sl")
+(cond ((filep "boot.sl") (load "boot.sl"))
+      ((filep "../psl/boot.sl") (load "../psl/boot.sl"))
+      (t (error 0 "Cannot find boot file.") (exit 1)))
 
 $if_clisp (setq !*comp t)  % It's faster in some lisps if we compile.
 

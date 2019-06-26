@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Build REDUCE on Common Lisp.
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
@@ -42,7 +42,12 @@ else
     exit
 fi
 
-if [ ! "$reduce" ]; then export reduce=.; fi
+if [ ! -v reduce ]; then
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    fi
+fi
 
 # Build an initial bootstrap REDUCE image if necessary:
 if [ ! -e fasl/bootstrap.$saveext ]; then ./bootstrap.sh -l $lisp; fi
@@ -140,7 +145,7 @@ then
 echo +++++ Compiling trace
 $runlisp << XXX &> log/trace.blg
 (load "sl-on-cl")
-(or (compile-file "trace") (exit #+SBCL :code 1))
+(or (compile-file "trace") (exit 1))
 XXX
 fi || { echo '***** Compilation failed'; exit; }
 

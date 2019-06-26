@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Run one test file in CSL REDUCE.
 
@@ -10,13 +10,21 @@
 # Assume this script is run in the top-level CL REDUCE directory.
 # This script is normally run by csl-test-packages.sh.
 
-if [ ! "$reduce" ]; then export reduce=.; fi
+if [ ! -v reduce ]; then
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    fi
+fi
 
-testfile=./packages/$1/$1.tst # most likely location
+# Create log directory if necessary:
+mkdir -p csltestlog
+
+testfile=$reduce/packages/$1/$1.tst # most likely location
 if [ ! -e "$testfile" ]
 then
 	# Find the .red file, which must exist, then stop looking:
-	testfile=$(find -L "./packages" -name $1.red -print -and -quit)
+	testfile=$(find -L "$reduce/packages" -name $1.red -print -and -quit)
 	# Change the filename to .tst:
 	testfile=${testfile%%.red}.tst
 fi

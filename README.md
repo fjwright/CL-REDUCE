@@ -11,21 +11,21 @@ From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Gu
 
 The files in this directory are intended to build and run the current distributed version of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support explicitly only
 
-* the native Windows port of [SBCL](http://www.sbcl.org/) (Steel Bank Common Lisp),
-* the [Cygwin](https://cygwin.com/) port of [CLISP](https://clisp.sourceforge.io/),
+* the native Microsoft (MS) Windows and Linux builds of [SBCL](http://www.sbcl.org/) (Steel Bank Common Lisp),
+* the [Cygwin](https://cygwin.com/) and Linux builds of [CLISP](https://clisp.sourceforge.io/),
 
-but in the longer term I plan to support also Ubuntu Linux and possibly another implementation of Common Lisp such as GCL (GNU Common Lisp).
+but in the longer term I may also consider supporting another implementation of Common Lisp such as GCL (GNU Common Lisp).
 
 Building REDUCE
 ---------------
 
-Create a build directory somewhere convenient.  If you download the whole [REDUCE trunk](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/) then you can use the `common-lisp` directory as your build directory if you want.
+Create a build directory somewhere convenient.  If you download the whole [REDUCE trunk](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/) then you can use the `common-lisp` directory as your build directory with no additions.
 
 **You need the following software and files:**
 
-An appropriate version of SBCL and/or CLISP (see links above).
+An appropriate version of SBCL and/or CLISP (see links above).  CLISP on Linux should be available via a Linux package manager such as Synaptic (but not via a software installer for windowed applications).
 
-A minimal Unix-like environment including `bash` and `grep`; I use [Cygwin](https://cygwin.com/).  (The `grep` command is used only for reporting an error summary, which could be commented out without affecting the build process.)
+A minimal Unix-like environment including `bash` and `grep`; on MS Windows I use [Cygwin](https://cygwin.com/).  (The `grep` command is used only for reporting an error summary, which could be commented out without affecting the build process.)
 
 The build directory must contain the following files from the common-lisp directory:
 
@@ -37,13 +37,17 @@ The build directory must contain the following files from the common-lisp direct
 * `remake.red`
 * `bootstrap.sh`
 * `build.sh`
-* `gnuintfc.red` (for `gnuplot` but it could be commented out in `build.sh`)
+* `gnuintfc.red` (for `gnuplot` support on MS Windows only, but it could be commented out in `build.sh`)
 
-The build directory must also contain a link to or copy of the file [psl/boot.sl](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/psl/boot.sl), which is included in the [REDUCE trunk](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/) but not in binary distributions.  (The way to create a link in Windows is with the `mklink` command at a Windows command prompt; I use a symbolic link for `boot.sl`.  A Windows shortcut created using the File Explorer GUI will probably not work!)
+Ensure that the `*.sh` files are executable.
 
-The `packages` directory of the version of REDUCE you want to build must be available and the environment variable `$reduce` must be set to the directory containing this directory.  The `packages` directory is installed as part of a binary distribution so, for example, if you have a default REDUCE installation on Windows then an appropriate value for `$reduce` would be `"C:\Program Files\Reduce"` (in Windows format).  You can also use a recent download from the [Subversion repository](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/).  If not set then `$reduce` defaults to the build directory, which is useful if you include a link to the `packages` directory you want to use.
+If you do not build within the REDUCE trunk file tree then the following two steps are also necessary:
 
-Run `bash` and make your chosen build directory current.  Set the `$reduce` environment variable.  For example, execute the `bash` command
+* The build directory must also contain a link to or copy of the file [psl/boot.sl](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/psl/boot.sl).  (The way to create a link in Windows is with the `mklink` command at a Windows command prompt; I use a symbolic link for `boot.sl`.  A Windows shortcut created using the File Explorer GUI will probably not work!)
+
+* The `packages` directory of the version of REDUCE you want to build must be available and you need to set the environment variable `$reduce` to the directory containing this directory.  The `packages` directory is installed as part of a binary distribution so, for example, if you have a _default_ REDUCE installation on Windows then an appropriate value for `$reduce` would be `"C:\Program Files\Reduce"` (in Windows format).  You can also use a recent download from the [Subversion repository](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/).
+
+Open a window running `bash` and make your chosen build directory current.  If necessary (see above), set the `$reduce` environment variable.  For example, execute the `bash` command
 
     export reduce='C:/Program Files/Reduce'
 
@@ -53,18 +57,24 @@ Run the build script by executing the `bash` command
 
 where `lisp` is either `sbcl` or `clisp`.
 
-The build process should create two sub-directories in the build directory called `fasl` and `log`.  The whole `log` directory and the `*.lisp`, `*.dat` and `bootstrap.*` files in the `fasl` directory could be deleted after the build; only the files `fasl/reduce.*` and `fasl/*.fasl` are required to run REDUCE.  (I will probably delete superfluous files automatically at some later date, but for now they are useful for debugging.)  The SBCL and CLISP builds can in principle coexist since they use different extensions for fasl and memory image file names.
+The build process should create two sub-directories in the build directory called `fasl` and `log`.  The whole `log` directory and the `*.lisp`, `*.dat` and `bootstrap.*` files in the `fasl` directory could be deleted after the build; only the files `fasl/reduce.*` and `fasl/*.fas*` are required to run REDUCE.  (I will probably delete superfluous files automatically at some later date, but for now they are useful for debugging.)  The SBCL and CLISP builds can in principle coexist since they use different extensions for fasl and memory image file names.
 
 Running REDUCE
 --------------
 
-*SBCL REDUCE* can be run by double-clicking the file `reduce.bat`, or from a Windows command prompt with the build directory current by executing the command
+*SBCL REDUCE* can be run on MS Windows by double-clicking the file `redsbcl.bat`, or from a Windows command prompt with the build directory current by executing the command
 
-    reduce
+    redsbcl
 
 (Don't try to run Windows SBCL interactively under `bash` because you'll probably find that input editing doesn't work as you would wish; fortunately, it runs fine in batch mode under `bash`.)
 
-*CLISP REDUCE* can be run by executing the `bash` command
+On Linux, open a terminal window and execute the command
+
+    ./redsbcl
+
+having ensured that it is executable.  But beware that this interface does not provide any input editing!
+
+*CLISP REDUCE* can be run on MS Windows or Linux by executing the `bash` command
 
     clisp -q -M fasl/reduce.mem
 
@@ -99,7 +109,7 @@ The process described above should build all of REDUCE without any obvious error
 All available test files produce output that agrees with CSL REDUCE apart for timings and minor numerical and/or implementation differences, except for the following:
 
 * The `reduce4` test fails in a similar way as on CSL &ndash; excluded from regular testing.
-* The `ibalp` test fails on CLISP with a program stack overflow error; it just stops abruptly on SBCL.
+* The `ibalp` test fails on CLISP with a program stack overflow error; it just stops abruptly on SBCL &ndash; excluded from regular testing.
 * The `pasf` test output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!).
 * The `lalr` test output appears to be correct apart from two issues causing minor cosmetic differences.
 * The `rubi_red` test is very slow, generates very much output, and timeouts can't work on CLISP (see below), but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing.  On SBCL, the first error is similar to that shown on CSL, but SBCL REDUCE does not recover after this error, probably due to the currently crude general error handling.
@@ -111,10 +121,19 @@ Timings
 
 New timing methodology uses the bash time command.  "Best" means the fastest previous time.
 
+Timing on Microsoft Windows (on a fairly recent Intel Core i5 processor):
+
 Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
 ----------------------------------------|-----------|-----------|-----------|------------|-----------
 Run (and check) all core test files     |  30 secs  |  48 secs  |  47 secs  |  3 m 30 s  |  3 m 23 s
 Run (and check) most noncore test files |  4 m 13 s | 16 m 24 s | 15 m 14 s | 72 m 13 s  | 67 m 27 s
+
+Timing on Ubuntu Linux (on a fairly old Intel Core Duo processor):
+
+Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
+----------------------------------------|-----------|-----------|-----------|------------|-----------
+Run (and check) all core test files     |  23 secs  |  57 secs
+Run (and check) most noncore test files |  7 m 35 s |
 
 The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4` or `rubi_red` as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
 
