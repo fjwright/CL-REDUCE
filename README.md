@@ -72,7 +72,7 @@ On Linux, open a terminal window and execute the command
 
     ./redsbcl
 
-having ensured that it is executable.  But beware that this interface does not provide any input editing!
+having ensured that it is executable.  Beware that this interface does not provide any input editing, although it runs fine in an Emacs shell buffer.
 
 *CLISP REDUCE* can be run on MS Windows or Linux by executing the `bash` command
 
@@ -83,8 +83,6 @@ and then evaluating the Lisp form
     (start-reduce)
 
 (I will provide a more elegant start-up procedure eventually.)
-
-At present, the current directory when REDUCE is run must be the build directory, but I will remove that restriction at some later date.
 
 On both Lisps, interrupting REDUCE (with Control-C) invokes the Lisp debugger and aborting that enters Lisp, which is very useful for low-level debugging!  Evaluate `(begin)` to get back into REDUCE.
 
@@ -97,9 +95,9 @@ Lisp-level function tracing is provided by the commands `tr` and `trst`.  A comm
 
 Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided but only for Microsoft Windows and Cygwin at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems.
 
-The functions `pwd` and `cd` respectively return and reset (and return) the current working directory.  (However, at present REDUCE will not be able to load compiled files if its current working directory is changed, so don't use `cd`!)
+The commands `pwd()` or `cd dir` respectively return or change (and return) the current working directory.  The name `chdir` is an alias for `cd`.
 
-Environment variables, "." and ".." in filenames are expanded by `cd` and `open` relative to the current working directory of the REDUCE process.
+Environment variables and dots ("." or "..") in filenames are expanded by `cd/chdir` and `open` relative to the current working directory of the REDUCE process.
 
 Current status
 --------------
@@ -125,15 +123,15 @@ Timing on Microsoft Windows (on a fairly recent Intel Core i5 processor):
 
 Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
 ----------------------------------------|-----------|-----------|-----------|------------|-----------
-Run (and check) all core test files     |  30 secs  |  48 secs  |  47 secs  |  3 m 30 s  |  3 m 23 s
-Run (and check) most noncore test files |  4 m 13 s | 16 m 24 s | 15 m 14 s | 72 m 13 s  | 67 m 27 s
+Run (and check) all core test files     |  30 secs  |  47 secs  |           |  3 m 23 s  |
+Run (and check) most noncore test files |  4 m 13 s | 15 m 14 s |           | 67 m 27 s  |
 
 Timing on Ubuntu Linux (on a fairly old Intel Core Duo processor):
 
 Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
 ----------------------------------------|-----------|-----------|-----------|------------|-----------
-Run (and check) all core test files     |  23 secs  |  57 secs
-Run (and check) most noncore test files |  7 m 35 s |
+Run (and check) all core test files     |
+Run (and check) most noncore test files |
 
 The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4` or `rubi_red` as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
 
@@ -159,6 +157,8 @@ Implement a proper Lisp init function (and possibly dump an executable file).
 
 Replace shell scripts with Common Lisp code to build REDUCE portably?
 
-Allow REDUCE to be run with a current directory other than the build directory.
-
 Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
+
+Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
+
+The `cd` command with no/empty argument and ../.. processing on CLISP need a bit more work!

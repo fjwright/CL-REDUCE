@@ -40,7 +40,7 @@
            :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
            :delete :length :member :sublis :subst :rassoc :apply :eval
            :function :close :open :princ :print :prin1 :read
-           :terpri :complexp :union :compile-file :load :time
+           :terpri :complexp :union :load :time
            :char-downcase :char-upcase :string-downcase :mod
            :char-code :symbol-name :number)
 
@@ -145,6 +145,10 @@ is printed whenever a function is redefined by PUTD.")
 
 (deftype number () '(or integer double-float))
 
+;; NB: CLISP only accepts (typespec var*) as an abbreviation for (type
+;; typespec var*) for standardized atomic type specifiers, which I
+;; think is a bug!
+
 ;; First, some utility functions used only internally:
 
 (defmacro defalias (symbol definition &optional docstring)
@@ -152,7 +156,7 @@ is printed whenever a function is redefined by PUTD.")
 The optional third argument DOCSTRING specifies the documentation string
 for SYMBOL; if it is omitted or nil, SYMBOL uses the documentation string
 determined by DEFINITION.  The return value is undefined."
-  (declare (list symbol definition) ((or null simple-string) docstring))
+  (declare (list symbol definition) (type (or null simple-string) docstring))
   `(setf ,@(if docstring `((documentation ,symbol 'cl:function) ,docstring))
          (symbol-function ,symbol) (symbol-function ,definition)))
 
@@ -587,7 +591,7 @@ returned. If U has more than the maximum number of characters
 permitted by the implementation (the minimum number is 24) an
 error occurs:
 ***** Too many characters to INTERN"
-  (declare ((or symbol simple-string) u))
+  (declare (type (or symbol simple-string) u))
   (values (cl:intern (if (symbolp u)
                          (cl:symbol-name u)          ; symbol
                          (%string-invert-case u))))) ; string
@@ -846,7 +850,7 @@ already exists a warning message will appear:
 *** FNAME redefined
 The function defined by PUTD will be compiled before definition if
 the !*COMP global variable is non-NIL."
-  (declare (symbol fname type) (function body))
+  (declare (symbol fname type) (type function body))
   (if (or (cl:get fname 'global)        ; only if explicitly declared
           (fluidp fname))
       (cl:error "~a is a non-local variable" fname))
@@ -914,7 +918,7 @@ already declared FLUID are ignored. Changing a variable's type
 from GLOBAL to FLUID is not permissible and results in the error:
 ***** ID cannot be changed to FLUID"
   ;; A warning, as for PSL, is more convenient than an error!
-  (declare ((or list symbol) idlist))
+  (declare (type (or list symbol) idlist))
   (the list
        (if (eqcar idlist 'quote)
            ;; Assume a top-level call that needs to output `defvar' forms
@@ -955,7 +959,7 @@ variables type from FLUID to GLOBAL is not permissible and
 results in the error:
 ***** ID cannot be changed to GLOBAL"
   ;; A warning, as for PSL, is more convenient than an error!
-  (declare ((or list symbol) idlist))
+  (declare (type (or list symbol) idlist))
   (the list
        (if (eqcar idlist 'quote)
            ;; Assume a top-level call that needs to output `defvar' forms
@@ -1215,7 +1219,7 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
        (and (vectorp u) (1- (cl:length u)))))
 
 (defun getv8 (v index)                  ; CSL
-  (declare ((simple-array (signed-byte 8) (*)) v) (fixnum index))
+  (declare (type (simple-array (signed-byte 8) (*)) v) (fixnum index))
   (the (signed-byte 8) (aref v index)))
 
 (defun mkvect8 (uplim)                  ; CSL
@@ -1225,11 +1229,13 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
        (make-array (1+ uplim) :element-type '(signed-byte 8) :initial-element 0)))
 
 (defun putv8 (v index value)            ; CSL
-  (declare ((simple-array (signed-byte 8) (*)) v) (fixnum index) ((signed-byte 8) value))
+  (declare (type (simple-array (signed-byte 8) (*)) v)
+           (fixnum index)
+           (type (signed-byte 8) value))
   (the (signed-byte 8) (setf (aref v index) value)))
 
 (defun getv16 (v index)           ; CSL
-  (declare ((simple-array (signed-byte 16) (*)) v) (fixnum index))
+  (declare (type (simple-array (signed-byte 16) (*)) v) (fixnum index))
   (the (signed-byte 16) (aref v index)))
 
 (defun mkvect16 (uplim)                 ; CSL
@@ -1239,7 +1245,9 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
        (make-array (1+ uplim) :element-type '(signed-byte 16) :initial-element 0)))
 
 (defun putv16 (v index value)           ; CSL
-  (declare ((simple-array (signed-byte 16) (*)) v) (fixnum index) ((signed-byte 16) value))
+  (declare (type (simple-array (signed-byte 16) (*)) v)
+           (fixnum index)
+           (type (signed-byte 16) value))
   (the (signed-byte 16) (setf (aref v index) value)))
 
 
@@ -1339,7 +1347,7 @@ attempted:
 ***** Attempt to divide by 0 in DIVIDE
 EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
-  (declare (number u v))
+  (declare (type number u v))
   (the cons (multiple-value-call #'cons (truncate u v))))
 
 (defun expt (u v)
@@ -1348,7 +1356,7 @@ EXPR PROCEDURE DIVIDE(U, V);
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
 exponentiation."
-  (declare (number u) (integer v))
+  (declare (type number u) (integer v))
   (the number (cl:expt u v)))
 
 (defun fix (u)
@@ -1356,7 +1364,7 @@ exponentiation."
 Returns an integer which corresponds to the truncated value of U.
 The result of conversion must retain all significant portions of U. If
 U is an integer it is returned unchanged."
-  (declare (number u))
+  (declare (type number u))
   (the integer (values (truncate u))))
 
 (defun float (u)
@@ -1369,7 +1377,7 @@ unchanged.  If U is too large to represent in floating point an
 error occurs:
 ***** Argument to FLOAT is too large"
   ;; Floats must be double precision:
-  (declare (number u))
+  (declare (type number u))
   (the double-float (cl:float u 1d0)))
 
 (defalias 'greaterp 'cl:>
@@ -1438,7 +1446,7 @@ the negative truncation of the absolute value of U divided by the
 absolute value of V. An error occurs if division by zero is attempted:
 ***** Attempt to divide by 0 in QUOTIENT"
   ;; Can probably implement this better using generic functions!
-  (declare (number u v))
+  (declare (type number u v))
   (the number
        (if (or (floatp u) (floatp v))
            (/ u v)
@@ -1576,7 +1584,7 @@ Returns the product of U and V.")
 Applies FN to successive CDR segments of X and returns NIL.
 EXPR PROCEDURE MAP(X, FN);
    WHILE X DO << FN X; X := CDR X >>;"
-  (declare (list x) (function fn))
+  (declare (list x) (type function fn))
   (cl:mapl fn x)
   nil)
 
@@ -1585,7 +1593,7 @@ EXPR PROCEDURE MAP(X, FN);
 Applies FN to successive CAR segments of X and returns NIL.
 EXPR PROCEDURE MAPC(X, FN);
    WHILE X DO << FN CAR X; X := CDR X >>;"
-  (declare (list x) (function fn))
+  (declare (list x) (type function fn))
   (cl:mapc fn x)
   nil)
 
@@ -1595,7 +1603,7 @@ Returns a concatenated list of FN applied to successive CAR elements of X.
 EXPR PROCEDURE MAPCAN(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN CAR X, MAPCAN(CDR X, FN));"
-  (declare (list x) (function fn))
+  (declare (list x) (type function fn))
   (the list (cl:mapcan fn x)))
 
 (defun mapcar (x fn)
@@ -1604,7 +1612,7 @@ Returns a constructed list of FN applied to each CAR of list X.
 EXPR PROCEDURE MAPCAR(X, FN);
    IF NULL X THEN NIL
       ELSE FN CAR X . MAPCAR(CDR X, FN);"
-  (declare (list x) (function fn))
+  (declare (list x) (type function fn))
   (the list (cl:mapcar fn x)))
 
 (defun mapcon (x fn)
@@ -1613,7 +1621,7 @@ Returns a concatenated list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPCON(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN X, MAPCON(CDR X, FN));"
-  (declare (list x) (function fn))
+  (declare (list x) (type function fn))
   (the list (cl:mapcon fn x)))
 
 (defun maplist (x fn)
@@ -1622,7 +1630,7 @@ Returns a constructed list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPLIST(X, FN);
    IF NULL X THEN NIL
       ELSE FN X . MAPLIST(CDR X, FN);"
-  (declare (list x) (function fn))
+  (declare (list x) (type function fn))
   (the list (cl:maplist fn x)))
 
 
@@ -1814,7 +1822,7 @@ EXPR PROCEDURE SASSOC(U, V, FN);
    IF NULL V THEN FN()
       ELSE IF U = CAAR V THEN CAR V
       ELSE SASSOC(U, CDR V, FN);"
-  (declare (list v) (ftype (function ()) fn))
+  (declare (list v) (type (function ()) fn))
   (or (cl:assoc u v :test #'equal) (funcall fn)))
 
 (defun sublis (x y)
@@ -1878,7 +1886,7 @@ The value is actually the first element of LIST whose cdr equals KEY."
 (defun apply (fn args)
   "Treat a lambda expression as an operator.
 Otherwise revert to the Common Lisp apply."
-  (declare (ftype function fn))
+  (declare (type function fn))
   (cl:apply (coerce fn 'cl:function) args))
 
 ;; APPLY(FN:{id,function}, ARGS:any-list):any eval, spread
@@ -1967,7 +1975,7 @@ where n is the number of elements in L, Li is the ith element of L.
 EXPR PROCEDURE EXPAND(L,FN);
    IF NULL CDR L THEN CAR L
       ELSE LIST(FN, CAR L, EXPAND(CDR L, FN));"
-  (declare (list l) (function fn))
+  (declare (list l) (type function fn))
   (if (null (cdr l))
       (car l)
     (list fn (car l) (expand (cdr l) fn))))
@@ -2018,7 +2026,7 @@ the value of FILEHANDLE. An error occurs if the file can not be
 closed.
 ***** FILEHANDLE could not be closed"
   ;; A null filehandle represents standard IO; ignore it.
-  (declare (filehandle filehandle))
+  (declare (type filehandle filehandle))
   (the filehandle
        (if filehandle
            (prog1 filehandle
@@ -2060,7 +2068,7 @@ returns the current line length and does not cause it to be reset. An
 error occurs if the requested line length is too large for the currently
 selected output file or LEN is negative or zero.
 ***** LEN is an invalid line length"
-  (declare ((or null fixnum) len))
+  (declare (type (or null fixnum) len))
   (the fixnum
        (if len
            (if (or (not (integerp len)) (<= len 0))
@@ -2081,7 +2089,7 @@ non-alphanumeric character by its value.  Called by `open'."
   ;; A simplified version of the Elisp function
   ;; `substitute-in-file-name'.
   ;; Replace environment variables with their values:
-  (declare ((or simple-string pathname) filename))
+  (declare (type (or simple-string pathname) filename))
   (loop
      with beg and end = 0 and l
      while
@@ -2106,7 +2114,7 @@ parent.  Called by `open' on SBCL."
   ;; A simplified version of the Elisp function `expand-file-name'.
   ;; sb-ext:native-pathname seems necessary to preserve odd characters
   ;; such as ^ in a filename:
-  (declare ((or simple-string pathname) filename))
+  (declare (type (or simple-string pathname) filename))
   #+SBCL (setq filename (sb-ext:native-pathname filename))
   (let ((d (pathname-directory filename)))
     (when (eq (car d) :relative)
@@ -2140,7 +2148,7 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
-  (declare ((or simple-string pathname) file) (symbol how))
+  (declare (type (or simple-string pathname) file) (symbol how))
   (setq file (substitute-in-file-name file)) ; substitute environment variables
   #+SBCL (setq file (expand-file-name file)) ; expand . and ..
   ;; #+cygwin (setq file (win-to-cyg file))
@@ -2415,7 +2423,7 @@ input device is reselected. When end of file occurs on the
 standard input device the Standard LISP reader terminates. RDS
 returns the internal name of the previously selected input file.
 ***** FILEHANDLE could not be selected for input"
-  (declare (filehandle filehandle))
+  (declare (type filehandle filehandle))
   (the filehandle
        (prog1
            %read-stream
@@ -2550,7 +2558,7 @@ opened for output. If FILEHANDLE is NIL the standard output
 device is selected. WRS returns the internal name of the previously
 selected output file.
 ***** FILEHANDLE could not be selected for output"
-  (declare (filehandle filehandle))
+  (declare (type filehandle filehandle))
   (the filehandle
        (prog1
            %write-stream
@@ -2594,7 +2602,7 @@ stream by this function."
              (t (cl:error "~a is not (currently) an option for PIPE-OPEN" how)))))
 
 (defun channelflush (filehandle)        ; PSL
-  (declare (filehandle filehandle))
+  (declare (type filehandle filehandle))
   "Flush FILEHANDLE if it is a pipe stream."
   ;; filehandle = ('pipe output-stream . process)
   (if (eq (car filehandle) 'pipe)
@@ -2773,7 +2781,7 @@ lisp> (string2list \"STRING\")
 
 (defun %character (x)
   "Generalize cl:character to accept also a character code."
-  (declare ((or (unsigned-byte 8) symbol) x))
+  (declare (type (or (unsigned-byte 8) symbol) x))
   (the character
        (if (integerp x)
            (if (<= 0 x 255)             ; (and (<= 0 x) (<= x 255))
@@ -2858,7 +2866,7 @@ id NIL is always found by (int2id 128)."
   ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
   ;;   intern list2string list x;
   ;; (unless (= i 128) (%intern-character (code-char i)))
-  (declare ((unsigned-byte 8) i))
+  (declare (type (unsigned-byte 8) i))
   (the symbol (%intern-character-invert-case (code-char i))))
 
 (defun id2int (d)                       ; PSL
@@ -2895,7 +2903,7 @@ character ! does not appear in the result.
 
 (defun string-downcase (u)
   "Convert identifier or string U to a lower-case string."
-  (declare ((or symbol simple-string) u))
+  (declare (type (or symbol simple-string) u))
   (the simple-string (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u))))
 
 (defalias 'land 'cl:logand           ; PSL
@@ -3052,7 +3060,7 @@ Return the current working directory in system specific format."
 Set the current working directory to DIR after expanding the filename
 according to the rules of the operating system.  If this operation is
 not sucessful, the value Nil is returned."
-  (declare ((or simple-string pathname) dir))
+  (declare (type (or simple-string pathname) dir))
   (setq dir (pathname dir))
   ;; Allow dir not to end with a separator:
   (if (string/= (file-namestring dir) "")
@@ -3094,19 +3102,6 @@ not sucessful, the value Nil is returned."
 ;;; Compile and load
 ;;; ================
 
-;; Probably only need to reset the readtable to CL syntax.  I think
-;; the rest of this definition is redundant:
-
-(defun compile-file (input-file &rest other-args)
-  ;; (compile-file input-file &key output-file verbose print
-  ;; external-format)
-  "Compile a \".sl\" file using Standard Lisp read syntax."
-  (let ((*readtable*
-         (if (string-equal (pathname-type input-file) "sl")
-             *sl-readtable*
-             (copy-readtable nil))))    ; normal CL syntax
-    (cl:apply #'cl:compile-file input-file other-args)))
-
 (defvar *verboseload nil
   "*verboseload = [Initially: nil] switch
 If non-nil, a message is displayed when a request is made to load a
@@ -3119,6 +3114,10 @@ a load.")
 (defvar options* nil
   "A list of loaded `modules', which are loaded only once.
 These are files referenced by symbols rather than strings.")
+
+(defconstant %fasl-directory-pathname
+  (make-pathname :directory (cl:append (pathname-directory (truename "")) '("fasl")))
+  "Absolute pathname of fasl directory.")
 
 (defun load (file)             ; currently only supports a single file
   "(load [FILE:{string, id}]): nil macro
@@ -3133,20 +3132,26 @@ from loadextensions* is used.
 Load a \".sl\" file using Standard Lisp read syntax."
   ;; filename defaults are taken from *default-pathname-defaults*,
   ;; which defaults to the directory in which SBCL was started.
-  (declare ((or symbol simple-string) file))
+  (declare (type (or symbol simple-string) file))
   (let ((*readtable* (copy-readtable nil)) ; normal CL syntax
         (*load-verbose* *verboseload)
-        (*redefmsg *verboseload))
+        (*redefmsg *verboseload) file-pathname)
     (if (symbolp file)
         (progn
           (if (cl:member file options*) (return-from load)) ; already loaded
           (push file options*)
-          (setq file (cl:string-downcase (cl:symbol-name file))))
-        (if (string-equal (pathname-type file) "sl")
-            (setq *readtable* *sl-readtable*)))
-    ;; Look in "." and "./fasl" and if not found then throw an error:
-    (or (cl:load file :if-does-not-exist nil)
-        (cl:load (concat2 "fasl/" file)))))
+          (setq file-pathname
+                (parse-namestring (cl:string-downcase (cl:symbol-name file)))))
+        (progn
+          (setq file-pathname (parse-namestring file))
+          (if (string-equal (pathname-type file-pathname) "sl")
+              (setq *readtable* *sl-readtable*))))
+    (if (eqcar (pathname-directory file-pathname) :absolute)
+        (cl:load file-pathname)
+        ;; Relative filename -- look in current directory and fasl
+        ;; directory; if not found then throw an error:
+        (or (cl:load file-pathname :if-does-not-exist nil)
+            (cl:load (merge-pathnames file-pathname %fasl-directory-pathname))))))
 
 
 ;;; Faslout/faslend interface
@@ -3193,7 +3198,7 @@ NAME should be an identifier or string.  (The actual extension of fasl
 files depends on the version of Common Lisp.)"
   ;; Output subsequent code as Common Lisp to a temporary file until
   ;; FASLEND evaluated.
-  (declare ((or symbol simple-string) name))
+  (declare (type (or symbol simple-string) name))
   (setq name (string-downcase name))
   (if *int
       (format t "FASLOUT ~a: IN files$ or type in expressions.
@@ -3233,8 +3238,9 @@ When all done, execute FASLEND;~2%" name))
   ;; Now compile the Lisp output generated by FASLOUT:
   ;; (format t  "Compiling ~a..." %faslout-name.lisp)
   ;; (if
-  (compile-file %faslout-name.lisp
-                :external-format #+SBCL :UTF-8 #+CLISP charset:UTF-8)
+  (let ((*readtable* (copy-readtable nil))) ; normal CL syntax
+    (compile-file %faslout-name.lisp
+                  :external-format #+SBCL :UTF-8 #+CLISP charset:UTF-8))
   ;;      ;; (progn
   ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
