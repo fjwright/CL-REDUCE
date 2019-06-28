@@ -2108,15 +2108,15 @@ non-alphanumeric character by its value.  Called by `open'."
   filename)
 
 (defun expand-file-name (filename)
-  "Return a copy of FILENAME with a leading `.'  replaced by the
+  "Return a copy of FILENAME with a leading `.' replaced by the
 current working directory and each leading `..' replaced by its
-parent.  Called by `open' on SBCL."
+parent.  Called by `open' and `cd' on SBCL."
   ;; A simplified version of the Elisp function `expand-file-name'.
   ;; sb-ext:native-pathname seems necessary to preserve odd characters
   ;; such as ^ in a filename:
   (declare (type (or simple-string pathname) filename))
   #+SBCL (setq filename (sb-ext:native-pathname filename))
-  (let ((d (pathname-directory filename)))
+  (let ((d (copy-list (pathname-directory filename))))
     (when (eq (car d) :relative)
       ;; Replace a leading "." with the current working directory:
       (when (equal (cadr d) ".")
@@ -2129,9 +2129,9 @@ parent.  Called by `open' on SBCL."
          do
            (setf (cdr d) (cddr d))      ; remove ".." component
            (setq cwd (butlast cwd))
-           (setq filename (merge-pathnames
-                           (make-pathname :directory d :defaults filename)
-                           (make-pathname :directory cwd))))))
+         finally (setq filename (merge-pathnames
+                                 (make-pathname :directory d :defaults filename)
+                                 (make-pathname :directory cwd))))))
   (the (or simple-string pathname) filename))
 
 ;; CLISP user variable CUSTOM:*DEVICE-PREFIX* controls translation
@@ -2150,7 +2150,7 @@ OUTPUT or the file can't be opened.
 ***** FILE could not be opened"
   (declare (type (or simple-string pathname) file) (symbol how))
   (setq file (substitute-in-file-name file)) ; substitute environment variables
-  #+SBCL (setq file (expand-file-name file)) ; expand . and ..
+  #+SBCL (setq file (expand-file-name file)) ; and then expand . and ..
   ;; #+cygwin (setq file (win-to-cyg file))
   #+cygwin (setq file (parse-namestring file)) ; convert Windows filename to Cygwin format
   (the filehandle
@@ -3047,7 +3047,7 @@ COMMAND to the interpreter and return the process exit code."
   (let ((s (ext:run-shell-command command :output :stream)))
     (get-output-stream-string s)))
 
-(defun pwd ()                           ; PSL
+(defun pwd ()                           ; PSL / Unix
   "(pwd):STRING expr
 Return the current working directory in system specific format."
   (the simple-string
@@ -3055,39 +3055,52 @@ Return the current working directory in system specific format."
        #+CLISP (namestring (ext:cd))))
 
 #+SBCL
-(defun cd (dir)                         ; PSL
-  "(cd DIR:string):BOOLEAN expr
-Set the current working directory to DIR after expanding the filename
-according to the rules of the operating system.  If this operation is
-not sucessful, the value Nil is returned."
-  (declare (type (or simple-string pathname) dir))
-  (setq dir (pathname dir))
-  ;; Allow dir not to end with a separator:
-  (if (string/= (file-namestring dir) "")
-      (setq dir (make-pathname :directory
-                               (append (or (pathname-directory dir) '(:relative))
-                                       (list (file-namestring dir))))))
-  ;; Expand environment variables, "." and "..":
-  (setq dir (substitute-in-file-name (namestring dir)))
+(defun cd (&optional dir)               ; PSL / Unix
+  "(cd DIR:{null,string}):{nil,string} expr
+Set the current working directory to string DIR (if supplied and
+non-empty), after substituting environment variables and then
+expanding \".\" and \"..\".  If successful then return the new current
+directory; otherwise, return nil."
+  (declare (type (or null simple-string pathname) dir))
+  (unless (and dir (string/= dir ""))
+    (return-from cd
+      (sb-ext:native-namestring *default-pathname-defaults*)))
+  ;; SBCL seems to mis-parse ".." to be the same as "." hence this
+  ;; inelegant hack.  Allow dir not to end with a separator:
+  (if (pathname-name dir)
+      (setq dir (concatenate 'string dir "/")))
+  ;; Substitute environment variables and then expand . and ..:
+  (setq dir (substitute-in-file-name dir))
   (setq dir (expand-file-name dir))
+  (setq dir (pathname dir))
+  ;; ;; Allow dir not to end with a separator:
+  ;; (if (pathname-name dir)
+  ;;     (setq dir (make-pathname :directory
+  ;;                              (nconc (or (pathname-directory dir) '(:relative))
+  ;;                                     (list (pathname-name dir))))))
   (setq dir (merge-pathnames dir))
   (the (or null pathname)
        (and (probe-file dir)
-            ;; Return a more useful value than t:
-            (sb-ext:native-namestring
+            ;; Return the new current working directory:
+            (sb-ext:native-namestring   ; \ instead of /
              (setq *default-pathname-defaults* dir)))))
 
 #+CLISP
-(defun cd (dir)                         ; PSL
-  "(cd DIR:string):BOOLEAN expr
-Set the current working directory to DIR after expanding the filename
-according to the rules of the operating system.  If this operation is
-not sucessful, the value Nil is returned."
-  ;; Expand environment variables, "." and "..":
+(defun cd (&optional dir)               ; PSL / Unix
+  "(cd DIR:{null,string}):{nil,string} expr
+Set the current working directory to string DIR (if supplied and
+non-empty), after substituting environment variables and then
+expanding \".\" and \"..\".  If successful then return the new current
+directory."
   ;; In CLISP, MAKE-PATHNAME canonicalizes the PATHNAME directory component.
-  (declare (simple-string dir))
-  (the (or null simple-string)
-       (namestring (ext:cd (expand-file-name dir)))))
+  (declare (type (or null simple-string) dir))
+  (the simple-string
+       (namestring
+        ;; cd crashes with nil or ""!
+        (cl:apply #'ext:cd (and dir (string/= dir "")
+                                (list (substitute-in-file-name dir)))))))
+
+(defalias 'chdir 'cd)                   ; CSL / MS Windows
 
 (defalias 'filep 'probe-file)           ; PSL
 
@@ -3141,9 +3154,9 @@ Load a \".sl\" file using Standard Lisp read syntax."
           (if (cl:member file options*) (return-from load)) ; already loaded
           (push file options*)
           (setq file-pathname
-                (parse-namestring (cl:string-downcase (cl:symbol-name file)))))
+                (pathname (cl:string-downcase (cl:symbol-name file)))))
         (progn
-          (setq file-pathname (parse-namestring file))
+          (setq file-pathname (pathname file))
           (if (string-equal (pathname-type file-pathname) "sl")
               (setq *readtable* *sl-readtable*))))
     (if (eqcar (pathname-directory file-pathname) :absolute)
@@ -3347,5 +3360,5 @@ interpret otherwise.  The default is compile."
 ;;; sl-on-cl.lisp ends here
 
 ;; To do:
-;; Avoid need to use type `(or string pathname)'
+;; Use pathnames more consistently.
 ;; Revise documentation strings and function order to follow PSL manual more closely.

@@ -62,7 +62,7 @@ The build process should create two sub-directories in the build directory calle
 Running REDUCE
 --------------
 
-*SBCL REDUCE* can be run on MS Windows by double-clicking the file `redsbcl.bat`, or from a Windows command prompt with the build directory current by executing the command
+**SBCL REDUCE** can be run on MS Windows by double-clicking the file `redsbcl.bat`, or from a Windows command prompt with the build directory current by executing the command
 
     redsbcl
 
@@ -74,7 +74,7 @@ On Linux, open a terminal window and execute the command
 
 having ensured that it is executable.  Beware that this interface does not provide any input editing, although it runs fine in an Emacs shell buffer.
 
-*CLISP REDUCE* can be run on MS Windows or Linux by executing the `bash` command
+**CLISP REDUCE** can be run on MS Windows or Linux by executing the `bash` command
 
     clisp -q -M fasl/reduce.mem
 
@@ -83,6 +83,8 @@ and then evaluating the Lisp form
     (start-reduce)
 
 (I will provide a more elegant start-up procedure eventually.)
+
+REDUCE can be run from any directory provided the command to start it is specified suitably, such as by using an absolute file path for the `redsbcl` command (for SBCL) or for the `fasl` directory (for CLISP).  Alternatively (for SBCL), you can add the `common-lisp` directory to your path and then run SBCL REDUCE via the command `redsbcl` (on both Windows and Linux).
 
 On both Lisps, interrupting REDUCE (with Control-C) invokes the Lisp debugger and aborting that enters Lisp, which is very useful for low-level debugging!  Evaluate `(begin)` to get back into REDUCE.
 
@@ -95,7 +97,7 @@ Lisp-level function tracing is provided by the commands `tr` and `trst`.  A comm
 
 Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided but only for Microsoft Windows and Cygwin at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems.
 
-The commands `pwd()` or `cd dir` respectively return or change (and return) the current working directory.  The name `chdir` is an alias for `cd`.
+The commands `pwd()` or `cd "<directory>"` respectively return or change (and return) the current working directory.  The name `chdir` is an alias for `cd`.
 
 Environment variables and dots ("." or "..") in filenames are expanded by `cd/chdir` and `open` relative to the current working directory of the REDUCE process.
 
@@ -119,21 +121,21 @@ Timings
 
 New timing methodology uses the bash time command.  "Best" means the fastest previous time.
 
-Timing on Microsoft Windows (on a fairly recent Intel Core i5 processor):
+**Timing on Microsoft Windows** (on a fairly recent Intel Core i5 processor):
 
 Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
 ----------------------------------------|-----------|-----------|-----------|------------|-----------
 Run (and check) all core test files     |  30 secs  |  47 secs  |           |  3 m 23 s  |
 Run (and check) most noncore test files |  4 m 13 s | 15 m 14 s |           | 67 m 27 s  |
 
-Timing on Ubuntu Linux (on a fairly old Intel Core Duo processor):
+**Timing on Ubuntu Linux** (on a fairly old Intel Core Duo processor):
 
 Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
 ----------------------------------------|-----------|-----------|-----------|------------|-----------
 Run (and check) all core test files     |
 Run (and check) most noncore test files |
 
-The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4` or `rubi_red` as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
+The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4`, `ibalp` or `rubi_red` as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
 
 Known limitations
 -----------------
@@ -160,5 +162,3 @@ Replace shell scripts with Common Lisp code to build REDUCE portably?
 Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
 
 Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
-
-The `cd` command with no/empty argument and ../.. processing on CLISP need a bit more work!
