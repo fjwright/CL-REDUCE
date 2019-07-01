@@ -35,20 +35,20 @@ if [ ! -v reduce ]; then
     fi
 fi
 
-mkdir -p log                 # -p avoids complaint if directory exists
-mkdir -p fasl
+mkdir -p log.$lisp           # -p avoids complaint if directory exists
+mkdir -p fasl.$lisp
 
 if [ "sl-on-cl.lisp" -nt "sl-on-cl.$faslext" ]
 then
 echo +++++ Compiling sl-on-cl
-$runlisp << XXX &> log/sl-on-cl.blg
+$runlisp << XXX &> log.$lisp/sl-on-cl.blg
 (or (compile-file "sl-on-cl") (exit #+SBCL :code 1))
 XXX
 fi || { echo '***** Compilation failed'; exit; }
 
 echo +++++ Building bootstrap REDUCE
 
-time $runlisp << XXX &> log/bootstrap.blg
+time $runlisp << XXX &> log.$lisp/bootstrap.blg
 (load "sl-on-cl")
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
@@ -112,18 +112,13 @@ rds(xxx := open("build.red",'input));
 (initreduce)
 (setq date!* (date))
 (setq version!* "Bootstrap REDUCE")
-
-% SBCL (see SBCL User Manual / Stopping SBCL / Saving a Core Image):
-% save!-lisp!-and!-die("fasl/bootstrap", !:executable, t, !:toplevel, (lambda () (standard-lisp) (begin)))
-% For better debugging...
-$if_sbcl (save!-lisp!-and!-die "fasl/bootstrap.img")
-$if_clisp (saveinitmem "fasl/bootstrap.mem")
+(save!-reduce!-image "bootstrap")
 
 XXX
 
 echo +++++ Bootstrap REDUCE built
 
 echo 'Possible errors:'
-grep --ignore-case '\*\*\*\*\*\|\<error\>' log/bootstrap.blg
+grep --ignore-case '\*\*\*\*\*\|\<error\>' log.$lisp/bootstrap.blg
 
 echo $'\a'

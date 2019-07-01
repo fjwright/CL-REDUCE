@@ -18,7 +18,7 @@ if [ ! -v reduce ]; then
 fi
 
 # Create log directory if necessary:
-mkdir -p csltestlog
+mkdir -p testlog.csl
 
 testfile=$reduce/packages/$1/$1.tst # most likely location
 if [ ! -e "$testfile" ]
@@ -38,7 +38,7 @@ symbolic begin
   !*_xxx_!* := time(); !*_yyy_!* := gctime();
 end;
 
-out "csltestlog/$1.rlg";
+out "testlog.csl/$1.rlg";
 
 load_package $1;
 
@@ -54,7 +54,7 @@ symbolic begin
    terpri();
 end;
 
-shut "csltestlog/$1.rlg";
+shut "testlog.csl/$1.rlg";
 
 bye;
 EOF

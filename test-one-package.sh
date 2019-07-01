@@ -13,9 +13,9 @@
 if getopts l: option; then lisp=$OPTARG; shift 2; fi
 
 if [ "$lisp" = 'sbcl' ]; then
-    runreduce='sbcl --noinform --core fasl/reduce.img'
+    runreduce='sbcl --noinform --core fasl.sbcl/reduce.img'
 elif [ "$lisp" = 'clisp' ]; then
-    runreduce='clisp -q -norc -M fasl/reduce.mem'
+    runreduce='clisp -M fasl.clisp/reduce.mem'
 else
     echo 'Error: option -l sbcl/clisp is required'
     exit
@@ -29,7 +29,7 @@ if [ ! -v reduce ]; then
 fi
 
 # Create log directory if necessary:
-mkdir -p testlog
+mkdir -p testlog.$lisp
 
 testfile=$reduce/packages/$1/$1.tst # most likely location
 if [ ! -e "$testfile" ]
@@ -42,9 +42,7 @@ fi
 
 if [ ! -e "$testfile" ]; then exit; fi
 
-$runreduce << EOF &> /dev/null # testlog/$1-errors.rlg #
-(start-reduce)
-
+$runreduce << EOF &> /dev/null # testlog.$lisp/$1-errors.rlg #
 symbolic begin
   on errcont;   % So that computation continues after an error.
   off redefmsg;
@@ -53,7 +51,7 @@ symbolic begin
   !*_xxx_!* := time(); !*_yyy_!* := gctime();
 end;
 
-out "testlog/$1.rlg";
+out "testlog.$lisp/$1.rlg";
 
 load_package $1;
 
@@ -69,17 +67,17 @@ symbolic begin
    terpri();
 end;
 
-shut "testlog/$1.rlg";
+shut "testlog.$lisp/$1.rlg";
 
 bye;
 EOF
 
 # Check for errors:
 
-grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\)\|COMMON-LISP:ERROR' testlog/$1.rlg | uniq > /dev/tty
+grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\)\|COMMON-LISP:ERROR' testlog.$lisp/$1.rlg | uniq > /dev/tty
 
 # Check for differences from CSL:
 
 echo $'\nChecking' $1 $'...\n'
-diff --strip-trailing-cr testlog/$1.rlg csltestlog/$1.rlg
+diff --strip-trailing-cr testlog.$lisp/$1.rlg testlog.csl/$1.rlg
 if [ "$sep" ]; then echo -e '\f'; echo $sep; fi

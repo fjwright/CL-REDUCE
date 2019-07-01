@@ -44,10 +44,10 @@
            :char-downcase :char-upcase :string-downcase :mod
            :char-code :symbol-name :number)
 
-  #+SBCL (:import-from :sb-ext :quit :save-lisp-and-die :gc)
+  #+SBCL (:import-from :sb-ext :quit :gc)
   #+SBCL (:import-from :sb-posix :getenv)
 
-  #+CLISP (:import-from :ext :quit :saveinitmem :gc :getenv)
+  #+CLISP (:import-from :ext :quit :gc :getenv)
   )
 
 (in-package :standard-lisp)
@@ -2089,7 +2089,7 @@ non-alphanumeric character by its value.  Called by `open'."
   ;; A simplified version of the Elisp function
   ;; `substitute-in-file-name'.
   ;; Replace environment variables with their values:
-  (declare (type (or simple-string pathname) filename))
+  (declare (simple-string filename))
   (loop
      with beg and end = 0 and l
      while
@@ -2132,7 +2132,7 @@ parent.  Called by `open' and `cd' on SBCL."
          finally (setq filename (merge-pathnames
                                  (make-pathname :directory d :defaults filename)
                                  (make-pathname :directory cwd))))))
-  (the (or simple-string pathname) filename))
+  filename)
 
 ;; CLISP user variable CUSTOM:*DEVICE-PREFIX* controls translation
 ;; between Cygwin pathnames (e.g., #P"/cygdrive/c/gnu/clisp/") and
@@ -3129,7 +3129,8 @@ a load.")
 These are files referenced by symbols rather than strings.")
 
 (defconstant %fasl-directory-pathname
-  (make-pathname :directory (cl:append (pathname-directory (truename "")) '("fasl")))
+  (make-pathname :directory (cl:append (pathname-directory (truename ""))
+                                       '(#+SBCL "fasl.sbcl" #+CLISP "fasl.clisp")))
   "Absolute pathname of fasl directory.")
 
 (defun load (file)             ; currently only supports a single file
@@ -3297,7 +3298,7 @@ When all done, execute FASLEND;~2%" name))
                +default-write-stream+ (%default-write-stream)
                %write-stream +default-write-stream+))))
 
-(defun start-reduce ()
+(defun start-reduce ()                  ; Now probably redundant
   "Switch to STANDARD LISP mode and start REDUCE."
   (standard-lisp)
   (begin)
@@ -3310,6 +3311,50 @@ When all done, execute FASLEND;~2%" name))
   (setq *readtable* (copy-readtable nil))
   nil)
 
+#+SBCL
+;; See function `toplevel-repl' in "sbcl-1.4.14/src/code/toplevel.lisp".
+(defun reduce-init-function ()
+  "The function executed at startup of the saved REDUCE memory image."
+  (standard-lisp)
+  (handler-bind ((sb-impl::step-condition 'invoke-stepper))
+    (loop
+       ;; CLHS recommends that there should always be an
+       ;; ABORT restart; we have this one here, and one per
+       ;; debugger level.
+       (with-simple-restart
+           (abort "~@<Exit debugger, returning to top level.~@:>")
+         (catch 'toplevel-catcher
+           ;; In the event of a control-stack-exhausted-error, we
+           ;; should have unwound enough stack by the time we get
+           ;; here that this is now possible.
+           #-win32
+           (sb-kernel::reset-control-stack-guard-page)
+           (begin))))))
+
+#+CLISP
+;; See function `main-loop' in
+;; "clisp-2.49-6.20150312hg15611.src/clisp/src/reploop.lisp".
+(defun reduce-init-function ()
+  "The function executed at startup of the saved REDUCE memory image."
+  (standard-lisp)
+  (system::driver       ; build driver-frame; do #'lambda "infinitely"
+   #'(lambda ()
+       (system::with-abort-restart (:report (system::text "Abort main loop"))
+         ;; ANSI CL wants an ABORT restart to be available.
+         (begin))))
+  (ext:exit))
+
+(defun save-reduce-image (name)
+  "Save a REDUCE memory image with main filename component NAME."
+  (declare (string name))
+  #+SBCL
+  (sb-ext:save-lisp-and-die (concat "fasl.sbcl/" name ".img")
+                            :toplevel #'reduce-init-function)
+  #+CLISP
+  (ext:saveinitmem (concat "fasl.clisp/" name ".mem")
+                   :init-function #'reduce-init-function
+                   :quiet t :norc t))
+
 (pushnew :standard-lisp *features*)
 
 (defparameter lispsystem* '(common-lisp)
@@ -3319,8 +3364,8 @@ A list of identifiers indicating system properties.")
 #+SBCL (pushnew 'sbcl lispsystem*)
 #+CLISP (pushnew 'clisp lispsystem*)
 #+win32 (pushnew 'win32 lispsystem*)
-#+cygwin (pushnew 'cygwin lispsystem*)  ; together with unix
-#+unix (pushnew 'unix lispsystem*)
+#+cygwin (pushnew 'cygwin lispsystem*)
+#+unix (pushnew 'unix lispsystem*)  ; appears together with cygwin
 
 #+SBCL
 (defun compilation (on)

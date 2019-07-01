@@ -17,7 +17,7 @@ if [ ! -v reduce ]; then
 fi
 
 # Create log directory if necessary:
-mkdir -p csltestlog
+mkdir -p testlog.csl
 
 for which in core noncore
 do

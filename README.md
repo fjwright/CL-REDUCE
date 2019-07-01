@@ -39,13 +39,13 @@ The build directory must contain the following files from the common-lisp direct
 * `build.sh`
 * `gnuintfc.red` (for `gnuplot` support on MS Windows only, but it could be commented out in `build.sh`)
 
-Ensure that the `*.sh` files are executable.
+On Linux, ensure that the `*.sh` files are executable.
 
-If you do not build within the REDUCE trunk file tree then the following two steps are also necessary:
+If you do not build within the REDUCE trunk file tree then the following two additional steps are necessary:
 
-* The build directory must also contain a link to or copy of the file [psl/boot.sl](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/psl/boot.sl).  (The way to create a link in Windows is with the `mklink` command at a Windows command prompt; I use a symbolic link for `boot.sl`.  A Windows shortcut created using the File Explorer GUI will probably not work!)
+* The build directory must also contain a link to, or copy of, the file [psl/boot.sl](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/psl/boot.sl).  (The way to create a link in Windows is with the `mklink` command at a Windows command prompt; I use a symbolic link for `boot.sl`.  A Windows shortcut created using the File Explorer GUI will probably not work!)
 
-* The `packages` directory of the version of REDUCE you want to build must be available and you need to set the environment variable `$reduce` to the directory containing this directory.  The `packages` directory is installed as part of a binary distribution so, for example, if you have a _default_ REDUCE installation on Windows then an appropriate value for `$reduce` would be `"C:\Program Files\Reduce"` (in Windows format).  You can also use a recent download from the [Subversion repository](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/).
+* The `packages` directory for the version of REDUCE you want to build must be available and you need to set the environment variable `$reduce` to the directory containing the `packages` directory.  The `packages` directory is installed as part of a binary distribution so, for example, if you have a _default_ REDUCE installation on Windows then an appropriate value for `$reduce` would be `"C:\Program Files\Reduce"` (in Windows format).  You can also use a recent download from the [Subversion repository](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/).
 
 Open a window running `bash` and make your chosen build directory current.  If necessary (see above), set the `$reduce` environment variable.  For example, execute the `bash` command
 
@@ -57,7 +57,7 @@ Run the build script by executing the `bash` command
 
 where `lisp` is either `sbcl` or `clisp`.
 
-The build process should create two sub-directories in the build directory called `fasl` and `log`.  The whole `log` directory and the `*.lisp`, `*.dat` and `bootstrap.*` files in the `fasl` directory could be deleted after the build; only the files `fasl/reduce.*` and `fasl/*.fas*` are required to run REDUCE.  (I will probably delete superfluous files automatically at some later date, but for now they are useful for debugging.)  The SBCL and CLISP builds can in principle coexist since they use different extensions for fasl and memory image file names.
+The build process should create two sub-directories in the build directory called `fasl.lisp` and `log.lisp`, where `lisp` is either `sbcl` or `clisp`.  The whole `log*` directory and the `*.lisp`, `*.dat` and `bootstrap.*` files in the `fasl*` directory could be deleted after the build; only the files `fasl*/reduce.*` and `fasl*/*.fas*` are required to run REDUCE.  (I will probably delete superfluous files automatically at some later date, but for now they are useful for debugging.)  The SBCL and CLISP builds are completely independent since they use different build sub-directories.
 
 Running REDUCE
 --------------
@@ -72,21 +72,17 @@ On Linux, open a terminal window and execute the command
 
     ./redsbcl
 
-having ensured that it is executable.  Beware that this interface does not provide any input editing, although it runs fine in an Emacs shell buffer.
+having ensured that the file `redsbcl`  is executable.  Beware that this interface does not provide any input editing, although it runs fine in an Emacs shell buffer.
 
-**CLISP REDUCE** can be run on MS Windows or Linux by executing the `bash` command
+**CLISP REDUCE** can be run on MS Windows or Linux by opening a terminal window and executing the `bash` command
 
-    clisp -q -M fasl/reduce.mem
+    ./redclisp
 
-and then evaluating the Lisp form
+having ensured that the file `redclisp` is executable.
 
-    (start-reduce)
+REDUCE can be run from any directory provided the command to start it is specified suitably, such as by using an absolute file path or a symbolic link.  Alternatively, you can add the `common-lisp` directory to your path and then run REDUCE via the command `redsbcl` or `redclisp` on both Windows and Linux.
 
-(I will provide a more elegant start-up procedure eventually.)
-
-REDUCE can be run from any directory provided the command to start it is specified suitably, such as by using an absolute file path for the `redsbcl` command (for SBCL) or for the `fasl` directory (for CLISP).  Alternatively (for SBCL), you can add the `common-lisp` directory to your path and then run SBCL REDUCE via the command `redsbcl` (on both Windows and Linux).
-
-On both Lisps, interrupting REDUCE (with Control-C) invokes the Lisp debugger and aborting that enters Lisp, which is very useful for low-level debugging!  Evaluate `(begin)` to get back into REDUCE.
+On both implementations, interrupting REDUCE (with Control-C) invokes a Lisp break loop and aborting that should return you to REDUCE.  Within the break loop you can run arbitrary Lisp code, but remember that you are running Common Lisp and in particular Lisp output uses Common Lisp syntax, although you are initially in the Standard Lisp package.  However, package prefixes are recognised (which they are not from within REDUCE) so you can access most of Common Lisp, but beware that you might break REDUCE so that you cannot return to it!  Evaluating the Lisp expression `(exit)` from a Lisp break loop should completely terminate REDUCE.
 
 Implementation-specific functionality
 -------------------------------------
@@ -95,11 +91,13 @@ The following facilities are modelled on those provided by PSL; please see the P
 
 Lisp-level function tracing is provided by the commands `tr` and `trst`.  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
 
-Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided but only for Microsoft Windows and Cygwin at present.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems.
+Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems.
 
 The commands `pwd()` or `cd "<directory>"` respectively return or change (and return) the current working directory.  The name `chdir` is an alias for `cd`.
 
 Environment variables and dots ("." or "..") in filenames are expanded by `cd/chdir` and `open` relative to the current working directory of the REDUCE process.
+
+The identifiers sbcl, clisp, win32, cygwin, unix are included as appropriate in the list assigned to the standard REDUCE fluid variable lispsystem!*.  The presence of these identifiers can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier win32 means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier unix appears for Linux builds, and both cygwin and unix appear for Cygwin builds.
 
 Current status
 --------------
@@ -108,7 +106,7 @@ The process described above should build all of REDUCE without any obvious error
 
 All available test files produce output that agrees with CSL REDUCE apart for timings and minor numerical and/or implementation differences, except for the following:
 
-* The `reduce4` test fails in a similar way as on CSL &ndash; excluded from regular testing.
+* The `reduce4` test fails in a similar way to the way it fails on CSL &ndash; excluded from regular testing.
 * The `ibalp` test fails on CLISP with a program stack overflow error; it just stops abruptly on SBCL &ndash; excluded from regular testing.
 * The `pasf` test output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!).
 * The `lalr` test output appears to be correct apart from two issues causing minor cosmetic differences.
@@ -135,7 +133,7 @@ Operation                               | CSL Time  | Best SBCL | This SBCL | Be
 Run (and check) all core test files     |
 Run (and check) most noncore test files |
 
-The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4`, `ibalp` or `rubi_red` as explained above, and `gnuplot` and `turtle` are excluded because they need to be run interactively.
+The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4`, `ibalp` or `rubi_red` as explained above. The `gnuplot` and `turtle` tests are excluded because they need to be run interactively, but they seems to work OK (although not yet tested on Linux).
 
 Known limitations
 -----------------
@@ -154,8 +152,6 @@ Make faslout/faslend more robust by using a single function that calls begin int
 Optimise SL-on-CL to improve its speed.
 
 Better error handling.
-
-Implement a proper Lisp init function (and possibly dump an executable file).
 
 Replace shell scripts with Common Lisp code to build REDUCE portably?
 

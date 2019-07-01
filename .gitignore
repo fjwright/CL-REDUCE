@@ -4,14 +4,11 @@
 Background Information.lnk
 Backup.lnk
 boot.sl
-csltestlog
-csl-test-one-package.sh
-csl-test-packages.sh
+csl-test-*
 fasl*
 lib
 log*
 Non-Core Test Log.xlsx
 packages
-psltestlog
 reduce-algebra-code
 testlog*

@@ -13,17 +13,14 @@
 # Option -c ensures a clean test by deleting the testlog directory.
 # The parameters core &/or noncore default to both if not specified.
 
-while getopts l:c option
-do
-    if   [ $option = l ]; then lisp=$OPTARG; (( n+=2 ))
-    elif [ $option = c ]; then rm -rf testlog; (( n+=1 ))
-    fi
-done
+if getopts l: option; then lisp=$OPTARG; (( n+=2 )); fi
 
 if [ "$lisp" != 'sbcl' ] && [ "$lisp" != 'clisp' ]; then
     echo 'Error: option -l sbcl/clisp is required'
     exit
 fi
+
+if getopts c option; then rm -rf testlog.$lisp; (( n+=1 )); fi
 
 shift $n
 
@@ -35,7 +32,7 @@ if [ ! -v reduce ]; then
 fi
 
 # Create log directory if necessary:
-mkdir -p testlog
+mkdir -p testlog.$lisp
 
 # The variable sep is used in test-one-package.sh:
 export sep
@@ -48,13 +45,13 @@ echo 'Packages to test:' ${*:-$whichdefault}
 for which in ${*:-$whichdefault}
 do
     time {
-        rm -f testlog/check$which.log
-        packages="$(< fasl/$which-packages.dat)"
+        rm -f testlog.$lisp/check$which.log
+        packages="$(< fasl.$lisp/$which-packages.dat)"
         for x in $packages
         do
             case $x in reduce4 | ibalp | gnuplot | turtle | rubi_red ) continue;; esac
             echo +++++ Testing $which package $x
-            ./test-one-package.sh -l $lisp $x >> testlog/check$which.log
+            ./test-one-package.sh -l $lisp $x >> testlog.$lisp/check$which.log
         done
     }
 done
