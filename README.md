@@ -1,7 +1,7 @@
 REDUCE on Common Lisp
 =====================
 
-Francis Wright, June 2019
+Francis Wright, July 2019
 
 From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Guy L. Steele Jr.](https://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html):
 
@@ -97,7 +97,7 @@ The commands `pwd()` or `cd "<directory>"` respectively return or change (and re
 
 Environment variables and dots ("." or "..") in filenames are expanded by `cd/chdir` and `open` relative to the current working directory of the REDUCE process.
 
-The identifiers sbcl, clisp, win32, cygwin, unix are included as appropriate in the list assigned to the standard REDUCE fluid variable lispsystem!*.  The presence of these identifiers can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier win32 means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier unix appears for Linux builds, and both cygwin and unix appear for Cygwin builds.
+The identifiers `sbcl`, `clisp`, `win32`, `cygwin`, `unix` are included as appropriate in the list assigned to the standard REDUCE fluid variable `lispsystem!*`.  The presence of these identifiers can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier `win32` means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier `unix` appears for Linux builds, and both `cygwin` and `unix` appear for Cygwin builds.
 
 Current status
 --------------
