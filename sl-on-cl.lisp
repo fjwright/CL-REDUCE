@@ -2590,9 +2590,14 @@ stream by this function."
               #+SBCL
               ;; An output filehandle is a dotted-list of the form ('file .
               ;; output-stream) or ('pipe output-stream . process):
-              (let ((p (sb-ext:run-program "cmd" (list "/c" command)
-                                           :wait nil :search t :input :stream
-                                           :escape-arguments nil)))
+              (let ((p
+                     #+win32
+		              (sb-ext:run-program "cmd" (list "/c" command)
+                                          :wait nil :search t :input :stream
+                                          :escape-arguments nil)
+		              #+unix
+		              (sb-ext:run-program "sh" (list "-c" command)
+					                      :wait nil :search t :input :stream)))
                 (cons 'pipe (cons (sb-ext:process-input p) p)))
               #+CLISP
               ;; An output filehandle is a dotted-list of the form ('file .

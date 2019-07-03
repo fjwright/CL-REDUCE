@@ -246,8 +246,8 @@ end;
 
 package!-remake '$p;
 
-% Hack to make gnuplot package work on MS Windows:
-if '$p eq 'gnuplot and ('win32 memq lispsystem!* or 'cygwin memq lispsystem!*) then
+% Temporary hack to make gnuplot package work on Common Lisp:
+if '$p eq 'gnuplot then
    begin scalar !*int, !*forcecompile; !*forcecompile := t;
       update!-fasl2('gnuintfc, nil);
    end;

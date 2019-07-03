@@ -4,11 +4,9 @@
 Background Information.lnk
 Backup.lnk
 boot.sl
-csl-test-*
 fasl*
 lib
 log*
-Non-Core Test Log.xlsx
-packages
+packages*
 reduce-algebra-code
 testlog*

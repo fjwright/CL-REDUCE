@@ -24,12 +24,12 @@ if getopts c option; then rm -rf testlog.$lisp; (( n+=1 )); fi
 
 shift $n
 
-if [ ! -v reduce ]; then
-    if [ -e './packages' ]; then export reduce=.
-    elif [ -e '../packages' ]; then export reduce=..
-    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
-    fi
-fi
+# Use the distributed test files for all tests:
+case $OSTYPE in
+    cygwin) export reduce='D:/Program Files/Reduce';;
+    linux-gnu) export reduce='/usr/share/reduce';;
+    *) echo "Unknown OSTYPE $OSTYPE; test aborted."; exit 1;;
+esac
 
 # Create log directory if necessary:
 mkdir -p testlog.$lisp

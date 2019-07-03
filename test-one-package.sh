@@ -21,11 +21,13 @@ else
     exit
 fi
 
+# Use the distributed test files for all tests:
 if [ ! -v reduce ]; then
-    if [ -e './packages' ]; then export reduce=.
-    elif [ -e '../packages' ]; then export reduce=..
-    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
-    fi
+    case $OSTYPE in
+        cygwin) export reduce='D:/Program Files/Reduce';;
+        linux-gnu) export reduce='/usr/share/reduce';;
+        *) echo "Unknown OSTYPE $OSTYPE; test aborted."; exit 1;;
+    esac
 fi
 
 # Create log directory if necessary:

@@ -91,12 +91,14 @@ gnuplot_select_terminal!* :=
 
 symbolic procedure initialize_gnuplot();
    <<
-#if (member 'cygwin lispsystem!*)       % *** Cygwin on MS Windows ***
+#if (memq 'unix lispsystem!*)           % *** Linux or Cygwin ***
 
+   #if (memq 'cygwin lispsystem!*)
    gnuplot_select_terminal!* := "dumb"; % ***** TEMPORARY *****
+   #endif
 
-   if system "type gnuplot &> /dev/null" = 0 then <<
-      % *** Prefer Cygwin gnuplot if available ***
+   if system "type gnuplot > /dev/null" = 0 then <<
+      % *** On Cygwin, prefer Cygwin gnuplot if available ***
       % Assume gnuplot is in PATH.
 
    !*plotpause := "mouse close";
@@ -140,7 +142,9 @@ symbolic procedure initialize_gnuplot();
                         ("vt102" . "tek40xx")
                            ));
 
-   >> else if system "cmd /c start /wait wgnuplot.exe -V" = 0 then <<
+   >>
+   #if (memq 'cygwin lispsystem!*)
+   else if system "cmd /c start /wait wgnuplot.exe -V" = 0 then <<
       % *** Fall back to Cygwin running native MS Windows gnuplot ***
 
       !*plotpause := "mouse close";
@@ -161,7 +165,9 @@ symbolic procedure initialize_gnuplot();
 
       plotheader!* := "";
 
-   >>;
+   >>
+   #endif
+;
 
 #elif (memq 'win32 lispsystem!*)        % *** MS Windows ***
 
@@ -187,30 +193,6 @@ symbolic procedure initialize_gnuplot();
    !*plotinterrupts := '(10002);
    % end of definition of initialize_gnuplot();
    >>;
-
-% Find path to gnuplot executable on Unix
-% =======================================
-
-symbolic procedure find!-gnuplot;
-   find!-gnuplot!-aux getenv("GNUPLOT") or "gnuplot";
-
-symbolic procedure find!-gnuplot!-aux path;
-  % On Unix, build full pathname for gnuplot executable.
-  if null path then nil else <<
-     if idp path then path := id2string path;
-
-     % Remove trailing directory separator if present:
-     begin scalar p;
-        if cadr (p := reversip explode path) eq dirchar!* then
-           path := '!" . compress reversip cddr p;
-     end;
-
-     % Build path:
-     path := bldmsg("%w%w%w", path, dirchar!*, "gnuplot");
-
-     % Check existence and return:
-     if filep path then path
-  >>;
 
 endmodule;
 

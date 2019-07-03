@@ -5,16 +5,18 @@
 # Author: Francis J. Wright
 # Based (loosely) on code by Anthony C. Hearn.
 
-# Usage: ./csl-test-one-package.sh package
+# Usage: ./test-one-package-csl.sh package
 
 # Assume this script is run in the top-level CL REDUCE directory.
-# This script is normally run by csl-test-packages.sh.
+# This script is normally run by test-packages-csl.sh.
 
+# Use the distributed test files for all tests:
 if [ ! -v reduce ]; then
-    if [ -e './packages' ]; then export reduce=.
-    elif [ -e '../packages' ]; then export reduce=..
-    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
-    fi
+    case $OSTYPE in
+        cygwin) export reduce='D:/Program Files/Reduce';;
+        linux-gnu) export reduce='/usr/share/reduce';;
+        *) echo "Unknown OSTYPE $OSTYPE; test aborted."; exit 1;;
+    esac
 fi
 
 # Create log directory if necessary:

@@ -5,16 +5,16 @@
 # Author: Francis J. Wright
 # Based (loosely) on code by Anthony C. Hearn.
 
-# Usage: ./csl-test-packages.sh
+# Usage: ./test-packages-csl.sh
 
 # Assume this script is run in the top-level CL REDUCE directory.
 
-if [ ! -v reduce ]; then
-    if [ -e './packages' ]; then export reduce=.
-    elif [ -e '../packages' ]; then export reduce=..
-    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
-    fi
-fi
+# Use the distributed test files for all tests:
+case $OSTYPE in
+    cygwin) export reduce='D:/Program Files/Reduce';;
+    linux-gnu) export reduce='/usr/share/reduce';;
+    *) echo "Unknown OSTYPE $OSTYPE; test aborted."; exit 1;;
+esac
 
 # Create log directory if necessary:
 mkdir -p testlog.csl
@@ -23,7 +23,7 @@ mkdir -p testlog.csl
 redcsl --nogui << EOF &> /dev/null
 symbolic begin
   scalar w, i, s, core, noncore;
-  i := open("$reduce/packages/package.map", 'input);
+  i := open("$reduce/packages.test/package.map", 'input);
   s := rds i;
   w := read();
   rds s;
@@ -57,7 +57,7 @@ do
 	    do
             case $x in reduce4 | ibalp | gnuplot | turtle | rubi_red ) continue;; esac
 		    echo +++++ Testing $which package $x
-		    ./csl-test-one-package.sh $x
+		    ./test-one-package-csh.sh $x
 	    done
     }
 done
