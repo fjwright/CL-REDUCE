@@ -19,6 +19,8 @@ but in the longer term I may also consider supporting another implementation of 
 Building REDUCE
 ---------------
 
+**REDUCE on Common Lisp requires the source code for REDUCE revision 4968 or later, so the current April 2019 snapshot will not work properly.**
+
 Create a build directory somewhere convenient.  If you download the whole [REDUCE trunk](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/) then you can use the `common-lisp` directory as your build directory with no additions.
 
 **You need the following software and files:**

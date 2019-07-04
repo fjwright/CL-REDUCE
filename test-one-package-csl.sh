@@ -10,13 +10,11 @@
 # Assume this script is run in the top-level CL REDUCE directory.
 # This script is normally run by test-packages-csl.sh.
 
-# Use the distributed test files for all tests:
 if [ ! -v reduce ]; then
-    case $OSTYPE in
-        cygwin) export reduce='D:/Program Files/Reduce';;
-        linux-gnu) export reduce='/usr/share/reduce';;
-        *) echo "Unknown OSTYPE $OSTYPE; test aborted."; exit 1;;
-    esac
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    fi
 fi
 
 # Create log directory if necessary:

@@ -21,13 +21,11 @@ else
     exit
 fi
 
-# Use the distributed test files for all tests:
 if [ ! -v reduce ]; then
-    case $OSTYPE in
-        cygwin) export reduce='D:/Program Files/Reduce';;
-        linux-gnu) export reduce='/usr/share/reduce';;
-        *) echo "Unknown OSTYPE $OSTYPE; test aborted."; exit 1;;
-    esac
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    fi
 fi
 
 # Create log directory if necessary:
@@ -81,5 +79,9 @@ grep --max-count=10 --color=always --ignore-case '^[^%"]*\(\*\{5\} \| \<error\>\
 # Check for differences from CSL:
 
 echo $'\nChecking' $1 $'...\n'
-diff --strip-trailing-cr testlog.$lisp/$1.rlg testlog.csl/$1.rlg
+case $1 in
+    # Special case until distribution snapshot is updated:
+    rataprx) diff --strip-trailing-cr testlog.$lisp/$1.rlg ${testfile%%.tst}.rlg;;
+    *) diff --strip-trailing-cr testlog.$lisp/$1.rlg testlog.csl/$1.rlg;;
+esac
 if [ "$sep" ]; then echo -e '\f'; echo $sep; fi
