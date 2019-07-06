@@ -16,7 +16,7 @@
 ;; This implementation of Standard Lisp is lower-case.  It uses case
 ;; inversion of symbol names and is case-sensitive internally.
 
-;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
@@ -548,29 +548,30 @@ printing (using prin1) to a list.  E.g.
              (push (list '|)|) ll)
              (cl:apply #'nconc (nreverse ll)))
            ;; Exploding an atom:
-           (cond ((stringp u)
-                  ;; Add leading and trailing " and convert internal " to "":
-                  (nconc
-                   (list '\")
-                   (loop for c across u
-                      collect (%intern-character-invert-case c)
-                      when (char= c #\") collect '\")
-                   (list '\")))
-                 ((numberp u)
-                  (cl:map 'list #'%intern-character-invert-case ; might not be portable!
-                          (princ-to-string u)))
-                 (t
-                  ;; Assume identifier -- insert ! before an upper-case
-                  ;; letter, leading digit or _, or special character
-                  ;; (except _):
-                  (loop with s = (cl:symbol-name u) and c
-                     for i below (cl:length s)
-                     do (setq c (aref s i))
-                     unless (or (upper-case-p c) ; case-inverted!
-                                (and (not (eql i 0))
-                                     (or (digit-char-p c) (char= c #\_))))
-                     collect '\!
-                     collect (%intern-character-preserve-case c)))))))
+           (typecase u
+             (string
+              ;; Add leading and trailing " and convert internal " to "":
+              (nconc
+               (list '\")
+               (loop for c across u
+                  collect (%intern-character-invert-case c)
+                  when (char= c #\") collect '\")
+               (list '\")))
+             (number
+              (cl:map 'list #'%intern-character-invert-case ; might not be portable!
+                      (princ-to-string u)))
+             (t
+              ;; Assume identifier -- insert ! before an upper-case
+              ;; letter, leading digit or _, or special character
+              ;; (except _):
+              (loop with s = (cl:symbol-name u) and c
+                 for i below (cl:length s)
+                 do (setq c (aref s i))
+                 unless (or (upper-case-p c) ; case-inverted!
+                            (and (not (eql i 0))
+                                 (or (digit-char-p c) (char= c #\_))))
+                 collect '\!
+                 collect (%intern-character-preserve-case c)))))))
 
 (defalias 'gensym 'cl:gensym)
 ;; GENSYM():identifier eval, spread
@@ -807,33 +808,34 @@ FNAME is a defined function then return the dotted-pair
   (the list
        (and (symbolp fname) (fboundp fname)
             ;; Assume expr unless fname was defined using SL dm macro.
-            (cond ((eq (cl:get fname '%ftype) 'macro)
-                   ;; ;; Return the (uncompiled) SL macro form:
-                   ;; (cl:get fname '%macro)
-                   ;; This may need more work.
-                   ;; A CL macro expansion needs an environment.
-                   ;; Try the null environment (nil) initially.
-                   ;; (The parameter x should perhaps be a gensym.)
-                   (cons 'macro
-                         `(lambda (x)
-                            (funcall ,(macro-function fname) x nil))))
-                  (t
-                   ;; Return a lambda expression if possible, since this is
-                   ;; most useful (although perhaps not most efficient in
-                   ;; some cases):
-                   (let (f)
-                     ;; Note that a CL function definition may contain
-                     ;; declarations and a documentation string, and the
-                     ;; body MAY BE wrapped in a block form, i.e.
-                     ;; (lambda params [decls] [doc] (block name body))
-                     ;; [A compiled CLISP function may not contain a block!]
-                     ;; Extract the function body:
-                     (when (and (functionp (setq fname (symbol-function fname)))
-                                (setq f (function-lambda-expression fname)))
-                       (setq fname (car (last f))) ; block or body form
-                       (if (eqcar fname 'block) (setq fname (caddr fname)))
-                       (setq fname `(lambda ,(cadr f) ,fname))))
-                   (cons 'expr fname))))))
+            (case (cl:get fname '%ftype)
+              (macro
+               ;; ;; Return the (uncompiled) SL macro form:
+               ;; (cl:get fname '%macro)
+               ;; This may need more work.
+               ;; A CL macro expansion needs an environment.
+               ;; Try the null environment (nil) initially.
+               ;; (The parameter x should perhaps be a gensym.)
+               (cons 'macro
+                     `(lambda (x)
+                        (funcall ,(macro-function fname) x nil))))
+              (t
+               ;; Return a lambda expression if possible, since this is
+               ;; most useful (although perhaps not most efficient in
+               ;; some cases):
+               (let (f)
+                 ;; Note that a CL function definition may contain
+                 ;; declarations and a documentation string, and the
+                 ;; body MAY BE wrapped in a block form, i.e.
+                 ;; (lambda params [decls] [doc] (block name body))
+                 ;; [A compiled CLISP function may not contain a block!]
+                 ;; Extract the function body:
+                 (when (and (functionp (setq fname (symbol-function fname)))
+                            (setq f (function-lambda-expression fname)))
+                   (setq fname (car (last f))) ; block or body form
+                   (if (eqcar fname 'block) (setq fname (caddr fname)))
+                   (setq fname `(lambda ,(cadr f) ,fname))))
+               (cons 'expr fname))))))
 
 (defun putd (fname type body)
   "PUTD(FNAME:id, TYPE:ftype, BODY:function):id eval, spread
@@ -857,27 +859,28 @@ the !*COMP global variable is non-NIL."
   (%redefmsg fname)
   ;; body = (lambda (u) body-form) or function-pointer
   (let (*redefmsg)                  ; don't report redefinitions twice
-    (cond ((eq type 'expr)
-           (cond ((eqcar body 'lambda)
-                  (eval `(de ,fname ,(cadr body) ,@(cddr body))))
-                 ((functionp body)
-                  (setf (symbol-function fname) body)
-                  (put fname '%ftype 'expr))
-                 (t (cl:error "Invalid expr body in PUTD"))))
-          ((eq type 'macro)
-           (cond ((eqcar body 'lambda)
-                  (if (eq (car (caddr body)) 'funcall)
-                      ;; This "hybrid form" is returned by getd.
-                      (progn
-                        (setf (macro-function fname) (cadr (caddr body)))
-                        (put fname '%ftype 'macro))
-                      ;; This "pure source form" is used in "rlisp/block.red".
-                      (eval `(dm ,fname ,(cadr body) ,@(cddr body)))))
-                 ;; ((functionp body)       ; This case should not happen!
-                 ;;  (setf (macro-function fname) body)
-                 ;;  (put fname '%ftype 'macro))
-                 (t (cl:error "Invalid macro body in PUTD"))))
-          (t (cl:error "Invalid type in PUTD"))))
+    (case type
+      (expr
+       (cond ((eqcar body 'lambda)
+              (eval `(de ,fname ,(cadr body) ,@(cddr body))))
+             ((functionp body)
+              (setf (symbol-function fname) body)
+              (put fname '%ftype 'expr))
+             (t (cl:error "Invalid expr body in PUTD"))))
+      (macro
+       (cond ((eqcar body 'lambda)
+              (if (eq (car (caddr body)) 'funcall)
+                  ;; This "hybrid form" is returned by getd.
+                  (progn
+                    (setf (macro-function fname) (cadr (caddr body)))
+                    (put fname '%ftype 'macro))
+                  ;; This "pure source form" is used in "rlisp/block.red".
+                  (eval `(dm ,fname ,(cadr body) ,@(cddr body)))))
+             ;; ((functionp body)       ; This case should not happen!
+             ;;  (setf (macro-function fname) body)
+             ;;  (put fname '%ftype 'macro))
+             (t (cl:error "Invalid macro body in PUTD"))))
+      (t (cl:error "Invalid type in PUTD"))))
   (the symbol fname))
 
 (defun remd (fname)
@@ -2030,17 +2033,17 @@ closed.
   (the filehandle
        (if filehandle
            (prog1 filehandle
-             (cond
-               ((eq (car filehandle) 'file)
+             (case (car filehandle)
+               (file
                 ;; Output file stream ('file output-stream):
                 (cl:close (cadr filehandle)))
                #+SBCL
-               ((eq (car filehandle) 'pipe)
+               (pipe
                 ;; Output pipe stream ('pipe output-stream . process):
                 (sb-ext:process-close (cddr filehandle)) ; closes output-stream
                 (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
                #+CLISP
-               ((eq (car filehandle) 'pipe)
+               (pipe
                 ;; Output pipe stream ('pipe output-stream):
                 (cl:close (cadr filehandle))) ; closes output-stream
                (t
@@ -2154,16 +2157,17 @@ OUTPUT or the file can't be opened.
   ;; #+cygwin (setq file (win-to-cyg file))
   #+cygwin (setq file (parse-namestring file)) ; convert Windows filename to Cygwin format
   (the filehandle
-       (cond ((eq how 'input)
-              (let ((fh (cl:open file :direction :input)))
-                ;; An input filehandle is a pair of the form
-                ;; (input-stream . echo-stream):
-                (cons fh (make-echo-stream fh *standard-output*))))
-             ((eq how 'output)
-              (list 'file
-                    (cl:open file :direction :output
-                             :if-exists :supersede :if-does-not-exist :create)))
-             (t (cl:error "~a is not option for OPEN" how)))))
+       (case how
+         (input
+          (let ((fh (cl:open file :direction :input)))
+            ;; An input filehandle is a pair of the form
+            ;; (input-stream . echo-stream):
+            (cons fh (make-echo-stream fh *standard-output*))))
+         (output
+          (list 'file
+                (cl:open file :direction :output
+                         :if-exists :supersede :if-does-not-exist :create)))
+         (t (cl:error "~a is not option for OPEN" how)))))
 
 (defun pagelength (len)
   (declare (ignore len))
@@ -2220,8 +2224,9 @@ U must be a single character id such as produced by EXPLODE or
 read by READCH or the value of !$EOL!$. The effect is the character
 U displayed upon the currently selected output device. The value of
 !$EOL!$ causes termination of the current line like a call to TERPRI."
-  (cond ((eq u $eol$) (terpri))
-        (t (%prin-string (%princ-to-string u))))
+  (case u
+    ($eol$ (terpri))
+    (t (%prin-string (%princ-to-string u))))
   u)
 
 (defun print (u)
@@ -2241,14 +2246,15 @@ result of EXPLODE expansion; special characters are prefixed with the
 escape character !, and strings are enclosed in \"...\".  Lists are
 displayed in list-notation and vectors in vector-notation.  The value
 of U is returned."
-  (cond ((symbolp u) (%prin-string (%prin1-id-to-string u)))
-        ((stringp u) (%prin-string (%prin1-string-to-string u)))
-        ((floatp u) (%prin-string (%prin-float-to-string u)))
-        ((vectorp u) (%prin-vector u #'prin1))
-        ((atom u) (%prin-string (prin1-to-string u)))
-        ;; ((eq (car u) 'quote) (%prin-string "'") (prin1 (cadr u)))
-        ;; CSL doesn't treat quote specially
-        (t (%prin-cons u #'prin1)))
+  (typecase u
+    (symbol (%prin-string (%prin1-id-to-string u)))
+    (string (%prin-string (%prin1-string-to-string u)))
+    (float (%prin-string (%prin-float-to-string u)))
+    (vector (%prin-vector u #'prin1))
+    (atom (%prin-string (prin1-to-string u)))
+    ;; ((eq (car u) 'quote) (%prin-string "'") (prin1 (cadr u)))
+    ;; CSL doesn't treat quote specially
+    (t (%prin-cons u #'prin1)))
   u)
 
 (defun prin2 (u)
@@ -2259,14 +2265,15 @@ described in the EXPLODE function with the exceptions that the escape
 character does not prefix special characters and strings are not
 enclosed in \"...\".  Lists are displayed in list-notation and vectors
 in vector-notation.  The value of U is returned."
-  (cond ((symbolp u) (%prin-string (%princ-id-to-string u)))
-        ((stringp u) (%prin-string u))
-        ((floatp u) (%prin-string (%prin-float-to-string u)))
-        ((vectorp u) (%prin-vector u #'prin2))
-        ((atom u) (%prin-string (princ-to-string u)))
-        ;; ((eq (car u) 'quote) (%prin-string "'") (prin2 (cadr u)))
-        ;; CSL doesn't treat quote specially
-        (t (%prin-cons u #'prin2)))
+  (typecase u
+    (symbol (%prin-string (%princ-id-to-string u)))
+    (string (%prin-string u))
+    (float (%prin-string (%prin-float-to-string u)))
+    (vector (%prin-vector u #'prin2))
+    (atom (%prin-string (princ-to-string u)))
+    ;; ((eq (car u) 'quote) (%prin-string "'") (prin2 (cadr u)))
+    ;; CSL doesn't treat quote specially
+    (t (%prin-cons u #'prin2)))
   u)
 
 (defun %princ-id-to-string (u)
@@ -2383,13 +2390,14 @@ If nil then floats are printed without any additional rounding.")
 U is the cdr of a cons cell: nil, an atom or another cons cell.
 Cons cell elements are printed using PRINFN."
   (declare (cl:function prinfn))
-  (cond ((null u))                      ; do nothing
-        ((atom u)
-         (%prin-space-maybe) (%prin-string ".")
-         (%prin-space-maybe) (funcall prinfn u))
-        (t (%prin-space-maybe)
-           (funcall prinfn (car u))
-           (%prin-cdr (cdr u) prinfn)))
+  (typecase u
+    (null)                              ; do nothing
+    (atom
+     (%prin-space-maybe) (%prin-string ".")
+     (%prin-space-maybe) (funcall prinfn u))
+    (t (%prin-space-maybe)
+       (funcall prinfn (car u))
+       (%prin-cdr (cdr u) prinfn)))
   nil)
 
 (defun %default-read-stream ()
@@ -2569,13 +2577,13 @@ selected output file.
          (setq %write-stream +default-write-stream+
                *standard-output* (cadr %write-stream))
          (when filehandle
-           (cond
-             ((eq (car filehandle) 'file)
+           (ecase (car filehandle)
+             (file
               ;; Output file stream ('file output-stream):
               (if (open-stream-p (cadr filehandle))
                   (setq *standard-output* (cadr filehandle)
                         %write-stream filehandle)))
-             ((eq (car filehandle) 'pipe)
+             (pipe
               ;; Output pipe stream ('pipe output-stream . process):
               (if (open-stream-p (cadr filehandle))
                   (setq *standard-output* (cadr filehandle)
@@ -2586,25 +2594,26 @@ selected output file.
 stream by this function."
   (declare (simple-string command) (symbol how))
   (the filehandle
-       (cond ((eq how 'output)
-              #+SBCL
-              ;; An output filehandle is a dotted-list of the form ('file .
-              ;; output-stream) or ('pipe output-stream . process):
-              (let ((p
-                     #+win32
-		              (sb-ext:run-program "cmd" (list "/c" command)
-                                          :wait nil :search t :input :stream
-                                          :escape-arguments nil)
-		              #+unix
-		              (sb-ext:run-program "sh" (list "-c" command)
-					                      :wait nil :search t :input :stream)))
-                (cons 'pipe (cons (sb-ext:process-input p) p)))
-              #+CLISP
-              ;; An output filehandle is a dotted-list of the form ('file .
-              ;; output-stream) or ('pipe output-stream . nil):
-              ;; (list 'pipe (ext:run-shell-command command :input :stream :wait nil)))
-              (list 'pipe (ext:make-pipe-output-stream command)))
-             (t (cl:error "~a is not (currently) an option for PIPE-OPEN" how)))))
+       (case how
+         (output
+          #+SBCL
+          ;; An output filehandle is a dotted-list of the form ('file .
+          ;; output-stream) or ('pipe output-stream . process):
+          (let ((p
+                 #+win32
+		          (sb-ext:run-program "cmd" (list "/c" command)
+                                      :wait nil :search t :input :stream
+                                      :escape-arguments nil)
+		          #+unix
+		          (sb-ext:run-program "sh" (list "-c" command)
+					                  :wait nil :search t :input :stream)))
+            (cons 'pipe (cons (sb-ext:process-input p) p)))
+          #+CLISP
+          ;; An output filehandle is a dotted-list of the form ('file .
+          ;; output-stream) or ('pipe output-stream . nil):
+          ;; (list 'pipe (ext:run-shell-command command :input :stream :wait nil)))
+          (list 'pipe (ext:make-pipe-output-stream command)))
+         (t (cl:error "~a is not (currently) an option for PIPE-OPEN" how)))))
 
 (defun channelflush (filehandle)        ; PSL
   (declare (type filehandle filehandle))
@@ -3303,13 +3312,7 @@ When all done, execute FASLEND;~2%" name))
                +default-write-stream+ (%default-write-stream)
                %write-stream +default-write-stream+))))
 
-(defun start-reduce ()                  ; Now probably redundant
-  "Switch to STANDARD LISP mode and start REDUCE."
-  (standard-lisp)
-  (begin)
-  nil)
-
-(import '(standard-lisp start-reduce) :cl-user)
+(import '(standard-lisp) :cl-user)
 
 (defun reset-readtable ()
   "Switch to Common Lisp read syntax."
