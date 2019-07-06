@@ -16,7 +16,7 @@
 ;; This implementation of Standard Lisp is lower-case.  It uses case
 ;; inversion of symbol names and is case-sensitive internally.
 
-(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))

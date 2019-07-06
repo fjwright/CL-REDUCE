@@ -19,7 +19,7 @@ but in the longer term I may also consider supporting another implementation of 
 Building REDUCE
 ---------------
 
-**REDUCE on Common Lisp requires the source code for REDUCE revision 4968 or later, so the current April 2019 snapshot will not work properly.**
+**REDUCE on Common Lisp requires the source code for REDUCE revision 4968 or later, so the April 2019 snapshot will not work properly!**
 
 Create a build directory somewhere convenient.  If you download the whole [REDUCE trunk](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/) then you can use the `common-lisp` directory as your build directory with no additions.
 
@@ -39,7 +39,7 @@ The build directory must contain the following files from the common-lisp direct
 * `remake.red`
 * `bootstrap.sh`
 * `build.sh`
-* `gnuintfc.red` (for `gnuplot` support on MS Windows only, but it could be commented out in `build.sh`)
+* `gnuintfc.red`
 
 On Linux, ensure that the `*.sh` files are executable.
 
@@ -47,19 +47,23 @@ If you do not build within the REDUCE trunk file tree then the following two add
 
 * The build directory must also contain a link to, or copy of, the file [psl/boot.sl](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/psl/boot.sl).  (The way to create a link in Windows is with the `mklink` command at a Windows command prompt; I use a symbolic link for `boot.sl`.  A Windows shortcut created using the File Explorer GUI will probably not work!)
 
-* The `packages` directory for the version of REDUCE you want to build must be available and you need to set the environment variable `$reduce` to the directory containing the `packages` directory.  The `packages` directory is installed as part of a binary distribution so, for example, if you have a _default_ REDUCE installation on Windows then an appropriate value for `$reduce` would be `"C:\Program Files\Reduce"` (in Windows format).  You can also use a recent download from the [Subversion repository](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/).
+* The `packages` directory for the version of REDUCE you want to build must be available and you need to set the environment variable `$reduce` to the directory containing the `packages` directory.  You could use the `packages` directory installed as part of a binary distribution or a recent download from the [Subversion repository](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/).
 
-Open a window running `bash` and make your chosen build directory current.  If necessary (see above), set the `$reduce` environment variable.  For example, execute the `bash` command
+Open a window running `bash` and make your chosen build directory current.  If necessary (see above), set the `$reduce` environment variable.  For example, to use the `packages` directory from a _default_ REDUCE installation to build SBCL REDUCE on MS Windows, execute the `bash` command
 
     export reduce='C:/Program Files/Reduce'
 
+or to build CLISP REDUCE on Cygwin, execute the `bash` command
+
+    export reduce='/cygdrive/c/Program Files/Reduce'
+
 Run the build script by executing the `bash` command
 
-    ./build.sh -l lisp
+    ./build.sh -l <lisp>
 
-where `lisp` is either `sbcl` or `clisp`.
+where `<lisp>` is either `sbcl` or `clisp`.
 
-The build process should create two sub-directories in the build directory called `fasl.lisp` and `log.lisp`, where `lisp` is either `sbcl` or `clisp`.  The whole `log*` directory and the `*.lisp`, `*.dat` and `bootstrap.*` files in the `fasl*` directory could be deleted after the build; only the files `fasl*/reduce.*` and `fasl*/*.fas*` are required to run REDUCE.  (I will probably delete superfluous files automatically at some later date, but for now they are useful for debugging.)  The SBCL and CLISP builds are completely independent since they use different build sub-directories.
+The build process should create two sub-directories in the build directory called `fasl.<lisp>` and `log.<lisp>`.  The whole `log*` directory and the `*.lisp`, `*.dat` and `bootstrap.*` files in the `fasl*` directory could be deleted after the build; only the files `fasl.<lisp>/reduce.*` and `fasl.<lisp>/*.fas*` are required to run REDUCE.  (I will probably delete superfluous files automatically at some later date, but for now they are useful for debugging.)  Note that the SBCL and CLISP builds are completely independent since they use different build sub-directories.
 
 Running REDUCE
 --------------
@@ -101,6 +105,8 @@ Environment variables and dots ("." or "..") in filenames are expanded by `cd/ch
 
 The identifier `common-lisp` is always included in the list assigned to the standard REDUCE fluid variable `lispsystem!*` and the identifiers `sbcl`, `clisp`, `win32`, `cygwin`, `unix` are included as appropriate.  These identifiers indicate the Lisp and operating system on which REDUCE was built and can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier `win32` means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier `unix` appears for Linux builds, and both `cygwin` and `unix` appear for Cygwin builds.
 
+For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to run Cygwin gnuplot if it is available and if not then it tries to run native MS Windows gnuplot (which is included in REDUCE binary distributions for MS Windows).  Cygwin gnuplot produces graphical output if REDUCE is run under the X Window System and text output otherwise.  For CLISP REDUCE on Linux and SBCL REDUCE on both MS Windows and Linux, gnuplot produces graphical output.
+
 Current status
 --------------
 
@@ -113,29 +119,28 @@ All available test files produce output that agrees with CSL REDUCE apart for ti
 * The `pasf` test output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!).
 * The `lalr` test output appears to be correct apart from two issues causing minor cosmetic differences.
 * The `rubi_red` test is very slow, generates very much output, and timeouts can't work on CLISP (see below), but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing.  On SBCL, the first error is similar to that shown on CSL, but SBCL REDUCE does not recover after this error, probably due to the currently crude general error handling.
-
-Note that the `xcolor` test file only runs to completion (only tested on SBCL) with `(declaim (optimize speed))`. I think this is because it involves a highly recursive procedure (color1), which runs out of stack on the most complicated examples at the end of the test file unless optimized for maximum speed.
+* The `xcolor` test only runs to completion on SBCL with `(declaim (optimize speed))`. I think this is because it involves a highly recursive procedure (color1), which runs out of stack on the most complicated examples at the end of the test file unless optimized for maximum speed.
 
 Timings
 -------
 
-New timing methodology uses the bash time command.  "Best" means the fastest previous time.
+New timing methodology uses the bash time command.  "Best" means the fastest previous time.  Numbers in parentheses are times relative to the CSL times.
 
 **Timing on Microsoft Windows** (on a fairly recent Intel Core i5 processor):
 
-Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
-----------------------------------------|-----------|-----------|-----------|------------|-----------
-Run (and check) all core test files     |  30 secs  |  47 secs  |           |  3 m 23 s  |
-Run (and check) most noncore test files |  4 m 13 s | 15 m 14 s |           | 67 m 27 s  |
+Operation                               | CSL Time  | Best SBCL | This SBCL       | Best CLISP | This CLISP
+----------------------------------------|-----------|-----------|-----------------|------------|-----------------
+Run (and check) all core test files     |  34 secs  |  47 secs  |  45 secs  (1.3) |  3 m 23 s  |  3 m 52 s  (6.8)
+Run (and check) most noncore test files |  4 m 39 s | 15 m 14 s | 14 m 52 s (3.2) | 67 m 27 s  | 85 m 10 s (18.3)
 
 **Timing on Ubuntu Linux** (on a fairly old Intel Core Duo processor):
 
-Operation                               | CSL Time  | Best SBCL | This SBCL | Best CLISP | This CLISP
-----------------------------------------|-----------|-----------|-----------|------------|-----------
-Run (and check) all core test files     |
-Run (and check) most noncore test files |
+Operation                               | CSL Time  | Best SBCL | This SBCL       | Best CLISP | This CLISP
+----------------------------------------|-----------|-----------|-----------------|------------|-----------------
+Run (and check) all core test files     |  23 secs  |           |  56 secs  (2.4) |            |  5 m 30 s (14.3)
+Run (and check) most noncore test files |  7 m 09 s |           | 26 m 02 s (3.6) |            |119 m 43 s (16.7)
 
-The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4`, `ibalp` or `rubi_red` as explained above. The `gnuplot` and `turtle` tests are excluded because they need to be run interactively, but they seems to work OK (although not yet tested on Linux).
+The CSL test times do not include checking, which involves running `diff`.  The times for the noncore tests do not include `reduce4`, `ibalp` or `rubi_red` as explained above. The `gnuplot` and `turtle` tests are excluded because they need to be run interactively, but they seems to work OK on both MS Windows and Linux.
 
 Known limitations
 -----------------
@@ -145,15 +150,11 @@ I cannot see any way to support the facilities for restricting execution time on
 To do
 -----
 
-In `alg/intro.red`, `outputhandler*` is undefined. Should be declared fluid. Done temporarily in `clrend`.
-
-In `rlisp/io.red`, `in` uses `mkfil*` but `out` and `shut` use `mkfil`; why the inconsistency?  [Not currently a problem for me as far as I'm aware.]
-
-Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
-
 Optimise SL-on-CL to improve its speed.
 
 Better error handling.
+
+Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 
 Replace shell scripts with Common Lisp code to build REDUCE portably?
 

@@ -13,7 +13,7 @@
 if getopts l: option; then lisp=$OPTARG; shift 2; fi
 
 if [ "$lisp" = 'sbcl' ]; then
-    runreduce='sbcl --noinform --core fasl.sbcl/reduce.img'
+    runreduce='sbcl --noinform --core fasl.sbcl/reduce.img --disable-ldb --lose-on-corruption'
 elif [ "$lisp" = 'clisp' ]; then
     runreduce='clisp -M fasl.clisp/reduce.mem'
 else
