@@ -469,7 +469,7 @@ occurs:
            (if (or (null u)
                    (cl:member (setq u0 (car u))
                               '(\' \) \, \% \[ \\ \`))) ; PSL
-               (cl:error "Poorly formed S-expression in COMPRESS"))
+               (error-internal "Poorly formed S-expression in COMPRESS"))
            (cond
              ;; LIST?
              ((eq u0 '|(|) (setq u (cdr u))
@@ -490,7 +490,7 @@ occurs:
                                    (nreverse newu)))))
                    (push (car u) newu))
               ;; String not terminated:
-              (cl:error "Poorly formed S-expression in COMPRESS"))
+              (error-internal "Poorly formed S-expression in COMPRESS"))
              ;; NUMBER?
              ((or (digit u0) (char= (character u0) #\-))
               ;; (eq u0 '-) fails because u0 is in SL but - is (an operator) in CL.
@@ -855,7 +855,7 @@ the !*COMP global variable is non-NIL."
   (declare (symbol fname type) (type function body))
   (if (or (cl:get fname 'global)        ; only if explicitly declared
           (fluidp fname))
-      (cl:error "~a is a non-local variable" fname))
+      (error-internal "~a is a non-local variable" fname))
   (%redefmsg fname)
   ;; body = (lambda (u) body-form) or function-pointer
   (let (*redefmsg)                  ; don't report redefinitions twice
@@ -866,7 +866,7 @@ the !*COMP global variable is non-NIL."
              ((functionp body)
               (setf (symbol-function fname) body)
               (put fname '%ftype 'expr))
-             (t (cl:error "Invalid expr body in PUTD"))))
+             (t (error-internal "Invalid expr body in PUTD"))))
       (macro
        (cond ((eqcar body 'lambda)
               (if (eq (car (caddr body)) 'funcall)
@@ -879,8 +879,8 @@ the !*COMP global variable is non-NIL."
              ;; ((functionp body)       ; This case should not happen!
              ;;  (setf (macro-function fname) body)
              ;;  (put fname '%ftype 'macro))
-             (t (cl:error "Invalid macro body in PUTD"))))
-      (t (cl:error "Invalid type in PUTD"))))
+             (t (error-internal "Invalid macro body in PUTD"))))
+      (t (error-internal "Invalid type in PUTD"))))
   (the symbol fname))
 
 (defun remd (fname)
@@ -1090,14 +1090,13 @@ in interpreted functions are automatically considered fluid."
 ;;; Error Handling
 ;;; ==============
 
-;; THIS CODE COULD BE IMPROVED!
-
-(defun %princ-to-string (u)
-  ;; Used only in error and princ (which is not used in REDUCE).
-  "As cl:princ-to-string but invert case of a symbol."
-  (the simple-string
-       (if (symbolp u) (%string-invert-case (cl:princ-to-string u))
-           (cl:princ-to-string u))))
+(define-condition sl-error (cl:error)
+  ((errno :initarg :errno)
+   (errmsg :initarg :errmsg))
+  (:documentation "Standard Lisp error including an error number and message")
+  (:report (lambda (condition stream)
+             (with-slots (errno errmsg) condition
+               (format stream "Standard Lisp error ~a: ~a." errno errmsg)))))
 
 (defun error (number message)
   "ERROR(NUMBER:integer, MESSAGE:any) eval, spread
@@ -1107,31 +1106,42 @@ global variable EMSG!* and the error number becomes the value of
 the surrounding ERRORSET. FLUID variables and local bindings are
 unbound to return to the environment of the ERRORSET. Global
 variables are not affected by the process."
-  (if (consp message)
-      (setq message
-            (let ((*print-case* :downcase))
-              (cl:apply #'concatenate 'string
-                        (cons (%princ-to-string (car message))
-                              (loop
-                                 for x in (cdr message)
-                                 collect " "
-                                 collect (%princ-to-string x)))))))
-  (setf emsg* message)
-  ;; (cl:error "***** SL error ~a: ~a" number message)
-  ;; Do not include number in the output:
-  (cl:error "***** ~*~a" number message))
+  (setq emsg* message)
+  (cl:error 'sl-error :errno number :errmsg message))
+
+(define-condition sl-error-internal (sl-error)
+  ((errmsg :initarg :errmsg))
+  (:documentation "Standard Lisp internal error including an error message")
+  (:report (lambda (condition stream)
+             (with-slots (errmsg) condition
+               (format stream "Standard Lisp error: ~a." errmsg)))))
+
+;; (declaim (inline error-internal)) ; this & defn must be before any calls!
+
+(defun error-internal (message &rest args)
+  "Report an error detected internally in sl-on-cl with message
+MESSAGE possibly followed by arguments ARGS as for `format'."
+  (cl:error 'sl-error-internal :errmsg
+            (if args
+                (cl:apply #'format nil message args)
+                message)))
+
+(define-condition sl-error-no-message (sl-error-internal)
+  ()
+  (:documentation "Standard Lisp error without error number or message")
+  (:report (lambda (condition stream)
+             (declare (ignore condition))
+             (format stream "Standard Lisp error without error number or message"))))
 
 (defun error1 ()
   "This is the simplest error return, without a message printed.
 It can be defined as ERROR(99,NIL) if necessary.
 In PSL it is throw('!$error!$,99)."
-  (cl:error "***** SL no-message error"))
+  (cl:error 'sl-error-no-message))
 
 (defvar *debug nil
-  "If non-nil then errorset does not catch errors,
-so they fall through to the debugger.")
-
-;; See also invoke-debugger in the CLHS.
+  "If non-nil then `errorset' always enters the debugger on errors
+as if its argument `tr' were true.")
 
 (defun errorset (u msgp tr)
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
@@ -1155,29 +1165,32 @@ trace-back sequence will be initiated on the selected output
 device. The traceback will display information such as unbindings
 of FLUID variables, argument lists and so on in an implementation
 dependent format."
-  (if (or *debug tr)
-      ;; Enter the debugger if an error arises.
-      ;; Probably not the optimal way to generate a traceback!
-      (list (eval u))
-      ;; Handle any error that arises.
-      (handler-case (list (eval u))     ; protected form
-        (simple-error
-            (err)
-          (let ((fmt (simple-condition-format-control err))
-                (args (simple-condition-format-arguments err)))
-            (when (and msgp (cdr args))
-              (fresh-line)
-              (cl:apply #'format t fmt args)
-              (cl:terpri))
-            (car args)))
-        (cl:error
-            (err)
-          (if msgp (format t "~&***** CL error: ~a~%" err))
-          ;; This doesn't really work because it breaks in the context
-          ;; of the errorset rather than the error!
-          ;; It also breaks building bootstrap REDUCE on SBCL!
-          ;; (break "errorset(~a)" u)
-          999))))
+  ;; TO DO: output to both stdout and currently selected output
+  ;; device
+  (handler-case (list (eval u))         ; protected form
+    (sl-error-no-message (condition)
+      (if (or tr *debug)
+          (invoke-debugger condition)
+          (return-from errorset nil)))
+    (sl-error-internal (condition)
+      (if msgp (format t "~&***** ~a~%" condition))
+      (if (or tr *debug)
+          (invoke-debugger condition)
+          (return-from errorset nil)))
+    (sl-error (condition)
+      (if msgp
+          (let ((msg (slot-value condition 'errmsg)))
+            ;; If MESSAGE is a list then it is displayed without top
+            ;; level parentheses:
+            (format t "~&***** ~:[~a~;~{~a~^ ~}~]~%" (listp msg) msg)))
+      (if (or tr *debug)
+          (invoke-debugger condition)
+          (return-from errorset (slot-value condition 'errno))))
+    (cl:error (condition)
+      (if msgp (format t "~&***** ~a~%" condition))
+      (if (or tr *debug)
+          (invoke-debugger condition)
+          (return-from errorset nil)))))
 
 
 ;;; Vectors
@@ -1802,7 +1815,7 @@ EXPR PROCEDURE PAIR(U, V);
   (declare (list u v))
   (the list
        (if (/= (cl:length u) (cl:length v))
-           (cl:error "000 Different length lists in PAIR")
+           (error-internal "Different length lists in PAIR")
            (cl:map 'list #'cons u v))))
 
 (import 'cl:reverse)
@@ -2075,7 +2088,7 @@ selected output file or LEN is negative or zero.
   (the fixnum
        (if len
            (if (or (not (integerp len)) (<= len 0))
-               (cl:error "~a is an invalid line length" len)
+               (error-internal "~a is an invalid line length" len)
                (prog1 %linelength (setq %linelength len)))
            %linelength)))
 
@@ -2167,7 +2180,7 @@ OUTPUT or the file can't be opened.
           (list 'file
                 (cl:open file :direction :output
                          :if-exists :supersede :if-does-not-exist :create)))
-         (t (cl:error "~a is not option for OPEN" how)))))
+         (t (error-internal "~a is not option for OPEN" how)))))
 
 (defun pagelength (len)
   (declare (ignore len))
@@ -2216,18 +2229,16 @@ This is the only function that actually produces graphical output."
     (cl:princ s))
   nil)
 
-(defun princ (u)
-  ;; Not used in REDUCE since redefined in rlisp/rsupport.red as
-  ;; symbolic procedure princ u; prin2 u;
-  "PRINC(U:id):id eval, spread
-U must be a single character id such as produced by EXPLODE or
-read by READCH or the value of !$EOL!$. The effect is the character
-U displayed upon the currently selected output device. The value of
-!$EOL!$ causes termination of the current line like a call to TERPRI."
-  (case u
-    ($eol$ (terpri))
-    (t (%prin-string (%princ-to-string u))))
-  u)
+;; PRINC(U:id):id eval, spread
+;; U must be a single character id such as produced by EXPLODE or
+;; read by READCH or the value of !$EOL!$. The effect is the character
+;; U displayed upon the currently selected output device. The value of
+;; !$EOL!$ causes termination of the current line like a call to TERPRI.
+
+;; The SL definition of PRINC is not used in REDUCE since PRINC is
+;; redefined in rlisp/rsupport.red as
+;; symbolic procedure princ u; prin2 u;
+;; so define it that way below and then flag it lose in clprolo.red.
 
 (defun print (u)
   "PRINT(U:any):any eval, spread
@@ -2249,7 +2260,7 @@ of U is returned."
   (typecase u
     (symbol (%prin-string (%prin1-id-to-string u)))
     (string (%prin-string (%prin1-string-to-string u)))
-    (float (%prin-string (%prin-float-to-string u)))
+    (cl:float (%prin-string (%prin-float-to-string u)))
     (vector (%prin-vector u #'prin1))
     (atom (%prin-string (prin1-to-string u)))
     ;; ((eq (car u) 'quote) (%prin-string "'") (prin1 (cadr u)))
@@ -2268,13 +2279,15 @@ in vector-notation.  The value of U is returned."
   (typecase u
     (symbol (%prin-string (%princ-id-to-string u)))
     (string (%prin-string u))
-    (float (%prin-string (%prin-float-to-string u)))
+    (cl:float (%prin-string (%prin-float-to-string u)))
     (vector (%prin-vector u #'prin2))
     (atom (%prin-string (princ-to-string u)))
     ;; ((eq (car u) 'quote) (%prin-string "'") (prin2 (cadr u)))
     ;; CSL doesn't treat quote specially
     (t (%prin-cons u #'prin2)))
   u)
+
+(defalias 'princ 'prin2)
 
 (defun %princ-id-to-string (u)
   "Convert identifier U to a string without any escapes."
@@ -2613,7 +2626,7 @@ stream by this function."
           ;; output-stream) or ('pipe output-stream . nil):
           ;; (list 'pipe (ext:run-shell-command command :input :stream :wait nil)))
           (list 'pipe (ext:make-pipe-output-stream command)))
-         (t (cl:error "~a is not (currently) an option for PIPE-OPEN" how)))))
+         (t (error-internal "~a is not (currently) an option for PIPE-OPEN" how)))))
 
 (defun channelflush (filehandle)        ; PSL
   (declare (type filehandle filehandle))
@@ -2802,8 +2815,7 @@ lisp> (string2list \"STRING\")
                ;; Was 127, but then reading rlisp/tok.red fails!
                ;; Should 128 -> nil as specified for PSL?
                (code-char x)
-               (cl:error
-                "***** SL error in `%character': ~d is not a character code" x))
+               (error-internal "~d is not a character code" x))
            (%id-to-char-invert-case x))))
 
 (defun list2string (l)                  ; PSL
@@ -3236,7 +3248,7 @@ When all done, execute FASLEND;~2%" name))
             (cl:open (setq %faslout-name.lisp (concat2 name ".lisp"))
                      :direction :output :if-exists :supersede
                      :external-format #+SBCL :UTF-8 #+CLISP charset:UTF-8))
-    (cl:error "Faslout: cannot open ~a" %faslout-name.lisp))
+    (error-internal "FASLOUT cannot open ~a" %faslout-name.lisp))
   (if %faslout-header
       (cl:princ %faslout-header %faslout-stream))
   (setf %faslout-saved-prettyprint (symbol-function 'prettyprint)
@@ -3255,11 +3267,11 @@ When all done, execute FASLEND;~2%" name))
 (defun faslend ()
   "Terminate a previous FASLOUT and generate the compiled file."
   (unless *writingfaslfile
-    (cl:error "FASLEND is only allowed after a previous FASLOUT"))
+    (error-internal "FASLEND is only allowed after a previous FASLOUT"))
   ;; First, tidy up after the call of FASLOUT:
   (unless
       (cl:close %faslout-stream)
-    (cl:error "Faslend: cannot close ~a" %faslout-name.lisp))
+    (error-internal "FASLEND cannot close ~a" %faslout-name.lisp))
   (setq *writingfaslfile nil
         *defn nil) ; necessary here if faslend not input as a statement
   (setf (symbol-function 'prettyprint) %faslout-saved-prettyprint)
@@ -3273,7 +3285,7 @@ When all done, execute FASLEND;~2%" name))
   ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
   ;;      ;; nil)
-  ;;      (cl:error "Error compiling ~a" %faslout-name.lisp))
+  ;;      (error-internal "Error compiling ~a" %faslout-name.lisp))
   )
 
 (defvar cursym*)
@@ -3415,3 +3427,5 @@ interpret otherwise.  The default is compile."
 ;; To do:
 ;; Use pathnames more consistently.
 ;; Revise documentation strings and function order to follow PSL manual more closely.
+
+;; Move implementation into a separate package on only export required symbols.  This should make profiling easier!
