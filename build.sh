@@ -4,6 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
+# Modified by Rainer Schöpf to support Armed Bear Common Lisp.
 
 # Compile all required fasl files and save a final REDUCE image.
 # Assume this script is run in the top-level CL REDUCE directory.
@@ -23,6 +24,7 @@ if [ "$lisp" = 'sbcl' ]; then
     faslext='fasl'
     if_sbcl=''
     if_clisp='%'
+    if_abcl='%'
 elif [ "$lisp" = 'clisp' ]; then
     runlisp='clisp -ansi -norc'
     runbootstrap='clisp -q -norc -M fasl.clisp/bootstrap.mem'
@@ -31,8 +33,18 @@ elif [ "$lisp" = 'clisp' ]; then
     faslext='fas'
     if_sbcl='%'
     if_clisp=''
+    if_abcl='%'
+elif [ "$lisp" = 'abcl' ]; then
+    runlisp='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit'
+    runbootstrap='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/bootstrap.mem'
+    runreduce='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/reduce.mem'
+    saveext='jar'
+    faslext='abcl'
+    if_sbcl='%'
+    if_clisp='%'
+    if_abcl=''
 else
-    echo 'Error: option -l sbcl/clisp is required'
+    echo 'Error: option -l sbcl/clisp/abcl is required'
     exit
 fi
 
