@@ -1,0 +1,15 @@
+Notes on running REDUCE on Common Lisp
+
+Booting
+
+Start CL.
+(load "sl-on-cl")
+(in-package :sl)
+(load "boot.sl")
+
+(begin2) reads following REDUCE input up to "end;" which must all be on the same line.
+
+Warns about undefined variables.  But this is only a warning and assignment works.
+
+Looks like boot might be running correctly!
+boot.el compiles under SBCL and the compiled version seems to run correctly.

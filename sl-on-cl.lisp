@@ -440,6 +440,14 @@ an out of range error occurs.
 ;;; Identifiers
 ;;; ===========
 
+(defmacro error-internal (message &rest args)
+  "Report an error detected internally in sl-on-cl with message
+MESSAGE possibly followed by arguments ARGS as for `format'."
+  `(cl:error 'sl-error-internal :errmsg
+             ,(if args
+                  `(format nil ,message ,@args)
+                  message)))
+
 (defun %id-to-char-invert-case (c)
   "As `character', but case-inverted."
   (declare (symbol c))
@@ -1116,16 +1124,6 @@ variables are not affected by the process."
              (with-slots (errmsg) condition
                (format stream "Standard Lisp error: ~a." errmsg)))))
 
-;; (declaim (inline error-internal)) ; this & defn must be before any calls!
-
-(defun error-internal (message &rest args)
-  "Report an error detected internally in sl-on-cl with message
-MESSAGE possibly followed by arguments ARGS as for `format'."
-  (cl:error 'sl-error-internal :errmsg
-            (if args
-                (cl:apply #'format nil message args)
-                message)))
-
 (define-condition sl-error-no-message (sl-error-internal)
   ()
   (:documentation "Standard Lisp error without error number or message")
@@ -1169,28 +1167,24 @@ dependent format."
   ;; device
   (handler-case (list (eval u))         ; protected form
     (sl-error-no-message (condition)
-      (if (or tr *debug)
-          (invoke-debugger condition)
-          (return-from errorset nil)))
+      (if (or tr *debug) (invoke-debugger condition))
+      nil)
     (sl-error-internal (condition)
       (if msgp (format t "~&***** ~a~%" condition))
-      (if (or tr *debug)
-          (invoke-debugger condition)
-          (return-from errorset nil)))
+      (if (or tr *debug) (invoke-debugger condition))
+      nil)
     (sl-error (condition)
       (if msgp
           (let ((msg (slot-value condition 'errmsg)))
             ;; If MESSAGE is a list then it is displayed without top
             ;; level parentheses:
             (format t "~&***** ~:[~a~;~{~a~^ ~}~]~%" (listp msg) msg)))
-      (if (or tr *debug)
-          (invoke-debugger condition)
-          (return-from errorset (slot-value condition 'errno))))
+      (if (or tr *debug) (invoke-debugger condition))
+      (slot-value condition 'errno))
     (cl:error (condition)
       (if msgp (format t "~&***** ~a~%" condition))
-      (if (or tr *debug)
-          (invoke-debugger condition)
-          (return-from errorset nil)))))
+      (if (or tr *debug) (invoke-debugger condition))
+      nil)))
 
 
 ;;; Vectors
@@ -3428,4 +3422,4 @@ interpret otherwise.  The default is compile."
 ;; Use pathnames more consistently.
 ;; Revise documentation strings and function order to follow PSL manual more closely.
 
-;; Move implementation into a separate package on only export required symbols.  This should make profiling easier!
+;; Move implementation into a separate package and only export required symbols.  This should make profiling easier!
