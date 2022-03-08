@@ -1,6 +1,6 @@
 ;;; sl-on-cl.lisp --- Standard Lisp on Common Lisp
 
-;; Copyright (C) 2018, 2019 Francis J. Wright
+;; Copyright (C) 2018, 2019, 2022 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 ;; Created: 4 November 2018
@@ -17,6 +17,9 @@
 ;; for running REDUCE (which provides its own REPL) on Common Lisp.
 ;; This implementation of Standard Lisp is lower-case.  It uses case
 ;; inversion of symbol names and is case-sensitive internally.
+
+;; For Common Lisp documentation see
+;; http://www.lispworks.com/documentation/HyperSpec/Front/
 
 (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
@@ -44,9 +47,9 @@
   (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
            :gensym :intern :get :remprop :error :expt :float :map
            :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
-           :delete :length :member :sublis :subst :rassoc :apply :eval
-           :function :close :open :princ :print :prin1 :read
-           :terpri :complexp :union :load :time
+           :delete :length :member :sort :sublis :subla :subst :rassoc
+           :apply :eval :function :close :open :princ :print :prin1
+           :read :terpri :complexp :union :load :time
            :char-downcase :char-upcase :string-downcase :mod
            :char-code :symbol-name :number)
 
@@ -1833,7 +1836,7 @@ EXPR PROCEDURE PAIR(U, V);
 ;;    RETURN W
 ;; END;
 
-(defalias 'reversip 'cl:nreverse)           ; PSL function
+(defalias 'reversip 'cl:nreverse)       ; PSL function
 
 (defun sassoc (u v fn)
   "SASSOC(U:any, V:alist, FN:function):any eval, spread
@@ -1845,6 +1848,13 @@ EXPR PROCEDURE SASSOC(U, V, FN);
       ELSE SASSOC(U, CDR V, FN);"
   (declare (list v) (type (function ()) fn))
   (or (cl:assoc u v :test #'equal) (funcall fn)))
+
+;; (import 'cl:sort)                       ; CSL function
+(defalias 'sort 'cl:sort)
+;; Defined this way so that it can be redefined in "rtools/sort.red"
+;; because this is what happens with CSL and PSL!  (The function sort
+;; is built into CSL and for PSL it is defined as an alias for gsort
+;; in "pslrend.red".)
 
 (defun sublis (x y)
   "SUBLIS(X:alist, Y:any):any eval, spread
@@ -1862,6 +1872,11 @@ EXPR PROCEDURE SUBLIS(X, Y);
                  END;"
   (declare (list x))
   (cl:sublis x y :test #'equal))
+
+(defun subla (x y)                      ; PSL function
+  "Eq version of sublis; replaces atoms only."
+  (declare (list x))
+  (cl:sublis x y :test #'eq))
 
 (defun subst (u v w)
   "SUBST(U:any, V:any, W:any):any eval, spread

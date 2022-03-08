@@ -14,6 +14,8 @@
 # Option -c ensures a clean build by deleting any previous build.
 # Option -f forces recompilation of all packages.
 
+# Do a clean build after updating Common Lisp!
+
 if getopts l: option; then lisp=$OPTARG; fi
 
 if [ "$lisp" = 'sbcl' ]; then
@@ -50,8 +52,8 @@ fi
 
 while getopts cf option
 do
-    if [ $option = c ]; then rm -rf fasl.$lisp log.$lisp;
-    elif [ $option = f ]; then force='!*forcecompile := t;';
+    if [ $option = c ]; then rm -rf  sl-on-cl.$faslext trace.$faslext fasl.$lisp log.$lisp
+    elif [ $option = f ]; then force='!*forcecompile := t;'
     fi
 done
 
@@ -82,6 +84,7 @@ package!-remake2('clprolo, nil);
 package!-remake2('revision, 'support);
 package!-remake2('clrend, nil);
 package!-remake2('entry, 'support);
+package!-remake2('smacros,'support);
 package!-remake2('remake, nil); % for building noncore packages
 
 % Create .dat files that list core and non-core modules to build:
@@ -182,9 +185,11 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (load!-package 'revision)
 (load!-package 'rlisp)
 (load!-package 'clrend)
+(load!-package 'smacros)
 (load!-package 'poly)
 (load!-package 'arith)
 (load!-package 'alg)
+(load!-package 'rtools)
 (load!-package 'mathpr)
 (load!-package 'entry)
 

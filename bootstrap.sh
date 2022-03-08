@@ -28,8 +28,6 @@ elif [ "$lisp" = 'clisp' ]; then
     if_abcl='%'
 elif [ "$lisp" = 'abcl' ]; then
     runlisp='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit'
-    runbootstrap='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/bootstrap.mem'
-    runreduce='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/reduce.mem'
     saveext='jar'
     faslext='abcl'
     if_sbcl='%'
@@ -100,10 +98,13 @@ rds(xxx := open("build.red",'input));
 (close xxx)
 
 (load!-package!-sources 'clprolo nil)
+(load!-package!-sources 'revision 'support)
 (load!-package!-sources 'rlisp 'rlisp)
+(load!-package!-sources 'smacros 'support)
 (load!-package!-sources 'clrend nil)
 (load!-package!-sources 'poly 'poly)
 (load!-package!-sources 'alg 'alg)
+(load!-package!-sources 'rtools 'rtools)  % https://sourceforge.net/p/reduce-algebra/code/5845/
 (load!-package!-sources 'arith 'arith)
 (load!-package!-sources 'entry 'support)
 (load!-package!-sources 'remake nil)
