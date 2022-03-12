@@ -7,6 +7,6 @@ boot.sl
 fasl*
 lib
 log*
-packages*
-reduce-algebra-code
+packages
 testlog*
+abcl-bin*

@@ -6,11 +6,12 @@
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 # Modified by Rainer Schöpf to support Armed Bear Common Lisp.
 
-# Build an initial bootstrap REDUCE image but no fasl files, which
+# Build an initial bootstrap REDUCE image without fasl files, which
 # does not form part of the final REDUCE system and should not need to
 # be rebuilt very often.  It is used (by build.sh) to compile REDUCE.
+# Assume this script is run in the top-level CL REDUCE directory.
 
-# Usage: ./bootstrap.sh -l sbcl/clisp
+# Usage: ./bootstrap.sh -l sbcl/clisp/abcl
 
 if getopts l: option; then lisp=$OPTARG; fi
 
@@ -27,7 +28,7 @@ elif [ "$lisp" = 'clisp' ]; then
     if_clisp=''
     if_abcl='%'
 elif [ "$lisp" = 'abcl' ]; then
-    runlisp='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit'
+    runlisp='java -jar abcl-bin-1.8.0/abcl.jar --noinit'
     saveext='jar'
     faslext='abcl'
     if_sbcl='%'
@@ -35,13 +36,13 @@ elif [ "$lisp" = 'abcl' ]; then
     if_abcl=''
 else
     echo 'Error: option -l sbcl/clisp/abcl is required'
-    exit
+    exit 1
 fi
 
 if [ ! -v reduce ]; then
     if [ -e './packages' ]; then export reduce=.
     elif [ -e '../packages' ]; then export reduce=..
-    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
     fi
 fi
 
@@ -49,12 +50,11 @@ mkdir -p log.$lisp           # -p avoids complaint if directory exists
 mkdir -p fasl.$lisp
 
 if [ "sl-on-cl.lisp" -nt "sl-on-cl.$faslext" ]
-then
-echo +++++ Compiling sl-on-cl
+then echo +++++ Compiling sl-on-cl
 $runlisp << XXX &> log.$lisp/sl-on-cl.blg
 (or (compile-file "sl-on-cl") (exit #+SBCL :code 1))
 XXX
-fi || { echo '***** Compilation failed'; exit; }
+fi || { echo '***** Compilation failed'; exit 1; }
 
 echo +++++ Building bootstrap REDUCE
 

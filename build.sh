@@ -37,9 +37,9 @@ elif [ "$lisp" = 'clisp' ]; then
     if_clisp=''
     if_abcl='%'
 elif [ "$lisp" = 'abcl' ]; then
-    runlisp='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit'
-    runbootstrap='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/bootstrap.mem'
-    runreduce='/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/reduce.mem'
+    runlisp='java -jar abcl-bin-1.8.0/abcl.jar --noinit'
+    runbootstrap='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/bootstrap.mem'
+    runreduce='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/reduce.mem'
     saveext='jar'
     faslext='abcl'
     if_sbcl='%'
@@ -47,7 +47,7 @@ elif [ "$lisp" = 'abcl' ]; then
     if_abcl=''
 else
     echo 'Error: option -l sbcl/clisp/abcl is required'
-    exit
+    exit 1
 fi
 
 while getopts cf option
@@ -60,12 +60,14 @@ done
 if [ ! -v reduce ]; then
     if [ -e './packages' ]; then export reduce=.
     elif [ -e '../packages' ]; then export reduce=..
-    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
     fi
 fi
 
 # Build an initial bootstrap REDUCE image if necessary:
-if [ ! -e fasl.$lisp/bootstrap.$saveext ]; then ./bootstrap.sh -l $lisp; fi
+if [ ! -e fasl.$lisp/bootstrap.$saveext ]
+then ./bootstrap.sh -l $lisp
+fi || { echo '***** Building bootstrap REDUCE failed'; exit 1; }
 
 mkdir -p log.$lisp           # -p avoids complaint if directory exists
 
@@ -115,6 +117,10 @@ end;
 bye;
 XXX
 
+if [ ! -e fasl.$lisp/core-packages.dat -o ! -e fasl.$lisp/noncore-packages.dat ]
+then echo '***** Running bootstrap REDUCE failed'; exit 1
+fi
+
 # Compile the "core" packages, each in a separate invocation of
 # bootstrap REDUCE to avoid adverse interactions:
 
@@ -152,7 +158,7 @@ echo +++++ Compiling sl-on-cl
 $runlisp << XXX &> log.$lisp/sl-on-cl.blg
 (or (compile-file "sl-on-cl") (exit #+SBCL :code 1))
 XXX
-fi || { echo '***** Compilation failed'; exit; }
+fi || { echo '***** Compilation failed'; exit 1; }
 
 if [ "trace.lisp" -nt "trace.$faslext" ]
 then
@@ -161,7 +167,7 @@ $runlisp << XXX &> log.$lisp/trace.blg
 (load "sl-on-cl")
 (or (compile-file "trace") (exit 1))
 XXX
-fi || { echo '***** Compilation failed'; exit; }
+fi || { echo '***** Compilation failed'; exit 1; }
 
 echo +++++ Creating the REDUCE image file
 
