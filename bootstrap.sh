@@ -65,6 +65,14 @@ time $runlisp << XXX &> log.$lisp/bootstrap.blg
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 #+CLISP (setq custom:*suppress-check-redefinition* t
               custom:*compile-warnings* nil)
+#+ABCL (progn
+  (require :abcl-contrib)
+  (require :asdf-jar) ;; seems to imply (require "asdf")
+  ;; Process .asd files in the current directory only.
+  (asdf:initialize-source-registry
+    `(:source-registry (:directory ,*default-pathname-defaults*)
+      :ignore-inherited-configuration))
+)
 
 (standard-lisp)
 
@@ -130,9 +138,12 @@ rds(xxx := open("build.red",'input));
 
 XXX
 
+if [ ! -e fasl.$lisp/bootstrap.$saveext ]
+then echo '***** Building bootstrap REDUCE failed'; exit 1;
+else
 echo +++++ Bootstrap REDUCE built
-
 echo 'Possible errors:'
 grep --ignore-case '\*\*\*\*\*\|\<error\>' log.$lisp/bootstrap.blg
+fi
 
 echo $'\a'

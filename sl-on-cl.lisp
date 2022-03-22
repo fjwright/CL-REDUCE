@@ -30,11 +30,11 @@
               custom:*compile-warnings* nil)
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
-         (require :sb-posix))
+                  (require :sb-posix))
 
-#+ABCL (eval-when (:load-toplevel :execute)
-         (require :abcl-contrib)
-         (require :asdf-jar))
+#+ABCL (eval-when (:compile-toplevel :load-toplevel :execute)
+                  (require :abcl-contrib)
+                  (require :asdf-jar))
 
 (defpackage :standard-lisp
   (:nicknames :sl)
@@ -3413,7 +3413,7 @@ When all done, execute FASLEND;~2%" name))
   (ext:saveinitmem (concat "fasl.clisp/" name ".mem")
                    :init-function #'reduce-init-function
                    :quiet t :norc t)
-  #+ABCL (asdf-jar:package (intern name ) :verbose t)
+  #+ABCL (asdf-jar:package name :verbose t)
 )
 
 (pushnew :standard-lisp *features*)

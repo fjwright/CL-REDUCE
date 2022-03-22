@@ -38,8 +38,8 @@ elif [ "$lisp" = 'clisp' ]; then
     if_abcl='%'
 elif [ "$lisp" = 'abcl' ]; then
     runlisp='java -jar abcl-bin-1.8.0/abcl.jar --noinit'
-    runbootstrap='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/bootstrap.mem'
-    runreduce='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl/reduce.mem'
+    runbootstrap='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/bootstrap.mem'
+    runreduce='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/reduce.mem'
     saveext='jar'
     faslext='abcl'
     if_sbcl='%'
@@ -66,8 +66,8 @@ fi
 
 # Build an initial bootstrap REDUCE image if necessary:
 if [ ! -e fasl.$lisp/bootstrap.$saveext ]
-then ./bootstrap.sh -l $lisp
-fi || { echo '***** Building bootstrap REDUCE failed'; exit 1; }
+then ./bootstrap.sh -l $lisp || exit 1
+fi
 
 mkdir -p log.$lisp           # -p avoids complaint if directory exists
 

@@ -1,0 +1,21 @@
+From:	Rainer Schöpf <rainer.schoepf@gmx.net>
+Sent:	Tuesday, 10 November 2020 16:44
+To:	Francis Wright
+Cc:	Rainer Schöpf
+Subject:	Reduce on Common Lisp doesn't build
+
+Follow Up Flag:	Follow up
+Flag Status:	Flagged
+
+Hi Francis,
+
+in revision 5452 Arthur added a line
+
+!!minnorm := 2.0^(-1022);
+
+to arith/rounded.red that triggers a floating point overflow in %prin-float-to-string.  That happens for 
+very small floating point numbers (below 1e-300 or so).
+
+I believe that %prin-float-to-string needs to handle these small numbers differently.
+
+  Rainer
