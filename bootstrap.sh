@@ -17,23 +17,19 @@ if getopts l: option; then lisp=$OPTARG; fi
 
 if [ "$lisp" = 'sbcl' ]; then
     runlisp='sbcl'
+    runlispfile='sbcl --load'
+    saveext='img'
     faslext='fasl'
-    if_sbcl=''
-    if_clisp='%'
-    if_abcl='%'
 elif [ "$lisp" = 'clisp' ]; then
     runlisp='clisp -ansi'
+    runlispfile='clisp -ansi lisp-file'
+    saveext='mem'
     faslext='fas'
-    if_sbcl='%'
-    if_clisp=''
-    if_abcl='%'
 elif [ "$lisp" = 'abcl' ]; then
     runlisp='java -jar abcl-bin-1.8.0/abcl.jar --noinit'
+    runlispfile='java -jar abcl-bin-1.8.0/abcl.jar --noinit --load'
     saveext='jar'
     faslext='abcl'
-    if_sbcl='%'
-    if_clisp='%'
-    if_abcl=''
 else
     echo 'Error: option -l sbcl/clisp/abcl is required'
     exit 1
@@ -58,85 +54,7 @@ fi || { echo '***** Compilation failed'; exit 1; }
 
 echo +++++ Building bootstrap REDUCE
 
-time $runlisp << XXX &> log.$lisp/bootstrap.blg
-(load "sl-on-cl")
-#-DEBUG (declaim (optimize speed))
-#+DEBUG (declaim (optimize debug safety))
-#+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
-#+CLISP (setq custom:*suppress-check-redefinition* t
-              custom:*compile-warnings* nil)
-#+ABCL (progn
-  (require :abcl-contrib)
-  (require :asdf-jar) ;; seems to imply (require "asdf")
-  ;; Process .asd files in the current directory only.
-  (asdf:initialize-source-registry
-    `(:source-registry (:directory ,*default-pathname-defaults*)
-      :ignore-inherited-configuration))
-)
-
-(standard-lisp)
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% STANDARD LISP SYNTAX FROM NOW ON! %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-(setq !*verboseload t)
-(setq !*redefmsg nil)           % Just duplicates CL warnings!
-
-(cl:defparameter !*init!-time!* (time))
-
-(cl:defvar !*argnochk t)
-(cl:defvar !*int nil)  % Prevents input buffer being saved.
-(cl:defvar !*msg nil)
-
-% Do not use fasl version of "boot.sl": the CL compiler may optimize
-% away (i.e. discard) uses of fluid variables that are needed later in
-% the build process!
-
-(cond ((filep "boot.sl") (load "boot.sl"))
-      ((filep "../psl/boot.sl") (load "../psl/boot.sl"))
-      (t (error 0 "Cannot find boot file.") (exit 1)))
-
-$if_clisp (setq !*comp t)  % It's faster in some lisps if we compile.
-$if_abcl (setq !*comp t)  % It's faster in some lisps if we compile.
-
-(cl:defvar xxx)
-(begin2)
-rds(xxx := open("build.red",'input));
-(close xxx)
-
-(load!-package!-sources 'clprolo nil)
-(load!-package!-sources 'revision 'support)
-(load!-package!-sources 'rlisp 'rlisp)
-(load!-package!-sources 'smacros 'support)
-(load!-package!-sources 'clrend nil)
-(load!-package!-sources 'poly 'poly)
-(load!-package!-sources 'alg 'alg)
-(load!-package!-sources 'rtools 'rtools)  % https://sourceforge.net/p/reduce-algebra/code/5845/
-(load!-package!-sources 'arith 'arith)
-(load!-package!-sources 'entry 'support)
-(load!-package!-sources 'remake nil)
-
-(setq !*comp nil)
-
-% (load "compiler")
-
-(prog nil
-   (terpri)
-   (prin2 "Time to build bootstrap REDUCE: ")
-   (prin2 (quotient (difference (time) !*init!-time!*) 1000.0))
-   (prin2t " secs")
-   (prin2 "Heap left: ")
-   (prin2 (gtheap))
-   (prin2t " bytes")
-)
-
-(initreduce)
-(setq date!* (date))
-(setq version!* "Bootstrap REDUCE")
-(save!-reduce!-image "bootstrap")
-
-XXX
+time $runlispfile bootstrap &> log.$lisp/bootstrap.blg
 
 if [ ! -e fasl.$lisp/bootstrap.$saveext ]
 then echo '***** Building bootstrap REDUCE failed'; exit 1;
