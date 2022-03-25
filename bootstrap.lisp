@@ -1,5 +1,12 @@
 ;; Common Lisp code to build a REDUCE image for bootstrapping
 (load "sl-on-cl")
+
+(unless (sl:getenv "reduce")
+  ;; No easy way to support setenv in ABCL, so $reduce must be set explicitly!
+  (cond #-ABCL ((probe-file "./packages") (sl:setenv "reduce" "."))
+        #-ABCL ((probe-file "../packages") (sl:setenv "reduce" ".."))
+        (t (print "Error: cannot find packages directory.  Please set $reduce.") (sl:exit 1))))
+
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
 #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
@@ -11,8 +18,7 @@
          ;; Process .asd files in the current directory only.
          (asdf:initialize-source-registry
           `(:source-registry (:directory ,*default-pathname-defaults*)
-                             :ignore-inherited-configuration))
-         )
+                             :ignore-inherited-configuration)))
 
 (standard-lisp)
 

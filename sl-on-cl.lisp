@@ -57,6 +57,8 @@
   #+SBCL (:import-from :sb-posix :getenv)
 
   #+CLISP (:import-from :ext :quit :gc :getenv)
+
+  #+ABCL (:import-from :ext :getenv)
   )
 
 (in-package :standard-lisp)
@@ -3164,17 +3166,18 @@ directory."
 
 (defalias 'filep 'probe-file)           ; PSL
 
-#+ABCL
-(defun getenv (string)
-    (java:jstatic "getenv" "java.lang.System" string))
-
+(defun setenv (name value)
+  "Create or update an environment variable"
+  #+SBCL (sb-posix:setenv name value 1) ; non-zero => overwrite
+  #+CLISP (setf (ext:getenv name) value))
 
 #+SBCL (import 'sb-posix:getpid)
 #+CLISP (defalias 'getpid 'os:process-id)
 
 (defun exit (&optional code)
   #+SBCL (sb-ext:exit :code code)
-  #+CLISP (ext:exit code))
+  #+CLISP (ext:exit code)
+  #+ABCL (ext:exit :status code))
 
 
 ;;; Compile and load
