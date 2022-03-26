@@ -3166,18 +3166,20 @@ directory."
 
 (defalias 'filep 'probe-file)           ; PSL
 
+#+SBCL (import 'sb-posix:getpid)
+#+CLISP (defalias 'getpid 'os:process-id)
+
 (defun setenv (name value)
   "Create or update an environment variable"
   #+SBCL (sb-posix:setenv name value 1) ; non-zero => overwrite
   #+CLISP (setf (ext:getenv name) value))
 
-#+SBCL (import 'sb-posix:getpid)
-#+CLISP (defalias 'getpid 'os:process-id)
-
 (defun exit (&optional code)
   #+SBCL (sb-ext:exit :code code)
   #+CLISP (ext:exit code)
   #+ABCL (ext:exit :status code))
+
+(export '(getenv setenv exit))          ; used in "bootstrap.lisp"
 
 
 ;;; Compile and load

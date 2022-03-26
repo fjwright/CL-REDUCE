@@ -5,7 +5,8 @@
   ;; No easy way to support setenv in ABCL, so $reduce must be set explicitly!
   (cond #-ABCL ((probe-file "./packages") (sl:setenv "reduce" "."))
         #-ABCL ((probe-file "../packages") (sl:setenv "reduce" ".."))
-        (t (print "Error: cannot find packages directory.  Please set $reduce.") (sl:exit 1))))
+        (t (format t "~%Error: cannot find packages directory.  Please set $reduce.~2%")
+           (sl:exit 1))))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))

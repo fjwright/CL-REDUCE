@@ -30,22 +30,22 @@
 (ensure-directories-exist (format nil "log.~A/" lisp))
 (ensure-directories-exist (format nil "fasl.~A/" lisp))
 
-(let (fasl (format nil "sl-on-cl.~A" faslext))
+(let ((fasl (format nil "sl-on-cl.~A" faslext)))
   (unless (and (probe-file fasl)
                (> (file-write-date fasl) (file-write-date "sl-on-cl.lisp")))
-    (print "+++++ Compiling sl-on-cl")
+    (format t "~%+++++ Compiling sl-on-cl~2%")
     (unless
         (with-open-file (*standard-output*
                          (format nil "log.~A/sl-on-cl.blg" lisp)
                          :direction :output :if-exists :supersede)
           (compile-file "sl-on-cl"))       ; &> log.$lisp/sl-on-cl.blg ???
-      (print "***** Compilation failed")
+      (format t "~%***** Compilation failed~%")
       #+SBCL (sb-ext:exit :code 1)
       #+CLISP (ext:exit 1)
       #+ABCL (ext:exit :status 1))
     ))
 
-(print "+++++ Building bootstrap REDUCE")
+(format t "~%+++++ Building bootstrap REDUCE~2%")
 (with-open-file (*standard-output*
                  (format nil "log.~A/bootstrap.blg" lisp)
                  :direction :output :if-exists :supersede)
