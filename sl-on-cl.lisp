@@ -3375,6 +3375,10 @@ When all done, execute FASLEND;~2%" name))
   (setq *readtable* (copy-readtable nil))
   nil)
 
+#+SBCL #-win32
+;; In SBCL 2.2+ it seems to be necessary to unlock the sb-kernel package:
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (sb-ext:unlock-package :sb-kernel))
 #+SBCL
 ;; See function `toplevel-repl' in "sbcl-1.4.14/src/code/toplevel.lisp".
 (defun reduce-init-function ()

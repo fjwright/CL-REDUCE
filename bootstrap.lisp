@@ -1,4 +1,6 @@
-;; Common Lisp code to build a REDUCE image for bootstrapping
+;; Lisp code to build a REDUCE image for bootstrapping on Common Lisp
+;; FJW, April 2022
+
 (load "sl-on-cl")
 
 (unless (sl:getenv "reduce")
@@ -46,7 +48,74 @@
 
 (setq !*comp t)  % It's faster in some lisps if we compile.
 
-(load "build.sl")
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Start of build.sl %%
+%%%%%%%%%%%%%%%%%%%%%%%
+
+% The following code is essentially a Standard Lisp version
+% of "packages/support/build.red".  It primarily defines the function
+% load!-package!-sources, which is required for bootstrapping.
+
+(global '(loaded!-packages!*))
+
+% Since some of the early modules may have tabs in them, we must redefine
+% seprp. Note that there is a TAB in this definition and that may not be
+% readily visible when merely editing the file.
+
+(de seprp (u) (or (eq u '! ) (eq u '!	) (eq u !$eol!$)))
+
+(de mkfil (u)
+   (cond
+      ((stringp u) u)
+      ((not (idp u)) (typerr u "file name"))
+      (t (string!-downcase u))))
+
+% Convert the module u in package directory v, or the current
+% directory if v is nil, to a (lower-case) file name relative to the
+% directory containing packages.  Also defined in remake.red!
+
+(de module2!-to!-file (u v)
+   (progn
+      (setq u (concat2 (mkfil u) ".red"))
+      (cond
+         (v
+            (concat2
+               "$reduce/packages/"
+               (concat2 (mkfil v) (concat2 "/" u))))
+         (t u))))
+
+(de inmodule (u v)
+   (prog (file)
+      (terpri)
+      (terpri)
+      (prin2 "+++ Reading file: ")
+      (prin2 (setq file (module2!-to!-file u v)))
+      (terpri)
+      (setq u (open file 'input))
+      (setq v (rds u))
+      (setq cursym!* '!*semicol!*)
+      (prog nil
+   whilelabel
+         (cond ((not (not (eq cursym!* 'end))) (return nil)))
+         (progn (prin2 (eval (form (xread nil)))) (prin2 " "))
+         (go whilelabel))
+      (rds v)
+      (close u)))
+
+(de load!-package!-sources (u v)
+   (prog (!*int !*echo w)
+      (inmodule u v)
+      (cond ((setq w (get u 'package)) (setq w (cdr w))))
+      (prog nil
+   whilelabel
+         (cond ((not w) (return nil)))
+         (progn (inmodule (car w) v) (setq w (cdr w)))
+         (go whilelabel))
+      (setq loaded!-packages!* (cons u loaded!-packages!*))))
+
+%%%%%%%%%%%%%%%%%%%%%
+%% End of build.sl %%
+%%%%%%%%%%%%%%%%%%%%%
 
 (load!-package!-sources 'clprolo nil)
 (load!-package!-sources 'revision 'support)
