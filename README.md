@@ -1,7 +1,7 @@
 REDUCE on Common Lisp
 =====================
 
-**Francis Wright, March 2022**
+**Francis Wright, April 2022**
 
 From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Guy L. Steele Jr.](https://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html):
 
@@ -12,12 +12,13 @@ From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Gu
 The files in this directory are intended to build and run the current distributed version of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support explicitly
 
 * the native Microsoft (MS) Windows and Linux builds of [SBCL](http://www.sbcl.org/) (Steel Bank Common Lisp),
-* the [Cygwin](https://cygwin.com/) and Linux builds of [CLISP](https://clisp.sourceforge.io/),
-* Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) on Windows and Linux.  (Thanks to Rainer Schöpf.)
+* the [Cygwin](https://cygwin.com/) and Linux builds of [CLISP](https://clisp.sourceforge.io/).
 
 Here, "Linux" means current or recent versions of Ubuntu and Fedora.
 
-I have recently built REDUCE revision 6275 using SBCL 2.2.2, GNU CLISP 2.49+ on Windows, and using SBCL 2.0.1.debian, GNU CLISP 2.49.92 on Ubuntu 20.04.4 LTS.  In all cases, REDUCE runs simple test input correctly, but I have not done any careful testing.
+I have recently built REDUCE revision 6275 using SBCL 2.2.2 and GNU CLISP 2.49+ on Windows, and using SBCL 2.0.1.debian and GNU CLISP 2.49.92 on Ubuntu 20.04.4 LTS.  In all cases, REDUCE runs simple test input correctly, but I have not done any careful testing.
+
+There is also some preliminary support for the Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) thanks to Rainer Schöpf, but it is not yet possible to preserve Lisp images so this version is not yet usable.
 
 Building REDUCE
 ---------------
@@ -32,15 +33,14 @@ The build directory must contain the following files from the common-lisp direct
 
 * `sl-on-cl.lisp`
 * `trace.lisp`
+* `bootstrap.lisp`
 * `clprolo.red`
 * `clrend.red`
-* `build.red`
 * `remake.red`
-* `bootstrap.sh`
 * `build.sh`
 * `gnuintfc.red`
 
-On Linux, ensure that the `*.sh` files are executable.
+On Linux, ensure that `build.sh` is executable.
 
 If you do not build within the REDUCE Subversion file tree then the following two additional steps are necessary:
 
@@ -68,7 +68,7 @@ where `<lisp>` is either `sbcl`, `clisp` or `abcl`.
 
 The build process should create two sub-directories in the build directory called `fasl.<lisp>` and `log.<lisp>`.  The whole `log*` directory and the `*.lisp`, `*.dat` and `bootstrap.*` files in the `fasl*` directory could be deleted after the build; only the files `fasl.<lisp>/reduce.*` and `fasl.<lisp>/*.fas*` are required to run REDUCE.  (I will probably delete superfluous files automatically at some later date, but for now they are useful for debugging.)  Note that the SBCL, CLISP and ABCL builds are completely independent since they use different compiled file extensions and build sub-directories.
 
-The build script supports two optional flags: `-c` provides a clean build, by first deleting all the files that get built; `-f` forces all REDUCE packages to be recompiled, even if they appear to be up to date.  To build using an updated version of Common Lisp, you should do a clean build, i.e.
+The build script supports some optional flags: `-c` provides a clean build, by first deleting all the files that get built; `-f` forces all REDUCE packages to be recompiled, even if they appear to be up to date; `-b` builds only bootstrap REDUCE; `-h` displays help.  To build using an updated version of Common Lisp, you should do a clean build, i.e.
 
     ./build.sh -l <lisp> -c
 
@@ -158,14 +158,8 @@ I cannot see any way to support the facilities for restricting execution time on
 To do
 -----
 
-Optimise SL-on-CL to improve its speed.
-
-Better error handling.
-
-Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
-
-Replace shell scripts with Common Lisp code to build REDUCE portably?
-
-Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
-
-Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
+* Optimise SL-on-CL to improve its speed.
+* Better error handling.
+* Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
+* Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
+* Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
