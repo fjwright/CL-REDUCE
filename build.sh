@@ -15,7 +15,7 @@
 # This script must be run in the top-level CL REDUCE directory.
 # Always do a clean build after updating your version of Common Lisp!
 
-help () {
+function help {
     echo 'Build REDUCE on Common Lisp.'
     echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl [-c/f] [-b]'
     echo 'Option -h displays this help message and exits.'
@@ -90,10 +90,9 @@ fi || { echo '***** Compilation failed'; exit 1; }
 # Build an initial bootstrap REDUCE image if necessary #
 ########################################################
 
-shopt -s expand_aliases
-
-alias grep_errors=\
-"grep --ignore-case '\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/\$p.blg | uniq"
+function grep_errors {
+    grep --ignore-case '\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq
+}
 
 if [ ! -e fasl.$lisp/bootstrap.$saveext ]
 then
@@ -104,7 +103,7 @@ then
         echo '***** Building bootstrap REDUCE failed'; exit 1
     else
         echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
-        p=bootstrap; grep_errors
+        grep_errors bootstrap
     fi
     echo $'\a'
 fi
@@ -186,7 +185,7 @@ package!-remake '$p;
 bye;
 XXX
 
-grep_errors
+grep_errors $p
 
 done
 
@@ -314,7 +313,7 @@ if '$p eq 'gnuplot then
 bye;
 XXX
 
-grep_errors
+grep_errors $p
 
 done
 
