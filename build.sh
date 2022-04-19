@@ -90,6 +90,11 @@ fi || { echo '***** Compilation failed'; exit 1; }
 # Build an initial bootstrap REDUCE image if necessary #
 ########################################################
 
+shopt -s expand_aliases
+
+alias grep_errors=\
+"grep --ignore-case '\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/\$p.blg | uniq"
+
 if [ ! -e fasl.$lisp/bootstrap.$saveext ]
 then
     echo '+++++ Building bootstrap REDUCE...'
@@ -98,8 +103,8 @@ then
     then
         echo '***** Building bootstrap REDUCE failed'; exit 1
     else
-        echo '+++++ Built bootstrap REDUCE.  Possible errors:'
-        grep --ignore-case '\*\*\*\*\*\|\<error\>' log.$lisp/bootstrap.blg
+        echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
+        p=bootstrap; grep_errors
     fi
     echo $'\a'
 fi
@@ -109,11 +114,6 @@ if [ $bootstraponly ]; then exit; fi
 ################
 # Build REDUCE #
 ################
-
-shopt -s expand_aliases
-
-alias grep_errors=\
-"grep --ignore-case '\*\{5\} \| \<error\>\|COMMON-LISP:ERROR' log.$lisp/\$p.blg | uniq"
 
 # First, compile fasl files for non-package source files:
 $runbootstrap << XXX &> log.$lisp/build.blg
@@ -203,7 +203,7 @@ then
 XXX
 fi || { echo '***** Compiling trace failed'; exit 1; }
 
-echo '+++++ Building the REDUCE image file'
+echo $'\n+++++ Building the REDUCE image file...'
 
 # Start a new invocation of Lisp and load the key modules compiled
 # above.  Then save a final REDUCE image that will be used below to
@@ -266,6 +266,8 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (save!-reduce!-image "reduce")
 
 XXX
+
+echo $'\n+++++ Built the REDUCE image file\n'
 
 # Finally, compile the "noncore" packages using reduce.img rather than
 # bootstrap.img.
