@@ -29,10 +29,9 @@ while getopts l:cfbh option
 do
     case $option in
         l) lisp=$OPTARG;;
-        c) echo '+++++ Clean build'
-           rm -rf  sl-on-cl.$faslext trace.$faslext fasl.$lisp log.$lisp;;
+        c) clean=true;;
         f) force='!*forcecompile := t;';;
-        b) bootstraponly='true';;
+        b) bootstraponly=true;;
         h) help;;
     esac
 done
@@ -63,6 +62,11 @@ case $lisp in
     *)
         echo 'Error: option "-l sbcl/clisp/abcl" is required'; help;;
 esac
+
+if [ $clean ]; then
+    echo '+++++ Clean build'
+    rm -rf sl-on-cl.$faslext trace.$faslext fasl.$lisp log.$lisp
+fi
 
 if [ ! -v reduce ]; then
     if [ -e './packages' ]; then export reduce=.
