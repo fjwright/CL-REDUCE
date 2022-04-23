@@ -118,6 +118,8 @@ if [ $bootstraponly ]; then exit; fi
 # Build REDUCE #
 ################
 
+echo '+++++ Building REDUCE...'
+
 # First, compile fasl files for non-package source files:
 $runbootstrap << XXX &> log.$lisp/build.blg
 symbolic; $force
@@ -321,4 +323,4 @@ grep_errors $p
 
 done
 
-echo $'\a'
+echo $'\n+++++ Built REDUCE.\a'
