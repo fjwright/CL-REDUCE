@@ -5,6 +5,7 @@
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
+# Support for Clozure Common Lisp by Marco Ferraris.
 
 # 1. Compile sl-on-cl, which implements Standard Lisp on Common Lisp.
 # 2. Build an initial bootstrap REDUCE image without REDUCE fasl files,
@@ -59,8 +60,22 @@ case $lisp in
         runreduce='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/reduce.mem'
         saveext='jar'
         faslext='abcl';;
+    'ccl')
+        runlisp='ccl'
+        runlispfile='ccl -l'
+		runbootstrap='ccl -I fasl.ccl/bootstrap.image'
+        runreduce='ccl -I fasl.ccl/reduce.image'
+        saveext='image'
+        case $(uname -s) in
+            Darwin)             # macOS
+                faslext='dx64fsl';;
+            Linux)
+                faslext='lx64fsl';;
+            CYGWIN*)            # MS Windows
+                faslext='wx64fsl';;
+        esac;;
     *)
-        echo 'Error: option "-l sbcl/clisp/abcl" is required'; help;;
+        echo 'Error: option "-l sbcl/clisp/abcl/ccl" is required'; help;;
 esac
 
 if [ $clean ]; then
@@ -68,7 +83,7 @@ if [ $clean ]; then
     rm -rf sl-on-cl.$faslext trace.$faslext fasl.$lisp log.$lisp
 fi
 
-if [ ! -v reduce ]; then
+if [ -z "$reduce" ]; then
     if [ -e './packages' ]; then export reduce=.
     elif [ -e '../packages' ]; then export reduce=..
     else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
