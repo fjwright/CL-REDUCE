@@ -3514,6 +3514,7 @@ interpret otherwise.  The default is compile."
    file-write-date                      ; used in remake
    catch throw                          ; used in rubi_red
    sleep                                ; used in crack
+   #+SBCL sb-ext:*muffled-warnings*     ; used in build.sh
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for

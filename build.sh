@@ -18,7 +18,7 @@
 
 function help {
     echo 'Build REDUCE on Common Lisp.'
-    echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl [-c/f] [-b]'
+    echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl/ccl [-c/f] [-b]'
     echo 'Option -h displays this help message and exits.'
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
@@ -119,7 +119,7 @@ then
     time $runlispfile bootstrap &> log.$lisp/bootstrap.blg
     if [ ! -e fasl.$lisp/bootstrap.$saveext ]
     then
-        echo '***** Building bootstrap REDUCE failed'; exit 1
+        echo $'\n***** Building bootstrap REDUCE failed'; exit 1
     else
         echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
         grep_errors bootstrap
@@ -259,7 +259,8 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (setq date!* (date))
 (setq version!* (cl:format nil "REDUCE (Free ~a version, revision ~a)"
       (cond ((memq 'sbcl lispsystem!*) "SBCL")
-            ((memq 'clisp lispsystem!*) "CLISP"))
+            ((memq 'clisp lispsystem!*) "CLISP")
+            ((memq 'ccl lispsystem!*) "CCL"))
       revision!*))
 
 (initreduce)
@@ -268,7 +269,7 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (setq !*redefmsg t)             % display redefinition messages
 
 (cond ((memq 'sbcl lispsystem!*)
-       (setq sb-ext:*muffled-warnings* 'warning)))
+       (setq !*muffled-warnings!* 'warning))) % exported from sb-ext
 
 (prog nil
    (terpri)
@@ -287,7 +288,12 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 
 XXX
 
-echo $'\n+++++ Built the REDUCE image file\n'
+if [ ! -e fasl.$lisp/reduce.$saveext ]
+then
+    echo $'\n***** Building the REDUCE image failed'; exit 1
+else
+    echo $'\n+++++ Built the REDUCE image file\n'
+fi
 
 # Finally, compile the "noncore" packages using reduce.img rather than
 # bootstrap.img.
