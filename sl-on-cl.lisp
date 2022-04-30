@@ -3195,7 +3195,7 @@ not sucessful, the value Nil is returned."
   ;; Expand environment variables, "." and "..":
   (setq dir (substitute-in-file-name (namestring dir)))
   (setq dir (merge-pathnames dir))
-  (and (probe-file dir) (:cd dir)))
+  (and (probe-file dir) (ccl::cd dir)))
 
 (defalias 'chdir 'cd)                   ; CSL / MS Windows
 
