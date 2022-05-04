@@ -2,6 +2,7 @@
 *.abcl
 *.fas*
 *.lib
+*.wx64fsl
 Background Information.lnk
 Backup.lnk
 boot.sl
