@@ -3225,12 +3225,16 @@ not sucessful, the value Nil is returned."
 ;;; ================
 
 (defconstant %fasl-directory-pathname
-  (make-pathname :directory '(:relative
-                              #+SBCL "fasl.sbcl"
-                              #+CLISP "fasl.clisp"
-                              #+ABCL "fasl.abcl"
-                              #+CCL "fasl.ccl"))
-  "Pathname of fasl directory.")
+  ;; *Must* be independent of the current working directory, i.e.
+  ;; absolute.
+  (merge-pathnames
+   (make-pathname :directory '(:relative
+                               #+SBCL "fasl.sbcl"
+                               #+CLISP "fasl.clisp"
+                               #+ABCL "fasl.abcl"
+                               #+CCL "fasl.ccl"))
+   (truename *default-pathname-defaults*))
+  "Absolute pathname of fasl directory.")
 
 (defvar *verboseload nil
   "*verboseload = [Initially: nil] switch
