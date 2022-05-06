@@ -32,8 +32,9 @@
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
 
-#+CLISP (setq custom:*suppress-check-redefinition* t
-              custom:*compile-warnings* nil)
+#+CLISP (eval-when (:compile-toplevel :load-toplevel :execute)
+          (setq custom:*suppress-check-redefinition* t
+                custom:*compile-warnings* nil))
 
 #+ABCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :abcl-contrib)
