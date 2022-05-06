@@ -1482,10 +1482,13 @@ the negative truncation of the absolute value of U divided by the
 absolute value of V. An error occurs if division by zero is attempted:
 ***** Attempt to divide by 0 in QUOTIENT"
   ;; Can probably implement this better using generic functions!
+  ;; In CLISP on macOS, / throws an error on underflow.
+  ;; Just return 0, as do all other Common Lisps I have tried.
   (declare (type number u v))
   (the number
        (if (or (floatp u) (floatp v))
-           (/ u v)
+           #+CLISP (ext:without-floating-point-underflow (/ u v))
+           #-CLISP (/ u v)
            (values (truncate u v)))))
 
 (defalias 'remainder 'cl:rem
