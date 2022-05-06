@@ -3496,7 +3496,7 @@ A list of identifiers indicating system properties.")
 #+(or WIN32 WINDOWS) (pushnew 'WIN32 lispsystem*) ; SBCL, CCL
 #+CYGWIN (pushnew 'CYGWIN lispsystem*)            ; CLISP
 #+UNIX (pushnew 'UNIX lispsystem*)      ; appears together with CYGWIN
-#+OS-MACOSX (pushnew 'MACOS lispsystem*) ; CCL
+#+(or MACOS OS-MACOSX) (pushnew 'MACOS lispsystem*) ; CLISP, CCL
 
 #+SBCL
 (defun compilation (on)
