@@ -5,7 +5,6 @@
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
-# Support for Clozure Common Lisp by Marco Ferraris.
 
 # 1. Compile sl-on-cl, which implements Standard Lisp on Common Lisp.
 # 2. Build an initial bootstrap REDUCE image without REDUCE fasl files,
@@ -18,7 +17,7 @@
 
 function help {
     echo 'Build REDUCE on Common Lisp.'
-    echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl/ccl [-c/f] [-b]'
+    echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl [-c/f] [-b]'
     echo 'Option -h displays this help message and exits.'
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
@@ -44,7 +43,9 @@ case $lisp in
         runbootstrap='sbcl --noinform --core fasl.sbcl/bootstrap.img'
         runreduce='sbcl --noinform --core fasl.sbcl/reduce.img'
         saveext='img'
-        faslext='fasl';;
+        faslext='fasl'
+        if_sbcl='' %%% MF - 2022-04-25
+        ;;
     'clisp')
         runlisp='clisp -ansi -norc'
         runlispfile='clisp -ansi'
@@ -52,31 +53,30 @@ case $lisp in
         runbootstrap='clisp -q -norc -M fasl.clisp/bootstrap.mem'
         runreduce='clisp -q -norc -M fasl.clisp/reduce.mem'
         saveext='mem'
-        faslext='fas';;
+        faslext='fas'
+        if_sbcl='%' %%% MF - 2022-04-25
+        ;;
     'abcl')
         runlisp='java -jar abcl-bin-1.8.0/abcl.jar --noinit'
         runlispfile='java -jar abcl-bin-1.8.0/abcl.jar --noinit --load'
         runbootstrap='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/bootstrap.mem'
         runreduce='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/reduce.mem'
         saveext='jar'
-        faslext='abcl';;
-    'ccl')
-        if [ "$(type -ft ccl64)" ]; then CCL='ccl64'; else CCL='ccl'; fi
-        runlisp="$CCL"
-        runlispfile="$CCL -l"
-		runbootstrap="$CCL -I fasl.ccl/bootstrap.image"
-        runreduce="$CCL -I fasl.ccl/reduce.image"
+        faslext='abcl'
+        if_sbcl='%' %%% MF - 2022-04-25
+        ;;
+
+    'ccl64') %%% MF - 2022-04-25
+        runlisp='ccl64'
+        runlispfile='ccl64 -l'
+		runbootstrap='ccl64 -I fasl.ccl64/bootstrap.image'
+        runreduce='ccl64 -I fasl.ccl64/reduce.image'
         saveext='image'
-        case $(uname -s) in     # see CCL64 shell script in Clozure distribution
-            Darwin)             # macOS
-                faslext='dx64fsl';;
-            Linux)
-                faslext='lx64fsl';;
-            CYGWIN*)            # MS Windows
-                faslext='wx64fsl';;
-        esac;;
-    *)
-        echo 'Error: option "-l sbcl/clisp/abcl/ccl" is required'; help;;
+        faslext='dx64fsl'
+        if_sbcl='%'
+        ;;
+   *)
+        echo 'Error: option "-l sbcl/clisp/abcl/ccl64" is required'; help;;
 esac
 
 if [ $clean ]; then
@@ -102,8 +102,7 @@ if [ "sl-on-cl.lisp" -nt "sl-on-cl.$faslext" ]
 then
     echo '+++++ Compiling sl-on-cl'
     $runlisp << XXX &> log.$lisp/sl-on-cl.blg
-(or (compile-file "sl-on-cl")
-    #+CCL (quit 1) #-CCL (exit #+SBCL :code 1))
+(or (compile-file "sl-on-cl") (exit #+SBCL :code 1))
 XXX
 fi || { echo '***** Compilation failed'; exit 1; }
 
@@ -121,7 +120,7 @@ then
     time $runlispfile bootstrap &> log.$lisp/bootstrap.blg
     if [ ! -e fasl.$lisp/bootstrap.$saveext ]
     then
-        echo $'\n***** Building bootstrap REDUCE failed'; exit 1
+        echo '***** Building bootstrap REDUCE failed'; exit 1
     else
         echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
         grep_errors bootstrap
@@ -137,12 +136,11 @@ if [ $bootstraponly ]; then exit; fi
 
 echo '+++++ Building REDUCE...'
 
+# First, compile fasl files for non-package source files:
 $runbootstrap << XXX &> log.$lisp/build.blg
 symbolic; $force
 
 off redefmsg;
-
-% First, compile fasl files for non-package source files:
 
 package!-remake2('clprolo, nil);
 package!-remake2('revision, 'support);
@@ -151,7 +149,7 @@ package!-remake2('entry, 'support);
 package!-remake2('smacros,'support);
 package!-remake2('remake, nil); % for building noncore packages
 
-% Second, create .dat files that list core and non-core modules to build:
+% Create .dat files that list core and non-core modules to build:
 
 begin
   scalar w, i, s, core, noncore;
@@ -262,8 +260,7 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (setq date!* (date))
 (setq version!* (cl:format nil "REDUCE (Free ~a version, revision ~a)"
       (cond ((memq 'sbcl lispsystem!*) "SBCL")
-            ((memq 'clisp lispsystem!*) "CLISP")
-            ((memq 'ccl lispsystem!*) "CCL"))
+            ((memq 'clisp lispsystem!*) "CLISP"))
       revision!*))
 
 (initreduce)
@@ -271,8 +268,11 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (setq !*verboseload nil)        % inhibit loading messages
 (setq !*redefmsg t)             % display redefinition messages
 
-(cond ((memq 'sbcl lispsystem!*)
-       (setq !*muffled-warnings!* 'warning))) % exported from sb-ext
+%%% MF - 2022-04-25
+%(cond ((memq 'sbcl lispsystem!*)
+%       (setq sb-ext:*muffled-warnings* 'warning)))
+%%% MF - 2022-04-25
+$if_sbcl (setq sb-ext:*muffled-warnings* 'warning)
 
 (prog nil
    (terpri)
@@ -291,12 +291,7 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 
 XXX
 
-if [ ! -e fasl.$lisp/reduce.$saveext ]
-then
-    echo $'\n***** Building the REDUCE image failed'; exit 1
-else
-    echo $'\n+++++ Built the REDUCE image file\n'
-fi
+echo $'\n+++++ Built the REDUCE image file\n'
 
 # Finally, compile the "noncore" packages using reduce.img rather than
 # bootstrap.img.
@@ -307,8 +302,8 @@ do
     $runreduce << XXX &> log.$lisp/$p.blg
 symbolic; $force
 
+%load compiler;
 on verboseload;
-off redefmsg;
 
 if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
 else if '$p eq 'mrvlimit then load_package taylor
@@ -317,6 +312,8 @@ else if '$p eq 'rubi_red then flag('(flush),'rlisp)
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
    switch usermode >>;
+
+load remake;
 
 !*argnochk := t;
 
@@ -330,7 +327,7 @@ begin
   for each x in w do put(car x, 'folder, cadr x)
 end;
 
-package!-remake '$p; % autoloads remake
+package!-remake '$p;
 
 % Temporary hack to make gnuplot package work on Common Lisp:
 if '$p eq 'gnuplot then

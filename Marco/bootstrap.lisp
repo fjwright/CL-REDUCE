@@ -3,12 +3,12 @@
 
 (load "sl-on-cl")
 
-;; (unless (sl:getenv "reduce")
-;;   ;; No easy way to support setenv in ABCL, so $reduce must be set explicitly!
-;;   (cond #-ABCL ((probe-file "./packages") (sl:setenv "reduce" "."))
-;;         #-ABCL ((probe-file "../packages") (sl:setenv "reduce" ".."))
-;;         (t (format t "~%Error: cannot find packages directory.  Please set $reduce.~2%")
-;;            (sl:exit 1))))
+(unless (sl:getenv "reduce")
+  ;; No easy way to support setenv in ABCL, so $reduce must be set explicitly!
+  (cond #-ABCL ((probe-file "./packages") (sl:setenv "reduce" "."))
+        #-ABCL ((probe-file "../packages") (sl:setenv "reduce" ".."))
+        (t (format t "~%Error: cannot find packages directory.  Please set $reduce.~2%")
+           (sl:exit 1))))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
@@ -23,12 +23,13 @@
           `(:source-registry (:directory ,*default-pathname-defaults*)
                              :ignore-inherited-configuration)))
 
-#+CCL
-;; (progn
-  ;; (require :asdf)
+;;; MF - 2022-04-25
+#+CCL 
+(progn
+  (require :asdf)
   (setq ccl:*warn-if-redefine* nil
         ccl::*suppress-compiler-warnings* t)
-  ;; )
+  )
 
 (standard-lisp)
 
@@ -53,7 +54,7 @@
       ((filep "../psl/boot.sl") (load "../psl/boot.sl"))
       (t (error 0 "Cannot find boot file.") (exit 1)))
 
-(setq !*comp t)  % It's faster in some lisps if we compile.
+% (setq !*comp t)  % It's faster in some lisps if we compile.
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %% Start of build.sl %%
@@ -153,4 +154,8 @@
 (initreduce)
 (setq date!* (date))
 (setq version!* "Bootstrap REDUCE")
+%%% MF - 2022-04-25
+%(cond ((or (memq 'sbcl lispsystem!*) (memq 'clisp lispsystem!*))
+%       (save!-reduce!-image "bootstrap")))
+%%% MF - 2022-04-25
 (save!-reduce!-image "bootstrap")

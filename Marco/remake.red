@@ -3,6 +3,7 @@ module remake; % Update the fast loading (fasl) version of a file.
 % Authors: Martin L. Griss and Anthony C. Hearn.
 % Modified by ACN for the Sourceforge version.
 % Modified again by FJW for REDUCE on Common Lisp.
+% Modified by Rainer Schöpf to support Armed Bear Common Lisp.
 % The standard version is "packages/support/remake.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -37,8 +38,16 @@ fluid '(!*break
         lispsystem!*);
 
 global '(loaded!-modules!* fasl!-dir!* fasl!-ext!*);
-% fasl!-dir!* and fasl!-ext!* depend on the Common Lisp version and,
-% for CCL, the OS and so are defined as constants in "sl-on-cl.lisp".
+
+if 'sbcl memq lispsystem!* then <<
+   fasl!-dir!* := "fasl.sbcl/";  fasl!-ext!* := ".fasl"
+>> else if 'clisp memq lispsystem!* then <<
+   fasl!-dir!* := "fasl.clisp/";  fasl!-ext!* := ".fas"
+>> else if 'abcl memq lispsystem!* then <<
+   fasl!-dir!* := "fasl.abcl/";  fasl!-ext!* := ".abcl"
+>> else if 'ccl64 memq lispsystem!* then <<
+   fasl!-dir!* := "fasl.ccl64/";  fasl!-ext!* := ".dx64fsl"
+>> else error(0, "Unrecognised Common Lisp implementation when setting fasl directory.");
 
 symbolic procedure olderfaslp(u,v);
    % Return t if file u does not exist or is older than file v.
@@ -194,6 +203,10 @@ symbolic procedure upd!-fasl1(u,v,w);
       if !*loadall and w and w neq u then <<
          evload list w;
          loaded!-modules!* := union(loaded!-modules!*, list w) >>;
+	  % The following is not currently useful for Common Lisp.
+	  % E.g. x = (setq *fastfor t) for the factor module.
+      % if x := get(u,'compiletime)
+      %   then <<prin2 "*** Compile time: "; prin2t x; lispeval x>>;
       u := mkfil u;
       lprim list("Compiling",u,"...");
       terpri();

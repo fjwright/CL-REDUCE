@@ -1,0 +1,43 @@
+> set reduce=.
+
+> sbcl --noinform
+
+(load "sl-on-cl")
+(standard-lisp)
+(load "boot.sl")
+
+(cl:defvar xxx)
+(begin2)
+rds(xxx := open("build.red",'input));
+(close xxx)
+
+(load!-package!-sources 'clprolo nil)
+
+(inmodule 'rlisp 'rlisp)
+(inmodule 'module 'rlisp)
+(inmodule 'newtok 'rlisp)
+(inmodule 'rsupport 'rlisp)
+(inmodule 'slfns 'rlisp)
+(inmodule 'superv 'rlisp)
+(inmodule 'tok 'rlisp)
+(inmodule 'xread 'rlisp)
+(inmodule 'lpri 'rlisp)
+(inmodule 'parser 'rlisp)
+
+
+(inmodule 'block 'rlisp)  % error in #if
+(inmodule 'form 'rlisp)
+(inmodule 'proc 'rlisp)
+(inmodule 'forstat 'rlisp)
+(inmodule 'loops 'rlisp)
+(inmodule 'statmisc 'rlisp)
+(inmodule 'smacro 'rlisp)
+(inmodule 'io 'rlisp)
+(inmodule 'infix 'rlisp)
+(inmodule 'switch 'rlisp)
+(inmodule 'where 'rlisp)
+(inmodule 'list 'rlisp)
+(inmodule 'array 'rlisp)
+(inmodule 'inter 'rlisp)
+(inmodule 'charname 'rlisp)
+(inmodule 'rprintf 'rlisp)
