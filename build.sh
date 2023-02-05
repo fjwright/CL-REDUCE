@@ -19,21 +19,24 @@
 function help {
     echo 'Build REDUCE on Common Lisp.'
     echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl/ccl [-c/f] [-b]'
-    echo 'Option -h displays this help message and exits.'
+    echo 'Option -r sets the REDUCE revision number (overriding the default).'
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
     echo 'Option -b builds only the bootstrap REDUCE image.'
+    echo 'Option -h displays this help message and exits.'
     exit 1
 }
 
-while getopts l:cfbh option
+while getopts l:r:cfbh option
 do
     case $option in
         l) lisp=$OPTARG;;
+        r) revision=$OPTARG;;
         c) clean=true;;
         f) force='!*forcecompile := t;';;
         b) bootstraponly=true;;
         h) help;;
+        ?) exit 1;;
     esac
 done
 
@@ -78,6 +81,14 @@ case $lisp in
     *)
         echo 'Error: option "-l sbcl/clisp/abcl/ccl" is required'; help;;
 esac
+
+if [ "$revision" ]; then
+    if [[ "$revision" =~ ^[[:digit:]]+$ ]]; then
+        echo '+++++ REDUCE revision number set to' $revision
+    else
+        unset -v revision
+    fi
+fi
 
 if [ $clean ]; then
     echo '+++++ Clean build'
@@ -145,7 +156,10 @@ off redefmsg;
 % First, compile fasl files for non-package source files:
 
 package!-remake2('clprolo, nil);
-package!-remake2('revision, 'support);
+if "$revision" = "" then
+   package!-remake2('revision, 'support)
+else
+   revision!* := "$revision";
 package!-remake2('clrend, nil);
 package!-remake2('entry, 'support);
 package!-remake2('smacros,'support);
@@ -245,7 +259,8 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (load "module")                 % for definition of load-package
 (load "clprolo")                % initial CL specific code
 
-(load!-package 'revision)
+(cond ((equal "$revision" "") (load!-package 'revision))
+      (t (setq revision!* "$revision")))
 (load!-package 'rlisp)
 (load!-package 'clrend)
 (load!-package 'smacros)
