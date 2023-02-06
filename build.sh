@@ -18,7 +18,7 @@
 
 function help {
     echo 'Build REDUCE on Common Lisp.'
-    echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl/ccl [-c/f] [-b]'
+    echo 'Usage: ./build.sh [-h] -l sbcl/clisp/abcl/ccl [-r revision] [-c/f] [-b]'
     echo 'Option -r sets the REDUCE revision number (overriding the default).'
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
@@ -82,14 +82,6 @@ case $lisp in
         echo 'Error: option "-l sbcl/clisp/abcl/ccl" is required'; help;;
 esac
 
-if [ "$revision" ]; then
-    if [[ "$revision" =~ ^[[:digit:]]+$ ]]; then
-        echo '+++++ REDUCE revision number set to' $revision
-    else
-        unset -v revision
-    fi
-fi
-
 if [ $clean ]; then
     echo '+++++ Clean build'
     rm -rf sl-on-cl.$faslext trace.$faslext fasl.$lisp log.$lisp
@@ -100,6 +92,15 @@ if [ -z "$reduce" ]; then
     elif [ -e '../packages' ]; then export reduce=..
     else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
     fi
+fi
+
+if [ -z "$revision" ]; then
+    revision=$(svnversion -n $(readlink -n "$reduce/packages"))
+fi
+if [[ "$revision" =~ ^[[:digit:]]+$ ]]; then
+    echo '+++++ REDUCE revision number set to' $revision
+else
+    unset -v revision
 fi
 
 mkdir -p log.$lisp           # -p avoids complaint if directory exists
