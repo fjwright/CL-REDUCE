@@ -94,8 +94,13 @@ if [ -z "$reduce" ]; then
     fi
 fi
 
-if [ -z "$revision" ]; then
-    revision=$(svnversion -n $(readlink -n "$reduce/packages"))
+if [ -z "$revision" ] && type svnversion > /dev/null; then
+    packages="$reduce/packages"
+    # If $packages is a symlink then follow it (if possible):
+    if [ -L $packages ] && type readlink > /dev/null; then
+        packages="$(readlink -n "$packages")"
+    fi
+    revision="$(svnversion -n "$packages")"
 fi
 if [[ "$revision" =~ ^[[:digit:]]+$ ]]; then
     echo '+++++ REDUCE revision number set to' $revision
