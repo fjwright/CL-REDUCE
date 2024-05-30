@@ -14,6 +14,8 @@ I have built REDUCE using SBCL 2.4.5, Cygwin GNU CLISP 2.49+ and CCL 1.12.2 on W
 
 The support for CCL is based on code provided by Marco Ferraris.  There is also some preliminary support for the Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) thanks to Rainer Schöpf, but it is not yet possible to preserve Lisp images so this version is not yet usable.
 
+I recommend SBCL because in my experience it is the fastest and it is easy to install and set up.  CLISP is slow, and CCL is tricky to set up (at least, on MS Windows).
+
 ## Building REDUCE
 
 Create a build directory somewhere convenient.  I recommend that you use [Subversion](https://en.wikipedia.org/wiki/Apache_Subversion) (`svn`) to install and maintain a copy of the whole [REDUCE trunk](https://sourceforge.net/p/reduce-algebra/code/HEAD/tree/trunk/), in which case you can use the `common-lisp` sub-directory as your build directory with no additions, and the build process should determine the REDUCE revision automatically; see [Determining the REDUCE revision](#determining-the-reduce-revision).
