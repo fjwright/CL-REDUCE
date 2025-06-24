@@ -1,6 +1,6 @@
 ;;; sl-on-cl.lisp --- Standard Lisp on Common Lisp
 
-;; Copyright (C) 2018-2024 Francis J. Wright
+;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
 ;; Created: 4 November 2018
@@ -9,6 +9,7 @@
 ;; - SBCL (Steel Bank Common Lisp); see http://www.sbcl.org/
 ;; - CLISP; see https://clisp.sourceforge.io/
 ;; - CCL (Clozure Common Lisp); see https://ccl.clozure.com/
+;; - ECL (Embeddable Common Lisp); see https://ecl.common-lisp.dev/
 
 ;; Support for Armed Bear Common Lisp by Rainer Schöpf, but not yet complete!
 ;; Support for Clozure Common Lisp by Marco Ferraris.
@@ -3094,6 +3095,7 @@ should be true with current REDUCE.  Ignore case."
 ;;    (sb-ext:run-program "cmd" (cons "/c" command)
 ;;                     :search t :output t :escape-arguments nil)))
 
+#+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
 (defun system (command)                 ; PSL
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
@@ -3206,6 +3208,7 @@ not sucessful, the value Nil is returned."
   (setq dir (merge-pathnames dir))
   (and (probe-file dir) (namestring (ccl::cd dir))))
 
+#+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
 (defalias 'chdir 'cd)                   ; CSL / MS Windows
 
 (defalias 'filep 'probe-file)           ; PSL
@@ -3213,17 +3216,19 @@ not sucessful, the value Nil is returned."
 #+SBCL (import 'sb-posix:getpid)
 #+CLISP (defalias 'getpid 'os:process-id)
 
-#-CCL
+#+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
 (defun setenv (name value)
   "Create or update an environment variable"
   #+SBCL (sb-posix:setenv name value 1) ; non-zero => overwrite
   #+CLISP (setf (ext:getenv name) value))
 
+#+(or SBCL CLISP ABCL CCL ECL)  ; to avoid a warning with other Lisps!
 (defun exit (&optional code)
   #+SBCL (sb-ext:exit :code code)
   #+CLISP (ext:exit code)
   #+ABCL (ext:exit :status code)
-  #+CCL (ccl:quit code))
+  #+CCL (ccl:quit code)
+  #+ECL (ext:quit code))
 
 (export '(getenv setenv exit))          ; used in "bootstrap.lisp"
 
@@ -3498,6 +3503,7 @@ When all done, execute FASLEND;~2%" name))
   "Information about the Lisp system supporting REDUCE.
 A list of identifiers indicating system properties.")
 
+#+(or SBCL CLISP ABCL CCL) ; to avoid a syntax error with other Lisps!
 (pushnew #+SBCL 'SBCL #+CLISP 'CLISP #+ABCL 'ABCL #+CCL 'CCL lispsystem*)
 ;; The symbols UNIX, CYGWIN and WIN32 are used in gnuintfc.red.
 #+(or WIN32 WINDOWS) (pushnew 'WIN32 lispsystem*) ; SBCL, CCL
