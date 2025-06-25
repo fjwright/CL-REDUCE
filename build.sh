@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-06-25 17:27:13 franc>
+# Time-stamp: <2025-06-25 18:02:44 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -123,12 +123,12 @@ if [ "sl-on-cl.lisp" -nt "fasl.$lisp/sl-on-cl.$faslext" ]
 then
     cp sl-on-cl.lisp fasl.$lisp
     echo '+++++ Compiling sl-on-cl'
-    pushd fasl.$lisp
+    cd fasl.$lisp
     $runlisp << XXX &> ../log.$lisp/sl-on-cl.blg
 (or (compile-file "sl-on-cl")
     #+CCL (quit 1) #-CCL (exit #+SBCL :code 1))
 XXX
-    popd
+    cd ..
 fi || { echo '***** Compilation failed'; exit 1; }
 
 ########################################################
