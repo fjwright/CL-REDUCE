@@ -1,7 +1,14 @@
 ;; Lisp code to build a REDUCE image for bootstrapping on Common Lisp
-;; FJW, April 2022
 
-(load "sl-on-cl")
+;; FJW -- Time-stamp: <2025-06-25 17:25:57 franc>
+
+(load (concat "fasl."
+              #+SBCL "sbcl"
+              #+CLISP "clisp"
+              #+ABCL "abcl"
+              #+CCL "ccl"
+              #+ECL "ecl"
+              "/sl-on-cl"))   ; could probably make this more elegant!
 
 ;; (unless (sl:getenv "reduce")
 ;;   ;; No easy way to support setenv in ABCL, so $reduce must be set explicitly!

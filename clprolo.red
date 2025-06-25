@@ -2,6 +2,7 @@
 
 % Author: Anthony C. Hearn.
 % Modified by FJW for REDUCE on Common Lisp.
+% Time-stamp: <2025-06-25 17:28:34 franc>
 % The standard version is "packages/support/pslprolo.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
