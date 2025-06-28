@@ -2,7 +2,7 @@ module rend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp.
-% Time-stamp: <2025-06-25 17:28:00 franc>
+% Time-stamp: <2025-06-28 16:58:16 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -192,22 +192,22 @@ remflag('(begin),'go);
 
 symbolic procedure begin;
    begin
-    !*echo := not !*int;
-    !*extraecho := t;
-    ifl!* := ipl!* := ofl!* := nil;
-    if null date!* then go to a;
-    if !*loadversion then errorset('(load entry),nil,nil);
-        linelength 80;
-        prin2 version!*;
-        prin2 ", ";
-    prin2 date!*;
-    prin2t " ...";
-    !*mode := if getd 'addsq then 'algebraic else 'symbolic;
-    if !*mode eq 'algebraic then !*break := nil;
-       %since most REDUCE users won't use LISP
-    date!* := nil;
-  a:    if errorp errorset('(begin1),nil,nil) then go to a;
-    prin2t "Entering LISP ... "
+      !*echo := not !*int;
+      !*extraecho := t;
+      ifl!* := ipl!* := ofl!* := nil;
+      if null date!* then go to a;
+      if !*loadversion then errorset!*('(load entry),nil);
+      linelength 80;
+      prin2 version!*;
+      prin2 ", build date ";
+      prin2 date!*;
+      prin2t " ...";
+      !*mode := if getd 'addsq then 'algebraic else 'symbolic;
+      if !*mode eq 'algebraic then !*break := nil;
+                                        % since most REDUCE users won't use LISP
+      date!* := nil;
+   a: if errorp errorset!*('(begin1),nil) then go to a;
+      prin2t "Entering LISP ... "
    end;
 
 flag('(begin),'go);

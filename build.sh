@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-06-25 18:02:44 franc>
+# Time-stamp: <2025-06-28 16:35:15 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -169,10 +169,6 @@ off redefmsg;
 % First, compile fasl files for non-package source files:
 
 package!-remake2('clprolo, nil);
-if "$revision" = "" then
-   package!-remake2('revision, 'support)
-else
-   revision!* := "$revision";
 package!-remake2('clrend, nil);
 package!-remake2('entry, 'support);
 package!-remake2('smacros,'support);
@@ -181,26 +177,28 @@ package!-remake2('remake, nil); % for building noncore packages
 % Second, create .dat files that list core and non-core modules to build:
 
 begin
-  scalar w, i, s, core, noncore;
-  i := open("$reduce/packages/package.map", 'input);
-  s := rds i;
-  w := read();
-  rds s;
-  close i;
-  for each x in w do
-     if member('csl, x) and member('psl, x) then <<
-        if member('core, x) then core := x . core
-        else noncore := x . noncore >>;
-  i := open("fasl.$lisp/core-packages.dat", 'output);
-  s := wrs i;
-  for each x in reverse core do print car x;
-  wrs s;
-  close i;
-  i := open("fasl.$lisp/noncore-packages.dat", 'output);
-  s := wrs i;
-  for each x in reverse noncore do print car x;
-  wrs s;
-  close i;
+   scalar w, i, s, core, noncore;
+   i := open("$reduce/packages/package.map", 'input);
+   s := rds i;
+   w := read();
+   rds s;
+   close i;
+   for each x in w do     % x is a row of package.map
+      if member('csl, x) and member('psl, x) then <<
+         if member('core, x) then
+            << if not (car x eq 'revision) or "$revision" = "" then
+               core := car x . core >>
+         else noncore := car x . noncore >>;
+   i := open("fasl.$lisp/core-packages.dat", 'output);
+   s := wrs i;
+   for each x in reverse core do print x;
+   wrs s;
+   close i;
+   i := open("fasl.$lisp/noncore-packages.dat", 'output);
+   s := wrs i;
+   for each x in reverse noncore do print x;
+   wrs s;
+   close i;
 end;
 
 bye;
@@ -222,13 +220,13 @@ symbolic; $force
 off redefmsg;
 
 begin
-  scalar w, i, s;
-  i := open("$reduce/packages/package.map", 'input);
-  s := rds i;
-  w := read();
-  rds s;
-  close i;
-  for each x in w do put(car x, 'folder, cadr x)
+   scalar w, i, s;
+   i := open("$reduce/packages/package.map", 'input);
+   s := rds i;
+   w := read();
+   rds s;
+   close i;
+   for each x in w do put(car x, 'folder, cadr x)
 end;
 
 package!-remake '$p;
@@ -349,13 +347,13 @@ else if '$p eq 'tmprint then <<
 !*argnochk := t;
 
 begin
-  scalar w, i, s;
-  i := open("$reduce/packages/package.map", 'input);
-  s := rds i;
-  w := read();
-  rds s;
-  close i;
-  for each x in w do put(car x, 'folder, cadr x)
+   scalar w, i, s;
+   i := open("$reduce/packages/package.map", 'input);
+   s := rds i;
+   w := read();
+   rds s;
+   close i;
+   for each x in w do put(car x, 'folder, cadr x)
 end;
 
 package!-remake '$p; % autoloads remake
