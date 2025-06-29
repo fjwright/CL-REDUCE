@@ -2766,7 +2766,7 @@ Records the number of times that the garbage collector has been
 invoked.  Gcknt* may be reset to another value to record counts
 incrementally, as desired.")
 
-#+SBCL (progn                           ; use sb-ext:*after-gc-hooks*
+#+SBCL (progn                          ; <use sb-ext:*after-gc-hooks*>
 
 (defvar *previous-gc-run-time* 0
   "Total (internal) GC time up to previous garbage collection.")
@@ -2789,16 +2789,21 @@ A function hung on the garbage collection hook."
 ;; similar that use garbage collection to provide an interrupt by
 ;; assigning a function to the variable `!*gc!-hook!*`:
 
-(defvar *gc-hook*)
+;; June 2025
+;; WARNING: Problem running after-GC hook #<FUNCTION %RUN-GC-HOOK>:
+;;   invalid number of arguments: 0
 
-(defun %run-gc-hook ()
-  "Run the REDUCE procedure (if any) assigned to the variable *gc-hook*."
-  (if (fboundp *gc-hook*) (funcall *gc-hook* nil))
-  nil)
+;; (defvar *gc-hook*)
 
-(push #'%run-gc-hook sb-ext:*after-gc-hooks*)
+;; (defun %run-gc-hook (arg)
+;;   "Run the REDUCE procedure (if any) assigned to the variable *gc-hook*."
+;;   (format t "+++ Value of %run-gc-hook argument: ~a" arg)
+;;   (if (fboundp *gc-hook*) (funcall *gc-hook* nil))
+;;   nil)
 
-)                                       ; use sb-ext:*after-gc-hooks*
+;; (push #'%run-gc-hook sb-ext:*after-gc-hooks*)
+
+)                                     ; </use sb-ext:*after-gc-hooks*>
 
 (defun gtheap ()
   "Size of the free dynamic space in bytes."

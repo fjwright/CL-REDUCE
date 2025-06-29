@@ -2,7 +2,7 @@ module rend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp.
-% Time-stamp: <2025-06-28 16:58:16 franc>
+% Time-stamp: <2025-06-29 12:19:28 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -190,7 +190,10 @@ call to REDUCE, and sets the appropriate variables;
 
 remflag('(begin),'go);
 
-symbolic procedure begin;
+% The ! escape below is to avoid confusing GNU Emacs REDUCE mode; it
+% should not upset REDUCE itself.
+
+symbolic procedure !begin;
    begin
       !*echo := not !*int;
       !*extraecho := t;
@@ -270,11 +273,6 @@ symbolic procedure ttab n;  while posn() < n do prin2 " ";
 
 symbolic inline procedure explodec x; explode2 x;
 
-
-% Make ON DEFN load the prettyprinter if necessary and
-% OFF DEFN reinstate property lists saved during ON DEFN:
-% put('defn, 'simpfg, '((t (!require '!eslpretty))
-%           (nil (!esl!-reinstate!-plists))));
 
 #if (memq 'sbcl lispsystem!*)
 % Make the COMP switch control the SBCL evaluation mode:
