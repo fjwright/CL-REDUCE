@@ -3,6 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
+;; Time-stamp: <2025-06-30 15:53:53 franc>
 ;; Created: 4 November 2018
 
 ;; Current target implementations of Common Lisp:

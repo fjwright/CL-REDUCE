@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-06-28 16:35:15 franc>
+# Time-stamp: <2025-06-30 17:46:29 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -12,7 +12,8 @@
 # 2. Build an initial bootstrap REDUCE image without REDUCE fasl files,
 #    which does not form part of the final REDUCE system and should not
 #    need to be rebuilt very often.  It is used to compile REDUCE.
-# 3. Compile all required fasl files and save a final REDUCE image.
+# 3. Compile trace, which provides rudimentary function tracing.
+# 4. Compile all required fasl files and save a final REDUCE image.
 
 # This script must be run in the top-level CL REDUCE directory.
 # Always do a clean build after updating your version of Common Lisp!
@@ -85,7 +86,7 @@ esac
 
 if [ $clean ]; then
     echo '+++++ Clean build'
-    rm -rf sl-on-cl.$faslext trace.$faslext fasl.$lisp log.$lisp
+    rm -rf fasl.$lisp log.$lisp
 fi
 
 if [ -z "$reduce" ]; then
@@ -121,13 +122,14 @@ mkdir -p fasl.$lisp
 
 if [ "sl-on-cl.lisp" -nt "fasl.$lisp/sl-on-cl.$faslext" ]
 then
-    cp sl-on-cl.lisp fasl.$lisp
-    echo '+++++ Compiling sl-on-cl'
+    echo; echo '+++++ Compiling sl-on-cl'
+    ln sl-on-cl.lisp fasl.$lisp
     cd fasl.$lisp
     $runlisp << XXX &> ../log.$lisp/sl-on-cl.blg
 (or (compile-file "sl-on-cl")
     #+CCL (quit 1) #-CCL (exit #+SBCL :code 1))
 XXX
+    rm sl-on-cl.lisp
     cd ..
 fi || { echo '***** Compilation failed'; exit 1; }
 
@@ -238,18 +240,26 @@ grep_errors $p
 
 done
 
-###############################
-# Build the REDUCE image file #
-###############################
+##############################
+# Compile trace if necessary #
+##############################
 
-if [ "trace.lisp" -nt "trace.$faslext" ]
+if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
 then
     echo '+++++ Compiling trace'
-    $runlisp << XXX &> log.$lisp/trace.blg
+    ln trace.lisp fasl.$lisp
+    cd fasl.$lisp
+    $runlisp << XXX &> ../log.$lisp/trace.blg
 (load "sl-on-cl")
 (or (compile-file "trace") (exit 1))
 XXX
+    rm trace.lisp
+    cd ..
 fi || { echo '***** Compiling trace failed'; exit 1; }
+
+###############################
+# Build the REDUCE image file #
+###############################
 
 echo $'\n+++++ Building the REDUCE image file...'
 
@@ -271,7 +281,7 @@ time $runlisp << XXX &> log.$lisp/reduce.blg
 (load "clprolo")                % initial CL specific code
 
 (cond ((equal "$revision" "") (load!-package 'revision))
-      (t (setq revision!* "$revision")))
+      (t (cl:defvar revision!* $revision)))
 (load!-package 'rlisp)
 (load!-package 'clrend)
 (load!-package 'smacros)

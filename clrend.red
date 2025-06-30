@@ -1,8 +1,8 @@
-module rend;  % CL REDUCE "back-end".
+module clrend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp.
-% Time-stamp: <2025-06-29 12:19:28 franc>
+% Time-stamp: <2025-06-30 17:35:02 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
