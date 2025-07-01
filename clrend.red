@@ -2,7 +2,7 @@ module clrend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp.
-% Time-stamp: <2025-06-30 17:35:02 franc>
+% Time-stamp: <2025-07-01 15:13:01 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -35,7 +35,9 @@ fluid '(!*echo
     !*mode
     ifl!*
     lispsystem!*
+    no!_init!_file
     promptstring!*
+    reduce!-startup!-hooks!*
     outputhandler!*);
 
 global '(tab!* !$eol!$ ff!* cr!*
@@ -207,9 +209,23 @@ symbolic procedure !begin;
       prin2t " ...";
       !*mode := if getd 'addsq then 'algebraic else 'symbolic;
       if !*mode eq 'algebraic then !*break := nil;
-                                        % since most REDUCE users won't use LISP
+      % ... since most REDUCE users won't use LISP
+      if null getd 'mathprint then no!_init!_file := t;
+      % ... since bootstrap REDUCE should not read the init file
       date!* := nil;
-   a: if errorp errorset!*('(begin1),nil) then go to a;
+   a:
+      % Process startup hooks:
+      while pairp reduce!-startup!-hooks!* do <<
+         lispeval car reduce!-startup!-hooks!*;
+         reduce!-startup!-hooks!* := cdr reduce!-startup!-hooks!*
+      >>;
+      % Read init file:
+      if null no!_init!_file then
+      begin scalar erfg!*;
+         read!-init!-file "reduce"
+      end;
+      % Start main system:
+      if errorp errorset!*('(begin1),nil) then go to a;
       prin2t "Entering LISP ... "
    end;
 

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-01 12:11:16 franc>
+;; Time-stamp: <2025-07-01 15:55:37 franc>
 ;; Created: 4 November 2018
 
 ;; Current target implementations of Common Lisp:
@@ -2797,7 +2797,7 @@ A function hung on the garbage collection hook."
 
 (defun %run-gc-hook ()
   "Run the REDUCE procedure (if any) assigned to the variable *gc-hook*."
-  (if (boundp '*gc-hook*) (funcall *gc-hook*))
+  (if *gc-hook* (funcall *gc-hook*))
   nil)
 
 (push #'%run-gc-hook sb-ext:*after-gc-hooks*)
