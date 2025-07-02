@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-02 16:06:41 franc>
+# Time-stamp: <2025-07-02 17:33:43 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -150,19 +150,23 @@ fi || { echo '***** Compilation failed'; exit 1; }
 ########################################################
 
 function grep_errors {
-    grep --ignore-case '\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq
+    grep -i '\*\{5\}\| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq |\
+        grep -viw errorset      # except matching lines
 }
 
 case $lisp in
     'ecl')
-        echo $'\n+++++ Checking bootstrap REDUCE...'
-        time $runbootstrap << EOF &> log.$lisp/bootstrap.blg
+        if [ $bootstraponly ]
+        then
+            echo $'\n+++++ Checking bootstrap REDUCE...'
+            time $runbootstrap << EOF &> log.$lisp/bootstrap.blg
 bye;
 EOF
-        echo $'\n+++++ Checked bootstrap REDUCE.  Possible errors:'
-        grep_errors bootstrap
-        echo $'\a'
-        ;;
+            echo $'\n+++++ Checked bootstrap REDUCE.  Possible errors:'
+            grep_errors bootstrap
+            echo $'\a'
+            exit
+        fi;;
     *)
         if [ ! -e fasl.$lisp/bootstrap.$saveext ]
         then
@@ -177,10 +181,8 @@ EOF
             fi
             echo $'\a'
         fi
-        ;;
+        if [ $bootstraponly ]; then exit; fi;;
 esac
-
-if [ $bootstraponly ]; then exit; fi
 
 ################
 # Build REDUCE #
@@ -275,7 +277,6 @@ then
     ln trace.lisp fasl.$lisp
     cd fasl.$lisp
     time $runlisp << EOF &> ../log.$lisp/trace.blg
-#+ECL (ext:install-bytecodes-compiler)
 (load "sl-on-cl")
 (or (compile-file "trace.lisp") (exit 1))
 EOF

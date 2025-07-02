@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-02 16:04:41 franc>
+;; Time-stamp: <2025-07-02 17:03:39 franc>
 ;; Created: 4 November 2018
 
 ;; Current target implementations of Common Lisp:
@@ -3251,7 +3251,8 @@ not sucessful, the value Nil is returned."
                                #+SBCL "fasl.sbcl"
                                #+CLISP "fasl.clisp"
                                #+ABCL "fasl.abcl"
-                               #+CCL "fasl.ccl"))
+                               #+CCL "fasl.ccl"
+                               #+ECL "fasl.ecl"))
    (truename *default-pathname-defaults*))
   "Absolute pathname of fasl directory.")
 
@@ -3314,6 +3315,7 @@ Load a \".sl\" file using Standard Lisp read syntax."
   ;; #+(and CCL LINUX) ".lx64fsl"
   ;; #+(and CCL MACOS) ".dx64fsl"          ; ???
   #+CCL (namestring ccl:*.fasl-pathname*)
+  #+ECL ".fasc"
   "Standard Lisp fasl filename extension beginning with \".\", used by \"remake.red\".")
 
 (defconstant fasl-dir*
@@ -3371,7 +3373,8 @@ When all done, execute FASLEND;~2%" name))
             (cl:open (setq %faslout-name.lisp (concat2 name ".lisp"))
                      :direction :output :if-exists :supersede
                      #-CCL :external-format
-                     #+SBCL :UTF-8 #+CLISP charset:UTF-8 #+ABCL :UTF-8))
+                     #+CLISP charset:UTF-8
+                     #-CLISP :UTF-8))
     (error-internal "FASLOUT cannot open ~a" %faslout-name.lisp))
   (if %faslout-header
       (cl:princ %faslout-header %faslout-stream))
@@ -3405,7 +3408,8 @@ When all done, execute FASLEND;~2%" name))
   (let ((*readtable* (copy-readtable nil))) ; normal CL syntax
     (compile-file %faslout-name.lisp
                   #-CCL :external-format
-                  #+SBCL :UTF-8 #+CLISP charset:UTF-8 #+ABCL :UTF-8 ))
+                  #+CLISP charset:UTF-8
+                  #-CLISP :UTF-8))
   ;;      ;; (progn
   ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
@@ -3524,6 +3528,9 @@ A list of identifiers indicating system properties.")
 #+CYGWIN (pushnew 'CYGWIN lispsystem*)            ; CLISP
 #+UNIX (pushnew 'UNIX lispsystem*)      ; appears together with CYGWIN
 #+(or MACOS OS-MACOSX) (pushnew 'MACOS lispsystem*) ; CLISP, CCL
+
+;; At least initially, use the ECL bytecode compiler:
+#+ECL (ext:install-bytecodes-compiler)
 
 #+SBCL
 (defun compilation (on)
