@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-01 15:55:37 franc>
+;; Time-stamp: <2025-07-02 16:04:41 franc>
 ;; Created: 4 November 2018
 
 ;; Current target implementations of Common Lisp:
@@ -72,6 +72,8 @@
   #+ABCL (:import-from :ext :getenv)
 
   #+CCL (:import-from :ccl :quit :getenv :setenv :gc :gctime)
+
+  #+ECL (:import-from :ext :quit :getenv :setenv)
   )
 
 (in-package :standard-lisp)
@@ -3232,7 +3234,8 @@ not sucessful, the value Nil is returned."
   #+CLISP (ext:exit code)
   #+ABCL (ext:exit :status code)
   #+CCL (ccl:quit code)
-  #+ECL (ext:quit code))
+  #+ECL (ext:quit code t)               ; kill-all-threads
+  )
 
 (export '(getenv setenv exit))          ; used in "bootstrap.lisp"
 
@@ -3480,9 +3483,10 @@ When all done, execute FASLEND;~2%" name))
          (begin))))
   (ext:exit))
 
-#+CCL (defun reduce-init-function ()
-        (standard-lisp)
-        (begin))
+#+(or CCL ECL)
+(defun reduce-init-function ()
+  (standard-lisp)
+  (begin))
 
 (defun save-reduce-image (name)
   "Save a REDUCE memory image with main filename component NAME."
@@ -3499,6 +3503,7 @@ When all done, execute FASLEND;~2%" name))
   #+CCL
   (ccl:save-application (concat "fasl.ccl/" name ".image")
                         :toplevel-function #'reduce-init-function)
+  #+ECL (reduce-init-function)
   )
 
 (pushnew :standard-lisp *features*)
@@ -3507,8 +3512,13 @@ When all done, execute FASLEND;~2%" name))
   "Information about the Lisp system supporting REDUCE.
 A list of identifiers indicating system properties.")
 
-#+(or SBCL CLISP ABCL CCL) ; to avoid a syntax error with other Lisps!
-(pushnew #+SBCL 'SBCL #+CLISP 'CLISP #+ABCL 'ABCL #+CCL 'CCL lispsystem*)
+#+(or SBCL CLISP ABCL CCL ECL) ; to avoid a syntax error with other Lisps!
+(pushnew #+SBCL 'SBCL
+         #+CLISP 'CLISP
+         #+ABCL 'ABCL
+         #+CCL 'CCL
+         #+ECL 'ECL
+         lispsystem*)
 ;; The symbols UNIX, CYGWIN and WIN32 are used in gnuintfc.red.
 #+(or WIN32 WINDOWS) (pushnew 'WIN32 lispsystem*) ; SBCL, CCL
 #+CYGWIN (pushnew 'CYGWIN lispsystem*)            ; CLISP
