@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-02 17:03:39 franc>
+;; Time-stamp: <2025-07-05 17:31:14 franc>
 ;; Created: 4 November 2018
 
 ;; Current target implementations of Common Lisp:
@@ -3297,11 +3297,31 @@ Load a \".sl\" file using Standard Lisp read syntax."
           (if (string-equal (pathname-type file-pathname) "sl")
               (setq *readtable* *sl-readtable*))))
     (if (eqcar (pathname-directory file-pathname) :absolute)
-        (cl:load file-pathname)
+        (%load-extensions file-pathname)
         ;; Relative filename -- look in current directory and fasl
         ;; directory; if not found then throw an error:
-        (or (cl:load file-pathname :if-does-not-exist nil)
-            (cl:load (merge-pathnames file-pathname %fasl-directory-pathname))))))
+        (or (%load-extensions file-pathname :if-does-not-exist nil)
+            (%load-extensions (merge-pathnames file-pathname %fasl-directory-pathname))))))
+
+#-ECL        ; should probably use (declaim (inline %load-extensions))
+(defun %load-extensions (&rest args)
+  "cl:load"
+  (cl:apply #'cl:load args))
+
+#+ECL
+(defun %load-extensions (&rest args)
+  "As cl:load but add a filename extension if missing.
+If filename has an extension then load it; otherwise try adding first
+the fasl extension (.fasc, system dependent) and then the source
+extension (.lisp)."
+  (if (pathname-type (car args))
+      (cl:apply #'cl:load args)
+      ;; DO THIS PROPERLY USING PATHNAMES!
+      (or
+       (cl:apply #'cl:load (concatenate 'string (namestring (car args)) ".fasc")
+              :if-does-not-exist nil (cdr args))
+       (cl:apply #'cl:load (concatenate 'string (namestring (car args)) ".lisp")
+              (cdr args)))))
 
 
 ;;; Faslout/faslend interface
@@ -3489,7 +3509,7 @@ When all done, execute FASLEND;~2%" name))
 
 #+(or CCL ECL)
 (defun reduce-init-function ()
-  (standard-lisp)
+  ;; (standard-lisp)                       ; redundant!
   (begin))
 
 (defun save-reduce-image (name)

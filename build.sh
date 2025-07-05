@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-02 17:33:43 franc>
+# Time-stamp: <2025-07-02 18:30:44 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -188,7 +188,7 @@ esac
 # Build REDUCE #
 ################
 
-echo '+++++ Building REDUCE...'
+echo $'\n+++++ Building REDUCE...'
 
 $runbootstrap << EOF &> log.$lisp/build.blg
 symbolic; $force
@@ -273,7 +273,7 @@ done
 
 if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
 then
-    echo '+++++ Compiling trace'
+    echo $'\n+++++ Compiling trace'
     ln trace.lisp fasl.$lisp
     cd fasl.$lisp
     time $runlisp << EOF &> ../log.$lisp/trace.blg
@@ -287,6 +287,12 @@ fi || { echo '***** Compiling trace failed'; exit 1; }
 ###############################
 # Build the REDUCE image file #
 ###############################
+
+case $lisp in
+    'ecl')                  # Can't build REDUCE the conventional way!
+        exit
+        ;;
+esac
 
 echo $'\n+++++ Building the REDUCE image file...'
 
