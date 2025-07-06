@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-06 15:43:40 franc>
+;; Time-stamp: <2025-07-06 16:31:05 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3296,6 +3296,12 @@ Load a \".sl\" file using Standard Lisp read syntax."
           (setq file-pathname (pathname file))
           (if (string-equal (pathname-type file-pathname) "sl")
               (setq *readtable* *sl-readtable*))))
+    ;; ----------------------------------------------------------------------
+    ;; HORRIBLE TEMPORARY HACK!!!
+    (when (cl:equal (pathname-name file-pathname) "simplertrace")
+      (format t "+++ WARNING: Temporarily skipped loading simplertrace.~%")
+      (return-from load))
+    ;; ----------------------------------------------------------------------
     (if (eqcar (pathname-directory file-pathname) :absolute)
         (%load-extensions file-pathname)
         ;; Relative filename -- look in current directory and fasl
@@ -3313,14 +3319,10 @@ Load a \".sl\" file using Standard Lisp read syntax."
 (defun %load-extensions (&rest args)
   "As cl:load but add a filename extension if missing.
 If filename has an extension then load it; otherwise try adding first
-the fasl extension (.fasc, system dependent) and then the source
-extension (.lisp)."
+the fasl extension (\".fasc\", system dependent) and then the source
+extension (\".lisp\")."
   (cl:cond
-    ((pathname-type (car args))
-     (cl:apply #'cl:load args))
-    ((cl:equal (pathname-name (car args)) "simplertrace") ; HORRIBLE TEMPORARY HACK!!!
-     (format t "+++ WARNING: Temporarily skipped loading simplertrace.")
-     nil)
+    ((pathname-type (car args)) (cl:apply #'cl:load args))
     ((cl:apply #'cl:load
                (merge-pathnames (car args) (make-pathname :type "fasc"))
                :if-does-not-exist nil (cdr args)))
