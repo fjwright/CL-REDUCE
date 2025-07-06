@@ -3,11 +3,11 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-05 17:31:14 franc>
+;; Time-stamp: <2025-07-06 15:43:40 franc>
 ;; Created: 4 November 2018
 
-;; Current target implementations of Common Lisp:
-;; - SBCL (Steel Bank Common Lisp); see http://www.sbcl.org/
+;; Currently supported implementations of Common Lisp:
+;; - SBCL (Steel Bank Common Lisp); see https://www.sbcl.org/
 ;; - CLISP; see https://clisp.sourceforge.io/
 ;; - CCL (Clozure Common Lisp); see https://ccl.clozure.com/
 ;; - ECL (Embeddable Common Lisp); see https://ecl.common-lisp.dev/
@@ -23,7 +23,7 @@
 ;; inversion of symbol names and is case-sensitive internally.
 
 ;; For Common Lisp documentation see
-;; http://www.lispworks.com/documentation/HyperSpec/Front/
+;; https://www.lispworks.com/documentation/HyperSpec/Front/
 
 (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
@@ -3303,10 +3303,11 @@ Load a \".sl\" file using Standard Lisp read syntax."
         (or (%load-extensions file-pathname :if-does-not-exist nil)
             (%load-extensions (merge-pathnames file-pathname %fasl-directory-pathname))))))
 
-#-ECL        ; should probably use (declaim (inline %load-extensions))
-(defun %load-extensions (&rest args)
-  "cl:load"
-  (cl:apply #'cl:load args))
+;; ECL loads a source file in preference to a compiled file, whereas
+;; other Lisps APPEAR to do the opposite (which is the behaviour I
+;; want).  ***** CCL may also load source by default! *****
+#-ECL
+(defalias '%load-extensions 'cl:load)
 
 #+ECL
 (defun %load-extensions (&rest args)
@@ -3314,14 +3315,18 @@ Load a \".sl\" file using Standard Lisp read syntax."
 If filename has an extension then load it; otherwise try adding first
 the fasl extension (.fasc, system dependent) and then the source
 extension (.lisp)."
-  (if (pathname-type (car args))
-      (cl:apply #'cl:load args)
-      ;; DO THIS PROPERLY USING PATHNAMES!
-      (or
-       (cl:apply #'cl:load (concatenate 'string (namestring (car args)) ".fasc")
-              :if-does-not-exist nil (cdr args))
-       (cl:apply #'cl:load (concatenate 'string (namestring (car args)) ".lisp")
-              (cdr args)))))
+  (cl:cond
+    ((pathname-type (car args))
+     (cl:apply #'cl:load args))
+    ((cl:equal (pathname-name (car args)) "simplertrace") ; HORRIBLE TEMPORARY HACK!!!
+     (format t "+++ WARNING: Temporarily skipped loading simplertrace.")
+     nil)
+    ((cl:apply #'cl:load
+               (merge-pathnames (car args) (make-pathname :type "fasc"))
+               :if-does-not-exist nil (cdr args)))
+    ((cl:apply #'cl:load
+               (merge-pathnames (car args) (make-pathname :type "lisp"))
+               (cdr args)))))
 
 
 ;;; Faslout/faslend interface
