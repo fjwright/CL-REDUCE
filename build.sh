@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-02 18:30:44 franc>
+# Time-stamp: <2025-07-07 17:20:37 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -81,13 +81,11 @@ case $lisp in
                 faslext='wx64fsl';;
         esac;;
     'ecl')
-        # Use portable FASL file initially, which may be concatenated
-        # into bundles.  This may be an initial way to build an "image
-        # file".
+        # Use portable FASL files initially.
         runlisp='ecl'
         runlispfile='ecl --norc --load'
         runbootstrap='ecl --norc --load bootstrap.lisp'
-        # runreduce='ecl --noinform --core fasl.ecl/reduce.img'
+        runreduce='ecl --norc --eval "(let (*load-verbose*) (load \"fasl.ecl/reduce\"))'
         # saveext='img'
         faslext='fasc'
         ;;
@@ -289,7 +287,13 @@ fi || { echo '***** Compiling trace failed'; exit 1; }
 ###############################
 
 case $lisp in
-    'ecl')                  # Can't build REDUCE the conventional way!
+    'ecl')
+        # Can't currently build REDUCE the conventional way,
+        # i.e. statically!  Instead, build "fasl.ecl/reduce.lisp",
+        # which builds REDUCE dynamically.
+        date=\"$(date +%d-%b-%Y)\"
+        sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
+            reduce-ecl.lisp > fasl.ecl/reduce.lisp
         exit
         ;;
 esac

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-06 16:31:05 franc>
+;; Time-stamp: <2025-07-07 15:06:23 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3297,7 +3297,7 @@ Load a \".sl\" file using Standard Lisp read syntax."
           (if (string-equal (pathname-type file-pathname) "sl")
               (setq *readtable* *sl-readtable*))))
     ;; ----------------------------------------------------------------------
-    ;; HORRIBLE TEMPORARY HACK!!!
+    #+ECL                               ; HORRIBLE TEMPORARY HACK!!!
     (when (cl:equal (pathname-name file-pathname) "simplertrace")
       (format t "+++ WARNING: Temporarily skipped loading simplertrace.~%")
       (return-from load))

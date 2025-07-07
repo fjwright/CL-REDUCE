@@ -2,5 +2,5 @@
 # Start ECL REDUCE on Cygwin, Linux or macOS.
 cl=$(realpath $(dirname $0)) # common-lisp directory
 if [ "$OSTYPE" == 'cygwin' ]; then cl=$(cygpath -m $cl); fi
-ecl --eval "(let (*load-verbose*) (load \"$cl/reduce\"))"
+ecl --eval "(let (*load-verbose*) (load \"$cl/fasl.ecl/reduce\"))"
 # But not currently relocatable!

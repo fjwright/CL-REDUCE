@@ -1,6 +1,6 @@
 (let (*load-verbose*)
   (load "fasl.ecl/sl-on-cl.fasc")
-  (load "fasl.ecl/trace")) ; temporary -- until I can arrange autoloading!
+  (load "fasl.ecl/trace.fasc"))
 
 (standard-lisp)
 
@@ -8,10 +8,13 @@
 (setq !*redefmsg nil)           % default is t
 (cl:defvar !*argnochk t)        % check argument count
 
-(load "fasl.ecl/module")                 % for definition of load-package
-(load "fasl.ecl/clprolo")                % initial CL specific code
+(load "fasl.ecl/module")        % for definition of load-package
+(load "fasl.ecl/clprolo")       % initial CL specific code
 
-(cl:defvar revision!* "unknown")
+% NB: revision!* is declared fluid and checked in "rlisp/rlisp.red".
+(cl:defvar revision!*)          % value to be edited in via build.sh
+(cl:if (not (cl:integerp revision!*))
+    (load!-package 'revision))
 (load!-package 'rlisp)
 (load!-package 'clrend)
 (load!-package 'smacros)
@@ -27,8 +30,8 @@
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
 
 (setq date!* (date))
-(setq version!* (cl:format nil "REDUCE (Free ~a version, revision ~a)"
-                           "ECL" revision!*))
+(setq version!* (cl:format nil "REDUCE (Free ECL version, revision ~a)"
+                            (or revision!* "???")))
 
 (setq !*verboseload nil)        % inhibit loading messages
 (setq !*redefmsg t)             % display redefinition messages
