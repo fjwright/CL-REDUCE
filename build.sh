@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-07 17:20:37 franc>
+# Time-stamp: <2025-07-07 18:09:00 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -85,7 +85,7 @@ case $lisp in
         runlisp='ecl'
         runlispfile='ecl --norc --load'
         runbootstrap='ecl --norc --load bootstrap.lisp'
-        runreduce='ecl --norc --eval "(let (*load-verbose*) (load \"fasl.ecl/reduce\"))'
+        runreduce='ecl --norc --eval "(let (*load-verbose*) (load \"fasl.ecl/reduce\"))"'
         # saveext='img'
         faslext='fasc'
         ;;
@@ -288,23 +288,25 @@ fi || { echo '***** Compiling trace failed'; exit 1; }
 
 case $lisp in
     'ecl')
+        echo $'\n+++++ Building the ECL REDUCE dynamic load file...'
+
         # Can't currently build REDUCE the conventional way,
         # i.e. statically!  Instead, build "fasl.ecl/reduce.lisp",
         # which builds REDUCE dynamically.
+
         date=\"$(date +%d-%b-%Y)\"
         sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
             reduce-ecl.lisp > fasl.ecl/reduce.lisp
-        exit
         ;;
-esac
 
-echo $'\n+++++ Building the REDUCE image file...'
+    *)
+        echo $'\n+++++ Building the REDUCE image file...'
 
-# Start a new invocation of Lisp and load the key modules compiled
-# above.  Then save a final REDUCE image that will be used below to
-# compile the non-core modules.
+        # Start a new invocation of Lisp and load the key modules compiled
+        # above.  Then save a final REDUCE image that will be used below to
+        # compile the non-core modules.
 
-time $runlisp << EOF &> log.$lisp/reduce.blg
+        time $runlisp << EOF &> log.$lisp/reduce.blg
 (load "sl-on-cl") (load "trace") ; temporary -- until I can arrange autoloading!
 (standard-lisp)
 
@@ -364,12 +366,14 @@ time $runlisp << EOF &> log.$lisp/reduce.blg
 
 EOF
 
-if [ ! -e fasl.$lisp/reduce.$saveext ]
-then
-    echo $'\n***** Building the REDUCE image failed'; exit 1
-else
-    echo $'\n+++++ Built the REDUCE image file\n'
-fi
+        if [ ! -e fasl.$lisp/reduce.$saveext ]
+        then
+            echo $'\n***** Building the REDUCE image failed'; exit 1
+        else
+            echo $'\n+++++ Built the REDUCE image file\n'
+        fi
+        ;;
+esac
 
 # Finally, compile the "noncore" packages using reduce.img rather than
 # bootstrap.img.

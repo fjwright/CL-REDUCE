@@ -25,6 +25,7 @@
 (load!-package 'mathpr)
 (cl:let (!*msg)
    (load!-package 'entry))
+(load!-package 'remake)         % since not using bootstrap REDUCE
 
 (cl:fmakunbound 'prettyprint)   % otherwise defautoload has no effect!
 (defautoload prettyprint pretty)  % since only in entry file for PSL!

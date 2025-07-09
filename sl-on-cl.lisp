@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-07 15:06:23 franc>
+;; Time-stamp: <2025-07-09 14:50:41 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -62,7 +62,7 @@
            :apply :eval :function :close :open :princ :print :prin1
            :read :terpri :complexp :union :load :time
            :char-downcase :char-upcase :string-downcase :mod
-           :char-code :symbol-name :number)
+           :file-write-date :char-code :symbol-name :number)
 
   #+SBCL (:import-from :sb-ext :quit :gc)
   #+SBCL (:import-from :sb-posix :getenv)
@@ -2139,9 +2139,9 @@ of a page, 0 is returned."
   0)
 
 (defun substitute-in-file-name (filename)
-  "Return a copy of FILENAME with all environment variables expanded.
+  "Return a copy of FILENAME with all environment variables substituted.
 Replace every substring of the form `$name' terminated by a
-non-alphanumeric character by its value.  Called by `open'."
+non-alphanumeric character by its value.  Called by `open', etc."
   ;; A simplified version of the Elisp function
   ;; `substitute-in-file-name'.
   ;; Replace environment variables with their values:
@@ -3217,7 +3217,20 @@ not sucessful, the value Nil is returned."
 #+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
 (defalias 'chdir 'cd)                   ; CSL / MS Windows
 
-(defalias 'filep 'probe-file)           ; PSL
+(defun filep (file)                     ; PSL
+  "Return false if FILE does not exist, otherwise return the truename of
+FILE.  Substitutes environment variables in file name."
+  ;; should perhaps be inlined.
+  (declare (simple-string file))
+  (cl:probe-file (substitute-in-file-name file)))
+
+(defun file-write-date (file)           ; PSL, used in remake
+  "Return the time at which FILE was last written (or created), or nil if
+such a time cannot be determined.  Substitutes environment variables
+in file name."
+  ;; Should perhaps be inlined.
+  (declare (simple-string file))
+  (cl:file-write-date (substitute-in-file-name file)))
 
 #+SBCL (import 'sb-posix:getpid)
 #+CLISP (defalias 'getpid 'os:process-id)
@@ -3579,7 +3592,6 @@ interpret otherwise.  The default is compile."
    unwind-protect evenp oddp
    string-not-greaterp y-or-n-p         ; used in clprolo
    force-output                         ; used in clrend
-   file-write-date                      ; used in remake
    catch throw                          ; used in rubi_red
    sleep                                ; used in crack
    #+SBCL sb-ext:*muffled-warnings*     ; used in build.sh
