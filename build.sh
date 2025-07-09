@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-07 18:09:00 franc>
+# Time-stamp: <2025-07-09 17:46:03 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -148,7 +148,7 @@ fi || { echo '***** Compilation failed'; exit 1; }
 ########################################################
 
 function grep_errors {
-    grep -i '\*\{5\}\| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq |\
+    grep -i '^\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq |\
         grep -viw errorset      # except matching lines
 }
 
@@ -381,7 +381,7 @@ esac
 time for p in $(< fasl.$lisp/noncore-packages.dat)
 do
     echo "+++++ Remaking noncore package $p"
-    $runreduce << EOF &> log.$lisp/$p.blg
+    eval $runreduce << EOF &> log.$lisp/$p.blg
 symbolic; $force
 
 on verboseload;
@@ -390,7 +390,8 @@ off redefmsg;
 if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
 else if '$p eq 'mrvlimit then load_package taylor
 % Temporary hacks to avoid build errors:
-else if '$p eq 'rubi_red then flag('(flush),'rlisp)
+else if '$p eq 'corrundum then
+   << if '$lisp eq 'ecl then bye else flag('(flush),'rlisp) >>
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
    switch usermode >>;
@@ -411,7 +412,7 @@ package!-remake '$p; % autoloads remake
 
 % Temporary hack to make gnuplot package work on Common Lisp:
 if '$p eq 'gnuplot then
-   begin scalar !*int, !*forcecompile; !*forcecompile := t;
+   begin scalar !*int, !*forcecompile := t;
       update!-fasl2('gnuintfc, nil);
    end;
 
