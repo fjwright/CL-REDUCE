@@ -8,8 +8,8 @@
 (setq !*redefmsg nil)           % default is t
 (cl:defvar !*argnochk t)        % check argument count
 
-(load "fasl.ecl/module")        % for definition of load-package
-(load "fasl.ecl/clprolo")       % initial CL specific code
+(load "module")        % for definition of load-package
+(load "clprolo")       % initial CL specific code
 
 % NB: revision!* is declared fluid and checked in "rlisp/rlisp.red".
 (cl:defvar revision!*)          % value to be edited in via build.sh
@@ -23,8 +23,7 @@
 (load!-package 'alg)
 (load!-package 'rtools)
 (load!-package 'mathpr)
-(cl:let (!*msg)
-   (load!-package 'entry))
+(cl:let (!*msg) (load!-package 'entry))
 
 (cl:fmakunbound 'prettyprint)   % otherwise defautoload has no effect!
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
