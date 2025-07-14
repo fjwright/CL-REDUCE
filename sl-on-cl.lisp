@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-09 14:50:41 franc>
+;; Time-stamp: <2025-07-14 16:46:24 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3317,10 +3317,11 @@ Load a \".sl\" file using Standard Lisp read syntax."
     ;; ----------------------------------------------------------------------
     (if (eqcar (pathname-directory file-pathname) :absolute)
         (%load-extensions file-pathname)
-        ;; Relative filename -- look in current directory and fasl
-        ;; directory; if not found then throw an error:
-        (or (%load-extensions file-pathname :if-does-not-exist nil)
-            (%load-extensions (merge-pathnames file-pathname %fasl-directory-pathname))))))
+        ;; Relative filename -- look first in fasl directory and then
+        ;; in current directory; if not found throw an error:
+        (or (%load-extensions (merge-pathnames file-pathname %fasl-directory-pathname)
+                              :if-does-not-exist nil)
+            (%load-extensions file-pathname)))))
 
 ;; ECL loads a source file in preference to a compiled file, whereas
 ;; other Lisps APPEAR to do the opposite (which is the behaviour I

@@ -1,6 +1,14 @@
-(let (*load-verbose*)
-  (load "fasl.ecl/sl-on-cl.fasc")
-  (load "fasl.ecl/trace.fasc"))
+;; Run REDUCE on ECL
+;; Template for "fasl.ecl/reduce.lisp", which builds REDUCE dynamically.
+(let* (*load-verbose*
+       (fasl (parse-namestring (ext:getenv "cl")))
+       (fasl (make-pathname
+              :directory
+              (append (pathname-directory fasl)
+                      (list (pathname-name fasl) "fasl.ecl")))))
+  ;; (format t "Absolute fasl directory: ~a~%" fasl)
+  (load (merge-pathnames "sl-on-cl.fasc" fasl))
+  (load (merge-pathnames "trace.fasc" fasl)))
 
 (standard-lisp)
 
