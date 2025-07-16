@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-14 16:46:24 franc>
+;; Time-stamp: <2025-07-16 16:01:03 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3323,9 +3323,11 @@ Load a \".sl\" file using Standard Lisp read syntax."
                               :if-does-not-exist nil)
             (%load-extensions file-pathname)))))
 
-;; ECL loads a source file in preference to a compiled file, whereas
-;; other Lisps APPEAR to do the opposite (which is the behaviour I
-;; want).  ***** CCL may also load source by default! *****
+;; If the filetype is not specified, ECL first tries to load the fasl
+;; file with filetype ".fasl", then tries to load the source file with
+;; filetype ".lsp" (also, apparently, ".lisp"), and then tries to load
+;; the source file with no filetype.
+;; ***** CCL may do somnething similar - CHECK! *****
 #-ECL
 (defalias '%load-extensions 'cl:load)
 

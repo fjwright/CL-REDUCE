@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-09 17:46:03 franc>
+# Time-stamp: <2025-07-14 17:42:24 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -85,7 +85,7 @@ case $lisp in
         runlisp='ecl'
         runlispfile='ecl --norc --load'
         runbootstrap='ecl --norc --load bootstrap.lisp'
-        runreduce='ecl --norc --eval "(let (*load-verbose*) (load \"fasl.ecl/reduce\"))"'
+        runreduce='./redecl'
         # saveext='img'
         faslext='fasc'
         ;;
@@ -381,7 +381,7 @@ esac
 time for p in $(< fasl.$lisp/noncore-packages.dat)
 do
     echo "+++++ Remaking noncore package $p"
-    eval $runreduce << EOF &> log.$lisp/$p.blg
+    $runreduce << EOF &> log.$lisp/$p.blg
 symbolic; $force
 
 on verboseload;
