@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-14 17:42:24 franc>
+# Time-stamp: <2025-07-23 16:28:13 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -157,7 +157,7 @@ case $lisp in
         if [ $bootstraponly ]
         then
             echo $'\n+++++ Checking bootstrap REDUCE...'
-            time $runbootstrap << EOF &> log.$lisp/bootstrap.blg
+            time $runlispfile bootstrap << EOF &> log.$lisp/bootstrap.blg
 bye;
 EOF
             echo $'\n+++++ Checked bootstrap REDUCE.  Possible errors:'
