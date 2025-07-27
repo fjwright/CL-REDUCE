@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-16 16:01:03 franc>
+;; Time-stamp: <2025-07-27 12:26:55 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3256,17 +3256,24 @@ in file name."
 ;;; Compile and load
 ;;; ================
 
-(defconstant %fasl-directory-pathname
-  ;; *Must* be independent of the current working directory, i.e.
-  ;; absolute.
-  (merge-pathnames
-   (make-pathname :directory '(:relative
-                               #+SBCL "fasl.sbcl"
-                               #+CLISP "fasl.clisp"
-                               #+ABCL "fasl.abcl"
-                               #+CCL "fasl.ccl"
-                               #+ECL "fasl.ecl"))
-   (truename *default-pathname-defaults*))
+(defconstant %fasl-directory-pathname   ; MUST be absolute
+  (let* ((dir (pathname-directory
+               (or *load-truename* *default-pathname-defaults*)))
+         ;; Should be a list ending with either "fasl.*" or "common-lisp".
+         (last-dir-comp (car (last dir))))
+    (make-pathname
+     :directory
+     (cond ((cl:equal (cl:subseq last-dir-comp 0 4) "fasl") ; compiled
+            dir)
+           ((cl:equal last-dir-comp "common-lisp") ; source
+            (append dir (list
+                         #+SBCL "fasl.sbcl"
+                         #+CLISP "fasl.clisp"
+                         #+ABCL "fasl.abcl"
+                         #+CCL "fasl.ccl"
+                         #+ECL "fasl.ecl"
+                         )))
+           (t (error-internal "Cannot locate fasl directory")))))
   "Absolute pathname of fasl directory.")
 
 (defvar *verboseload nil
