@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-23 16:28:13 franc>
+# Time-stamp: <2025-07-28 17:24:00 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -26,11 +26,12 @@ function help {
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
     echo 'Option -b builds only the bootstrap REDUCE image.'
+    echo 'Option -o builds only the core REDUCE packages.'
     echo 'Option -h displays this help message and exits.'
     exit 1
 }
 
-while getopts l:r:cfbh option
+while getopts l:r:cfboh option
 do
     case $option in
         l) lisp=$OPTARG;;
@@ -38,6 +39,7 @@ do
         c) clean=true;;
         f) force='!*forcecompile := t;';;
         b) bootstraponly=true;;
+        o) coreonly=true;;
         h) help;;
         ?) exit 1;;
     esac
@@ -264,6 +266,8 @@ EOF
 grep_errors $p
 
 done
+
+if [ $coreonly ]; then exit; fi
 
 ##############################
 # Compile trace if necessary #
