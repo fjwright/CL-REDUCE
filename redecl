@@ -1,5 +1,4 @@
 #!/bin/bash
 # Start ECL REDUCE on Cygwin, Linux or macOS.
-export cl=$(realpath $(dirname $0)) # common-lisp directory, used in "reduce.lisp"
-# echo 'cl =' $cl
+cl=$(realpath $(dirname $0))    # common-lisp directory
 ecl --eval "(let (*load-verbose*) (load \"$cl/fasl.ecl/reduce\"))"
