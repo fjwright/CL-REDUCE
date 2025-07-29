@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-29 15:39:15 franc>
+# Time-stamp: <2025-07-29 15:50:34 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -236,7 +236,7 @@ begin
    for each x in w do     % x is a row of package.map
       if member('csl, x) and member('psl, x) then <<
          if member('core, x) then
-            << if not (car x eq 'revision) or "$revision" = "" then
+            << if not (car x eq 'revision) then
                core := car x . core >>
          else noncore := car x . noncore >>;
    i := open("fasl.$lisp/core-packages.dat", 'output);
@@ -344,8 +344,8 @@ case $lisp in
 (load "module")                 % for definition of load-package
 (load "clprolo")                % initial CL specific code
 
-(cond ((equal "$revision" "") (load!-package 'revision))
-      (t (cl:defvar revision!* $revision)))
+(cl:defvar revision!* $revision)
+(cl:if (not (cl:boundp 'revision!*)) (setq revision!* nil))
 (load!-package 'rlisp)
 (load!-package 'clrend)
 (load!-package 'smacros)
@@ -364,7 +364,7 @@ case $lisp in
       (cond ((memq 'sbcl lispsystem!*) "SBCL")
             ((memq 'clisp lispsystem!*) "CLISP")
             ((memq 'ccl lispsystem!*) "CCL"))
-      revision!*))
+      (or revision!* "???")))
 
 (initreduce)
 
