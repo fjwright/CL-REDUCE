@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-07-28 17:24:00 franc>
+# Time-stamp: <2025-07-29 15:39:15 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -86,9 +86,8 @@ case $lisp in
         # Use portable FASL files initially.
         runlisp='ecl'
         runlispfile='ecl --norc --load'
-        runbootstrap='ecl --norc --load bootstrap.lisp'
+        runbootstrap='ecl --norc --load fasl.ecl/bootstrapreduce'
         runreduce='./redecl'
-        # saveext='img'
         faslext='fasc'
         ;;
     *)
@@ -156,17 +155,38 @@ function grep_errors {
 
 case $lisp in
     'ecl')
-        if [ $bootstraponly ]
-        then
-            echo $'\n+++++ Checking bootstrap REDUCE...'
-            time $runlispfile bootstrap << EOF &> log.$lisp/bootstrap.blg
+        echo $'\n+++++ Building ECL bootstrap REDUCE...'
+        time $runlispfile bootstrap << EOF &> log.$lisp/bootstrap.blg
+% Compile fasl files for the minimal set of packages:
+symbolic; $force
+off redefmsg;
+package!-remake2('clprolo, nil);
+package!-remake2('clrend, nil);
+package!-remake2('entry, 'support);
+package!-remake2('smacros,'support);
+package!-remake2('remake, nil);
+package!-remake 'rlisp;
+package!-remake 'poly;
+package!-remake 'alg;
+package!-remake 'rtools;
+package!-remake 'arith;
 bye;
 EOF
-            echo $'\n+++++ Checked bootstrap REDUCE.  Possible errors:'
-            grep_errors bootstrap
-            echo $'\a'
-            exit
-        fi;;
+        echo $'\n+++++ Built ECL bootstrap REDUCE.  Possible errors:'
+        grep_errors bootstrap
+
+        echo $'\n+++++ Building the ECL bootstrap REDUCE dynamic load file...'
+
+        # Can't currently build REDUCE the conventional way,
+        # i.e. statically!  Instead, build "fasl.ecl/bootstrapreduce.lisp",
+        # which builds bootstrap REDUCE dynamically.
+
+        date=\"$(date +%d-%b-%Y)\"
+        sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
+            bootstrapreduce-ecl.lisp > fasl.ecl/bootstrapreduce.lisp
+
+        echo $'\a'
+        ;;
     *)
         if [ ! -e fasl.$lisp/bootstrap.$saveext ]
         then
@@ -180,9 +200,10 @@ EOF
                 grep_errors bootstrap
             fi
             echo $'\a'
-        fi
-        if [ $bootstraponly ]; then exit; fi;;
+        fi;;
 esac
+
+if [ $bootstraponly ]; then exit; fi
 
 ################
 # Build REDUCE #

@@ -1,10 +1,9 @@
-;; Run REDUCE on ECL
-;; Template for "fasl.ecl/reduce.lisp", which builds REDUCE dynamically.
+;; Run bootstrap REDUCE on ECL
+;; Template for "fasl.ecl/bootstrapreduce.lisp", which builds bootstrap REDUCE dynamically.
 (let (*load-verbose*
       (fasl (make-pathname :directory (pathname-directory *load-truename*))))
   ;; (format t "Absolute fasl directory: ~a~%" fasl)
-  (load (merge-pathnames "sl-on-cl.fasc" fasl))
-  (load (merge-pathnames "trace.fasc" fasl)))
+  (load (merge-pathnames "sl-on-cl.fasc" fasl)))
 
 (standard-lisp)
 
@@ -25,14 +24,14 @@
 (load!-package 'arith)
 (load!-package 'alg)
 (load!-package 'rtools)
-(load!-package 'mathpr)
 (cl:let (!*msg) (load!-package 'entry))
+(load!-package 'remake)
 
 (cl:fmakunbound 'prettyprint)   % otherwise defautoload has no effect!
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
 
 (setq date!* (date))
-(setq version!* (cl:format nil "REDUCE (Free ECL version, revision ~a)"
+(setq version!* (cl:format nil "Bootstrap REDUCE (Free ECL version, revision ~a)"
                             (or revision!* "???")))
 
 (setq !*verboseload nil)        % inhibit loading messages

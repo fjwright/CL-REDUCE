@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-27 12:26:55 franc>
+;; Time-stamp: <2025-07-28 18:29:20 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3316,12 +3316,6 @@ Load a \".sl\" file using Standard Lisp read syntax."
           (setq file-pathname (pathname file))
           (if (string-equal (pathname-type file-pathname) "sl")
               (setq *readtable* *sl-readtable*))))
-    ;; ----------------------------------------------------------------------
-    #+ECL                               ; HORRIBLE TEMPORARY HACK!!!
-    (when (cl:equal (pathname-name file-pathname) "simplertrace")
-      (format t "+++ WARNING: Temporarily skipped loading simplertrace.~%")
-      (return-from load))
-    ;; ----------------------------------------------------------------------
     (if (eqcar (pathname-directory file-pathname) :absolute)
         (%load-extensions file-pathname)
         ;; Relative filename -- look first in fasl directory and then
@@ -3329,6 +3323,8 @@ Load a \".sl\" file using Standard Lisp read syntax."
         (or (%load-extensions (merge-pathnames file-pathname %fasl-directory-pathname)
                               :if-does-not-exist nil)
             (%load-extensions file-pathname)))))
+
+;; ***** IS THE FOLLOWING REALLY NECESSARY? *****
 
 ;; If the filetype is not specified, ECL first tries to load the fasl
 ;; file with filetype ".fasl", then tries to load the source file with
