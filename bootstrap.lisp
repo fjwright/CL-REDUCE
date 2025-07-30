@@ -1,6 +1,6 @@
 ;; Lisp code to build a REDUCE image for bootstrapping on Common Lisp
 
-;; FJW -- Time-stamp: <2025-07-02 16:30:16 franc>
+;; FJW -- Time-stamp: <2025-07-30 14:39:47 franc>
 
 (load (concatenate 'string "fasl."
                    #+SBCL "sbcl"
@@ -60,7 +60,8 @@
       ((filep "../psl/boot.sl") (load "../psl/boot.sl"))
       (t (error 0 "Cannot find boot file.") (exit 1)))
 
-% (setq !*comp t)  % It's faster in some lisps if we compile.
+% It's faster in some lisps if we compile.
+(setq !*comp (not (memq 'ecl lispsystem!*)))
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %% Start of build.sl %%
@@ -132,7 +133,6 @@
 %%%%%%%%%%%%%%%%%%%%%
 
 (load!-package!-sources 'clprolo nil)
-%% (load!-package!-sources 'revision 'support)
 (load!-package!-sources 'rlisp 'rlisp)
 (load!-package!-sources 'smacros 'support)
 (load!-package!-sources 'clrend nil)
@@ -160,4 +160,4 @@
 (initreduce)
 (setq date!* (date))
 (setq version!* "Bootstrap REDUCE")
-(save!-reduce!-image "bootstrap")       % don't save or stop ECL
+(save!-reduce!-image "bootstrap")       % doesn't save or stop ECL
