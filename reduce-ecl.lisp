@@ -3,8 +3,8 @@
 (let (*load-verbose*
       (fasl (make-pathname :directory (pathname-directory *load-truename*))))
   ;; (format t "Absolute fasl directory: ~a~%" fasl)
-  (load (merge-pathnames "sl-on-cl.fasc" fasl))
-  (load (merge-pathnames "trace.fasc" fasl)))
+  (load (merge-pathnames "sl-on-cl" fasl))
+  (load (merge-pathnames "trace" fasl)))
 
 (standard-lisp)
 

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-07-28 18:29:20 franc>
+;; Time-stamp: <2025-08-03 17:40:49 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2834,13 +2834,13 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 
 (defun concat2 (s1 s2)
   "Concatenates its two string arguments, returning the newly created string."
-  (declare (simple-string s1 s2))
+  (declare (string s1 s2))              ; might not be simple!
   (the simple-string (concatenate 'string s1 s2)))
 
 (defun concat (&rest s)
   "Concatenates all of its string arguments, returning the newly created string."
   ;; Flagged variadic in clprolo.
-  (declare (list s))
+  (declare ((list string) s))
   (the simple-string (cl:apply #'concatenate 'string s)))
 
 ;; (defalias 'allocate-string 'cl:make-string ; PSL
@@ -3271,7 +3271,8 @@ in file name."
                          #+CLISP "fasl.clisp"
                          #+ABCL "fasl.abcl"
                          #+CCL "fasl.ccl"
-                         #+ECL "fasl.ecl"
+                         #+(and ECL (not ECLN)) "fasl.ecl"
+                         #+ECLN "fasl.ecln"
                          )))
            (t (error-internal "Cannot locate fasl directory")))))
   "Absolute pathname of fasl directory.")
@@ -3324,17 +3325,16 @@ Load a \".sl\" file using Standard Lisp read syntax."
                               :if-does-not-exist nil)
             (%load-extensions file-pathname)))))
 
-;; ***** IS THE FOLLOWING REALLY NECESSARY? *****
-
+;; ECL docstring for load [with corrections]:
 ;; If the filetype is not specified, ECL first tries to load the fasl
-;; file with filetype ".fasl", then tries to load the source file with
-;; filetype ".lsp" (also, apparently, ".lisp"), and then tries to load
-;; the source file with no filetype.
+;; file with filetype ".fasl" [also, apparently, ".fas"], then tries
+;; to load the source file with filetype ".lsp" [also, apparently,
+;; ".lisp"], and then tries to load the source file with no filetype.
 ;; ***** CCL may do somnething similar - CHECK! *****
-#-ECL
+#-(and ECL (not ECLN))
 (defalias '%load-extensions 'cl:load)
 
-#+ECL
+#+(and ECL (not ECLN))
 (defun %load-extensions (&rest args)
   "As cl:load but add a filename extension if missing.
 If filename has an extension then load it; otherwise try adding first
@@ -3361,7 +3361,8 @@ extension (\".lisp\")."
   ;; #+(and CCL LINUX) ".lx64fsl"
   ;; #+(and CCL MACOS) ".dx64fsl"          ; ???
   #+CCL (namestring ccl:*.fasl-pathname*)
-  #+ECL ".fasc"
+  #+(and ECL (not ECLN)) ".fasc"
+  #+ECLN ".fas"
   "Standard Lisp fasl filename extension beginning with \".\", used by \"remake.red\".")
 
 (defconstant fasl-dir*
@@ -3574,9 +3575,6 @@ A list of identifiers indicating system properties.")
 #+CYGWIN (pushnew 'CYGWIN lispsystem*)            ; CLISP
 #+UNIX (pushnew 'UNIX lispsystem*)      ; appears together with CYGWIN
 #+(or MACOS OS-MACOSX) (pushnew 'MACOS lispsystem*) ; CLISP, CCL
-
-;; At least initially, use the ECL bytecode compiler:
-#+ECL (ext:install-bytecodes-compiler)
 
 #+SBCL
 (defun compilation (on)
