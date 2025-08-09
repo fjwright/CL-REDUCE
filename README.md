@@ -1,6 +1,6 @@
 # REDUCE on Common Lisp
 
-**[Francis Wright](https://sites.google.com/site/fjwcentaur), June 2025**
+**[Francis Wright](https://sites.google.com/site/fjwcentaur), August 2025**
 
 From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Guy L. Steele Jr.](https://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html):
 
@@ -162,18 +162,19 @@ The CSL test times do not include checking, which involves running `diff`.  The 
 
 ## Known limitations
 
-CL REDUCE does not currently read a REDUCE initialisation file.
+CL REDUCE does not currently read a REDUCE initialisation file. [FIXED?]
 
 I cannot see any way to support the facilities for restricting execution time on CLISP.  In more detail: the file "rlisp/inter.red" defines procedures `with!-timeout` and similar that use garbage collection to provide an interrupt by assigning a function to the variable `!*gc!-hook!*`, but no garbage collection hooks exist in CLISP.  The procedures `with!-timeout` and similar just run without any restriction so don't use CLISP REDUCE is you need this facility!  This affects `rubi_red` and possibly other packages.  It works on SBCL!
 
 ## To do
 
-* Read a REDUCE initialisation file.
+* Read a REDUCE initialisation file. [FIXED?]
 * Optimise SL-on-CL to improve its speed.
 * Better error handling.
 * Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 * Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
 * Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
+* Implement the hash-table code (`mkhash` etc.) defined in `rlisp/proc.red` more efficiently.
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->

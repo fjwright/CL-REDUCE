@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-08-06 16:44:24 franc>
+;; Time-stamp: <2025-08-09 17:45:27 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2840,7 +2840,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 (defun concat (&rest s)
   "Concatenates all of its string arguments, returning the newly created string."
   ;; Flagged variadic in clprolo.
-  (declare ((list string) s))
+  ;; (declare ((list string) s))  ; can't easily specify list of strings!
   (the simple-string (cl:apply #'concatenate 'string s)))
 
 ;; (defalias 'allocate-string 'cl:make-string ; PSL
@@ -3271,8 +3271,7 @@ in file name."
                          #+CLISP "fasl.clisp"
                          #+ABCL "fasl.abcl"
                          #+CCL "fasl.ccl"
-                         #+(and ECL (not ECLN)) "fasl.ecl"
-                         #+ECLN "fasl.ecln"
+                         #+ECLP "fasl.eclp" #+ECLN "fasl.ecln"
                          )))
            (t (error-internal "Cannot locate fasl directory")))))
   "Absolute pathname of fasl directory.")
@@ -3330,11 +3329,11 @@ Load a \".sl\" file using Standard Lisp read syntax."
 ;; file with filetype ".fasl" [also, apparently, ".fas"], then tries
 ;; to load the source file with filetype ".lsp" [also, apparently,
 ;; ".lisp"], and then tries to load the source file with no filetype.
-;; ***** CCL may do somnething similar - CHECK! *****
-#-(and ECL (not ECLN))
+;; ***** CCL may do something similar - CHECK! *****
+#-ECLP
 (defalias '%load-extensions 'cl:load)
 
-#+(and ECL (not ECLN))
+#+ECLP
 (defun %load-extensions (&rest args)
   "As cl:load but add a filename extension if missing.
 If filename has an extension then load it; otherwise try adding first
@@ -3361,8 +3360,7 @@ extension (\".lisp\")."
   ;; #+(and CCL LINUX) ".lx64fsl"
   ;; #+(and CCL MACOS) ".dx64fsl"          ; ???
   #+CCL (namestring ccl:*.fasl-pathname*)
-  #+(and ECL (not ECLN)) ".fasc"
-  #+ECLN ".fas"
+  #+ECLP ".fasc" #+ECLN ".fas"
   "Standard Lisp fasl filename extension beginning with \".\", used by \"remake.red\".")
 
 (defconstant fasl-dir*
@@ -3571,22 +3569,12 @@ without directory to fasl.ecln/bootstrapreduce.dat."
 
 (pushnew :standard-lisp *features*)
 
-(defparameter lispsystem* '(common-lisp)
+(defparameter lispsystem* *features*
   "Information about the Lisp system supporting REDUCE.
 A list of identifiers indicating system properties.")
 
-#+(or SBCL CLISP ABCL CCL ECL) ; to avoid a syntax error with other Lisps!
-(pushnew #+SBCL 'SBCL
-         #+CLISP 'CLISP
-         #+ABCL 'ABCL
-         #+CCL 'CCL
-         #+ECL 'ECL
-         lispsystem*)
-;; The symbols UNIX, CYGWIN and WIN32 are used in gnuintfc.red.
-#+(or WIN32 WINDOWS) (pushnew 'WIN32 lispsystem*) ; SBCL, CCL
-#+CYGWIN (pushnew 'CYGWIN lispsystem*)            ; CLISP
-#+UNIX (pushnew 'UNIX lispsystem*)      ; appears together with CYGWIN
-#+(or MACOS OS-MACOSX) (pushnew 'MACOS lispsystem*) ; CLISP, CCL
+;; For ECLP, use the portable bytecode compiler:
+#+ECLP (ext:install-bytecodes-compiler)
 
 #+SBCL
 (defun compilation (on)

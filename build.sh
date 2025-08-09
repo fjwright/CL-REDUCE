@@ -4,18 +4,31 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-08-07 14:50:51 franc>
+# Time-stamp: <2025-08-09 17:44:01 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
-# 1. Compile sl-on-cl, which implements Standard Lisp on Common Lisp.
-# 2. Build an initial bootstrap REDUCE image without REDUCE fasl files,
-#    which does not form part of the final REDUCE system and should not
-#    need to be rebuilt very often.  It is used to compile REDUCE.
-# 3. Compile trace, which provides rudimentary function tracing.
-# 4. Compile all required fasl files and save a final REDUCE image.
+# This script assumes that the version of Common Lisp to be used has
+# already been built if necessary and installed in a directory on your
+# command search path.  It then does the following, where the details
+# depend on the Lisp in use:
 
-# This script must be run in the top-level CL REDUCE directory.
+# 1. Compile "sl-on-cl.lisp", which implements Standard Lisp on Common
+#    Lisp.
+
+# 2. Build an initial bootstrap REDUCE system by using only REDUCE
+#    source files.  This does not form part of the final REDUCE system
+#    and should not need to be rebuilt very often.  It is used to
+#    compile a full REDUCE system.
+
+# 3. Compile "trace.lisp", which provides rudimentary function
+#    tracing.
+
+# 4. Compile all required fasl files and save a build REDUCE system..
+
+# This script must be run with the top-level CL REDUCE directory
+# called "common-lisp" as the current directory.
+
 # Always do a clean build after updating your version of Common Lisp!
 
 function help {
@@ -83,18 +96,18 @@ case $lisp in
             CYGWIN*)            # MS Windows
                 faslext='wx64fsl';;
         esac;;
+    'ecl')
+        # Use portable byte-code FASL files by default.
+        lisp='eclp';&            # fall through
     'eclp')
         # Use portable byte-code FASL files.
-        lisp='ecl';&            # fall through
-    'ecl')
-        # Use portable byte-code FASL files.
-        runlisp='ecl --norc --eval "(ext:install-bytecodes-compiler)"'
-        runlispfile='ecl --norc --eval "(ext:install-bytecodes-compiler)" --load'
-        runbootstrap='ecl --norc --eval "(ext:install-bytecodes-compiler)" --load fasl.ecl/bootstrapreduce'
+        runlisp='ecl --norc --eval "(pushnew :ECLP *features*)"'
+        runlispfile='ecl --norc --eval "(pushnew :ECLP *features*)" --load'
+        runbootstrap='ecl --norc --eval "(pushnew :ECLP *features*)" --load fasl.ecl/bootstrapreduce'
         runreduce='./redecl'
         faslext='fasc';;
     'ecln')
-        # Use native binary FASL files (the default).
+        # Use native binary FASL files (the ECL default).
         runlisp='ecl --norc --eval "(pushnew :ECLN *features*)"'
         runlispfile='ecl --norc --eval "(pushnew :ECLN *features*)" --load'
         runbootstrap='ecl --norc --eval "(pushnew :ECLN *features*)" --load fasl.ecln/bootstrapreduce'
@@ -153,6 +166,7 @@ EOF
          mv sl-on-cl.o sl-on-cl.fas fasl.ecln
          echo '("sl-on-cl.o"' > fasl.ecln/bootstrapreduce.dat
     else time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg
+#+ECLP (ext:install-bytecodes-compiler)
 (or (compile-file "sl-on-cl.lisp")
     #+(or CCL ECL) (quit 1)
     #-(or CCL ECL) (exit #+SBCL :code 1))
@@ -171,7 +185,7 @@ function grep_errors {
 }
 
 case $lisp in
-    'ecl' | 'ecln')
+    'eclp' | 'ecln')
         echo $'\n+++++ Building ECL bootstrap REDUCE...'
         if [ "$lisp" == "ecln" ]
         then
@@ -240,7 +254,7 @@ EOF
     *)
         if [ ! -e fasl.$lisp/bootstrap.$saveext ]
         then
-            echo '+++++ Building bootstrap REDUCE...'
+            echo $'\n+++++ Building bootstrap REDUCE...'
             time $runlispfile bootstrap &> log.$lisp/bootstrap.blg
             if [ ! -e fasl.$lisp/bootstrap.$saveext ]
             then
@@ -359,7 +373,7 @@ fi || { echo '***** Compiling trace failed'; exit 1; }
 ###############################
 
 case $lisp in
-    'ecl' | 'ecln')
+    'eclp' | 'ecln')
         echo $'\n+++++ Building the ECL REDUCE dynamic load file...'
 
         # Can't currently build REDUCE the conventional way,
@@ -465,7 +479,7 @@ if '$p eq 'fps then load_package limits,factor,specfn,sfgamma
 else if '$p eq 'mrvlimit then load_package taylor
 % Temporary hacks to avoid build errors:
 else if '$p eq 'corrundum then
-   << if '$lisp eq 'ecl then bye else flag('(flush),'rlisp) >>
+   << if 'ecl memq lispsystem!* then bye else flag('(flush),'rlisp) >>
 else if '$p eq 'tmprint then <<
    lispsystem!* := 'psl . lispsystem!*;
    switch usermode >>;
