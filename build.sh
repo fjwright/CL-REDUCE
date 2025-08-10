@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-08-09 17:44:01 franc>
+# Time-stamp: <2025-08-10 12:01:08 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -103,8 +103,8 @@ case $lisp in
         # Use portable byte-code FASL files.
         runlisp='ecl --norc --eval "(pushnew :ECLP *features*)"'
         runlispfile='ecl --norc --eval "(pushnew :ECLP *features*)" --load'
-        runbootstrap='ecl --norc --eval "(pushnew :ECLP *features*)" --load fasl.ecl/bootstrapreduce'
-        runreduce='./redecl'
+        runbootstrap='ecl --norc --eval "(pushnew :ECLP *features*)" --load fasl.eclp/bootstrapreduce'
+        runreduce='./redeclp'
         faslext='fasc';;
     'ecln')
         # Use native binary FASL files (the ECL default).
@@ -186,7 +186,7 @@ function grep_errors {
 
 case $lisp in
     'eclp' | 'ecln')
-        echo $'\n+++++ Building ECL bootstrap REDUCE...'
+        echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE...'
         if [ "$lisp" == "ecln" ]
         then
             eval $runlisp << EOF &> log.ecln/ecln-begin-bootstrap.blg
@@ -212,7 +212,7 @@ package!-remake2('remake, nil);
 bye;
 EOF
         status=$?               # 0 even when build fails!
-        echo $'\n+++++ Building ECL bootstrap REDUCE done.  Possible errors:'
+        echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE done.  Possible errors:'
         grep_errors bootstrap
 
         if [ $status -ne 0 ]; then echo '***** Build failed'; exit 1; fi
@@ -237,7 +237,7 @@ EOF
 EOF
             cd ..
         else
-            echo $'\n+++++ Building the ECL bootstrap REDUCE dynamic load file...'
+            echo $'\n+++++ Building the' ${lisp@U} 'bootstrap REDUCE dynamic load file...'
 
             # Can't currently build REDUCE the conventional way,
             # i.e. statically!  Instead, build "fasl.ecl/bootstrapreduce.lisp",
@@ -247,7 +247,7 @@ EOF
             sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
                 bootstrapreduce-ecl.lisp > fasl.$lisp/bootstrapreduce.lisp
 
-            echo '+++++ Built the ECL bootstrap REDUCE dynamic load file.'
+            echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."
         fi
         echo $'\a'
         ;;
@@ -374,7 +374,7 @@ fi || { echo '***** Compiling trace failed'; exit 1; }
 
 case $lisp in
     'eclp' | 'ecln')
-        echo $'\n+++++ Building the ECL REDUCE dynamic load file...'
+        echo $'\n+++++ Building the' ${lisp@U} 'REDUCE dynamic load file...'
 
         # Can't currently build REDUCE the conventional way,
         # i.e. statically!  Instead, build "fasl.ecl/reduce.lisp",
@@ -384,7 +384,7 @@ case $lisp in
         sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
             reduce-ecl.lisp > fasl.$lisp/reduce.lisp
 
-        echo $'+++++ Built the ECL REDUCE dynamic load file.\n'
+        echo '+++++ Built the' ${lisp@U} $'REDUCE dynamic load file.\n'
         ;;
 
     *)

@@ -1,4 +1,4 @@
 #!/bin/bash
 # Start ECL REDUCE on Cygwin, Linux or macOS using portable byte-code fasl files.
 cl=$(realpath $(dirname $0))    # common-lisp directory
-ecl --eval "(let (*load-verbose*) (ext:install-bytecodes-compiler) (load \"$cl/fasl.ecl/reduce\"))"
+ecl --eval "(let (*load-verbose*) (pushnew :ECLP *features*) (load \"$cl/fasl.eclp/reduce\"))"

@@ -12,7 +12,7 @@ The files in this directory are intended to build and run the current distribute
 
 I have built REDUCE using SBCL 2.4.5, Cygwin GNU CLISP 2.49+ and CCL 1.12.2 on Windows, and SBCL 2.2.3, GNU CLISP 2.49.92 and CCL 1.12.1 on Ubuntu 20.04.4 LTS.  In all cases, REDUCE runs simple test input correctly, but I have not done any careful testing recently.
 
-The support for CCL is based on code provided by Marco Ferraris.  There is also some preliminary support for the Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) thanks to Rainer Schöpf, but it is not yet possible to preserve Lisp images so this version is not yet usable.
+The support for CCL is based on code provided by Marco Ferraris.  There is also some preliminary support for [Embeddable Common Lisp (ECL)](https://ecl.common-lisp.dev/), and for the Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) thanks to Rainer Schöpf, but it is not yet possible to preserve Lisp images so the ABCL version is not yet usable.
 
 I recommend SBCL because in my experience it is the fastest and it is easy to install and set up.  CLISP is slow, and CCL is tricky to set up (at least, on MS Windows).
 
@@ -38,6 +38,7 @@ The build directory must contain the following files from the common-lisp direct
 * `remake.red`
 * `build.sh`
 * `gnuintfc.red`
+* `red<lisp>`, `red<lisp>.bat` as required
 
 If you do not build within the REDUCE Subversion file tree then the following two additional steps are necessary:
 
@@ -81,13 +82,13 @@ The build script supports some optional flags: `-c` provides a clean build, by f
 
 ## Determining the REDUCE revision
 
-If you used Subversion to download or update a copy of the REDUCE distribution files from [SourceForge](https://sourceforge.net/projects/reduce-algebra/) then the build process should correctly determine the REDUCE revision from the `packages` directory, which contains all the REDUCE source code.  This determination uses the programs [`svnversion`](https://svnbook.red-bean.com/en/1.7/svn.ref.svnversion.re.html) and [`readlink`](https://www.gnu.org/software/coreutils/manual/html_node/readlink-invocation.html) (if available).  If this determination fails then the build process uses the file `packages/support/revision.red`, but beware that this file is obsolescent and may not continue to give the correct revision.  If necessary, the REDUCE revision can be specified by hand using the `-r` option to `build.sh`, e.g.
+If you used Subversion to download or update a copy of the REDUCE distribution files from [SourceForge](https://sourceforge.net/projects/reduce-algebra/) then the build process should correctly determine the REDUCE revision from the `packages` directory, which contains all the REDUCE source code.  This determination uses the programs [`svnversion`](https://svnbook.red-bean.com/en/1.7/svn.ref.svnversion.re.html) and [`readlink`](https://www.gnu.org/software/coreutils/manual/html_node/readlink-invocation.html) (if available).  Otherwise, the REDUCE revision can be specified by hand using the `-r` option to `build.sh`, e.g.
 
 ```sh
 ./build.sh -l <lisp> -r revision -c
 ```
 
-The order of precedence of the various mechanisms for determining the REDUCE revision is first the `-r` option, then `svnversion`, then `revision.red`.
+The order of precedence of the two mechanisms for determining the REDUCE revision is first the `-r` option, then `svnversion`.  **Note that the file `packages/support/revision.red` is no longer used.**
 
 ## Running REDUCE
 
@@ -107,7 +108,7 @@ On Linux or Cygwin, open a terminal window with the build directory current and 
 
 Beware that input editing may not work using the shell interface; one solution is to use [Run-REDUCE](https://fjwright.github.io/Run-REDUCE/).
 
-REDUCE can be run from any directory provided the command to start it is specified suitably, such as by using an absolute file path or a symbolic link.  Alternatively, you can add the `common-lisp` directory to your path and then run REDUCE via the appropriate command from any directory on both Windows and Linux.
+REDUCE should run from any directory and the command to start it can be specified by using either an absolute or a relative file path.  **But note that neither a hard nor a symbolic link will work!**  Alternatively, you can add the `common-lisp` directory to your command search path and then run REDUCE via the appropriate command from any directory.
 
 Interrupting REDUCE (with Control-C) invokes a Lisp break loop and aborting that should return you to REDUCE.  Within the break loop you can run arbitrary Lisp code, but remember that you are running Common Lisp and in particular Lisp output uses Common Lisp syntax, although you are initially in the Standard Lisp package.  However, package prefixes are recognised (which they are not from within REDUCE) so you can access most of Common Lisp, but beware that you might break REDUCE so that you cannot return to it!  Evaluating the Lisp expression `(exit)` from a Lisp break loop should completely terminate REDUCE.
 
@@ -162,19 +163,16 @@ The CSL test times do not include checking, which involves running `diff`.  The 
 
 ## Known limitations
 
-CL REDUCE does not currently read a REDUCE initialisation file. [FIXED?]
-
 I cannot see any way to support the facilities for restricting execution time on CLISP.  In more detail: the file "rlisp/inter.red" defines procedures `with!-timeout` and similar that use garbage collection to provide an interrupt by assigning a function to the variable `!*gc!-hook!*`, but no garbage collection hooks exist in CLISP.  The procedures `with!-timeout` and similar just run without any restriction so don't use CLISP REDUCE is you need this facility!  This affects `rubi_red` and possibly other packages.  It works on SBCL!
 
 ## To do
 
-* Read a REDUCE initialisation file. [FIXED?]
 * Optimise SL-on-CL to improve its speed.
 * Better error handling.
 * Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 * Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
 * Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
-* Implement the hash-table code (`mkhash` etc.) defined in `rlisp/proc.red` more efficiently.
+* Implement the hash-table code (`mkhash` etc.) defined in `rlisp/proc.red` more efficiently in Lisp.
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->

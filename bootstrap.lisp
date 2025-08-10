@@ -1,13 +1,13 @@
 ;; Lisp code to build a REDUCE image for bootstrapping on Common Lisp
 
-;; FJW -- Time-stamp: <2025-07-30 17:13:10 franc>
+;; FJW -- Time-stamp: <2025-08-10 11:22:45 franc>
 
 (load (concatenate 'string "fasl."
                    #+SBCL "sbcl"
                    #+CLISP "clisp"
                    #+ABCL "abcl"
                    #+CCL "ccl"
-                   #+(and ECL (not ECLN)) "ecl"
+                   #+ECLP "eclp"
                    #+ECLN "ecln"
                    "/sl-on-cl")) ; could probably make this more elegant!
 

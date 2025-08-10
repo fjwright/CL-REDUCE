@@ -1,4 +1,4 @@
 #!/bin/bash
-# Start ECL REDUCE on Cygwin, Linux or macOS using native binary fasl files (the default).
+# Start ECL REDUCE on Cygwin, Linux or macOS using native binary fasl files (the ECL default).
 cl=$(realpath $(dirname $0))    # common-lisp directory
-ecl --eval "(let (*load-verbose*) (load \"$cl/fasl.ecln/reduce\"))"
+ecl --eval "(let (*load-verbose*) (pushnew :ECLN *features*) (load \"$cl/fasl.ecln/reduce\"))"

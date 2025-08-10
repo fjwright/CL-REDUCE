@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-08-09 17:45:27 franc>
+;; Time-stamp: <2025-08-10 11:47:45 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3569,12 +3569,26 @@ without directory to fasl.ecln/bootstrapreduce.dat."
 
 (pushnew :standard-lisp *features*)
 
-(defparameter lispsystem* *features*
+(defparameter lispsystem* '(common-lisp)
   "Information about the Lisp system supporting REDUCE.
 A list of identifiers indicating system properties.")
 
+#+SBCL  (pushnew 'SBCL  lispsystem*)
+#+CLISP (pushnew 'CLISP lispsystem*)
+#+ABCL  (pushnew 'ABCL  lispsystem*)
+#+CCL   (pushnew 'CCL   lispsystem*)
+#+ECL   (progn (pushnew 'ECL lispsystem*)
+               (pushnew #+ECLP 'ECLP #+ECLN 'ECLN lispsystem*))
+
+;; The symbols UNIX, CYGWIN and WIN32 are used in gnuintfc.red.
+#+(or WIN32 WINDOWS) (pushnew 'WIN32 lispsystem*)
+#+CYGWIN (pushnew 'CYGWIN lispsystem*)
+#+UNIX (pushnew 'UNIX lispsystem*)
+#+(or MACOS OS-MACOSX) (pushnew 'MACOS lispsystem*)
+
 ;; For ECLP, use the portable bytecode compiler:
 #+ECLP (ext:install-bytecodes-compiler)
+;; For ECLN, use the DEFAULT native binary compiler.
 
 #+SBCL
 (defun compilation (on)
