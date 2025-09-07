@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-08-10 11:47:45 franc>
+;; Time-stamp: <2025-08-10 17:28:26 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3466,7 +3466,14 @@ without directory to fasl.ecln/bootstrapreduce.dat."
                   #-CCL :external-format
                   #+CLISP charset:UTF-8
                   #-CLISP :UTF-8)
-    #+ECLN (ecln-compile-file %faslout-name.lisp))
+    #+ECLP
+    (with-open-file (output "fasl.eclp/bootstrapreduce.dat"
+                            :direction :output
+                            :if-exists :append)
+      (format output "~A~%"
+              (concat2 (pathname-name %faslout-name.lisp) ".fasc")))
+    #+ECLN
+    (ecln-compile-file %faslout-name.lisp))
   ;;      ;; (progn
   ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
