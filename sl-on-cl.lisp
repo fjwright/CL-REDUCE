@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-08-10 11:47:45 franc>
+;; Time-stamp: <2025-09-07 18:00:36 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3432,16 +3432,6 @@ When all done, execute FASLEND;~2%" name))
 (flag '(faslout) 'opfn)
 (flag '(faslout) 'noval)
 
-#+ECLN
-(defun ecln-compile-file (input-file)
-  "Compile INPUT-FILE to a \".o\" file and append the \".o\" filename
-without directory to fasl.ecln/bootstrapreduce.dat."
-  (compile-file input-file :system-p t)
-  (with-open-file (output "fasl.ecln/bootstrapreduce.dat"
-                          :direction :output
-                          :if-exists :append)
-    (format output "~S~%" (concat2 (pathname-name input-file) ".o"))))
-
 ;; SBCL outputs more detailed and useful messages than those that I
 ;; have therefore temporarily commented out below.  Delete them unless
 ;; they prove useful with other versions of Common Lisp.
@@ -3461,12 +3451,10 @@ without directory to fasl.ecln/bootstrapreduce.dat."
   ;; (format t  "Compiling ~a..." %faslout-name.lisp)
   ;; (if
   (let ((*readtable* (copy-readtable nil))) ; normal CL syntax
-    #-ECLN
     (compile-file %faslout-name.lisp
                   #-CCL :external-format
                   #+CLISP charset:UTF-8
-                  #-CLISP :UTF-8)
-    #+ECLN (ecln-compile-file %faslout-name.lisp))
+                  #-CLISP :UTF-8))
   ;;      ;; (progn
   ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)

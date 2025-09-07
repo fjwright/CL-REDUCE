@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-08-10 12:01:08 franc>
+# Time-stamp: <2025-09-07 18:20:02 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -153,26 +153,16 @@ mkdir -p fasl.$lisp
 # Compile sl-on-cl if necessary #
 #################################
 
-if [ "$lisp" == "ecln" ] || [ "sl-on-cl.lisp" -nt "fasl.$lisp/sl-on-cl.$faslext" ]
+if [ "sl-on-cl.lisp" -nt "fasl.$lisp/sl-on-cl.$faslext" ]
 then
     echo $'\n+++++ Compiling sl-on-cl'
-    if [ "$lisp" == "ecln" ]
-    then time eval $runlisp << EOF &> log.ecln/sl-on-cl.blg
-(or (prog1
-       (compile-file "sl-on-cl.lisp" :system-p t)
-       (c::build-fasl "sl-on-cl" :lisp-files '("sl-on-cl.o")))
-    (quit 1))
-EOF
-         mv sl-on-cl.o sl-on-cl.fas fasl.ecln
-         echo '("sl-on-cl.o"' > fasl.ecln/bootstrapreduce.dat
-    else time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg
+    time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg
 #+ECLP (ext:install-bytecodes-compiler)
 (or (compile-file "sl-on-cl.lisp")
     #+(or CCL ECL) (quit 1)
     #-(or CCL ECL) (exit #+SBCL :code 1))
 EOF
-         mv sl-on-cl.$faslext fasl.$lisp
-    fi
+    mv sl-on-cl.$faslext fasl.$lisp
 fi || { echo '***** Compilation failed'; exit 1; }
 
 ########################################################
@@ -187,14 +177,6 @@ function grep_errors {
 case $lisp in
     'eclp' | 'ecln')
         echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE...'
-        if [ "$lisp" == "ecln" ]
-        then
-            eval $runlisp << EOF &> log.ecln/ecln-begin-bootstrap.blg
-(load "fasl.ecln/sl-on-cl")
-(sl::ecln-compile-file "ecln-begin-bootstrap.lisp")
-EOF
-            mv ecln-begin-bootstrap.o fasl.ecln
-        fi
         time eval $runlispfile bootstrap << EOF &> log.$lisp/bootstrap.blg
 % Compile fasl files for the minimal set of packages:
 symbolic; $force
@@ -211,45 +193,20 @@ package!-remake2('entry, 'support);
 package!-remake2('remake, nil);
 bye;
 EOF
-        status=$?               # 0 even when build fails!
         echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE done.  Possible errors:'
         grep_errors bootstrap
 
-        if [ $status -ne 0 ]; then echo '***** Build failed'; exit 1; fi
+        echo $'\n+++++ Building the' ${lisp@U} 'bootstrap REDUCE dynamic load file...'
 
-        if [ "$lisp" == "ecln" ]
-        then
-#             eval $runlisp << EOF &> log.ecln/ecln-end-bootstrap.blg
-# (load "fasl.ecln/sl-on-cl")
-# (sl::ecln-compile-file "ecln-end-bootstrap.lisp") ; will probably fail as is!!!
-# EOF
-#             mv ecln-end-bootstrap.o fasl.ecln
-            echo ')' >> fasl.ecln/bootstrapreduce.dat
-            # Read "fasl.ecln/bootstrapreduce.dat" and build "bootstrap.exe":
-            cd fasl.ecln
-            eval $runlisp << EOF &>> ../log.ecln/ecln-end-bootstrap.blg
-;; NEED TO MAKE THIS PORTABLE!!!
-(load "/usr/local/lib/ecl-24.5.10/cmp.fas") ; since compile-file not called
-(let ((o-file-list
-         (with-open-file (input "bootstrapreduce.dat")
-            (read input))))
-   (c::build-program "bootstrap" :lisp-files o-file-list))
-EOF
-            cd ..
-        else
-            echo $'\n+++++ Building the' ${lisp@U} 'bootstrap REDUCE dynamic load file...'
+        # Can't currently build REDUCE the conventional way,
+        # i.e. statically!  Instead, build "fasl.ecl/bootstrapreduce.lisp",
+        # which builds bootstrap REDUCE dynamically.
 
-            # Can't currently build REDUCE the conventional way,
-            # i.e. statically!  Instead, build "fasl.ecl/bootstrapreduce.lisp",
-            # which builds bootstrap REDUCE dynamically.
+        date=\"$(date +%d-%b-%Y)\"
+        sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
+            bootstrapreduce-ecl.lisp > fasl.$lisp/bootstrapreduce.lisp
 
-            date=\"$(date +%d-%b-%Y)\"
-            sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
-                bootstrapreduce-ecl.lisp > fasl.$lisp/bootstrapreduce.lisp
-
-            echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."
-        fi
-        echo $'\a'
+        echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."$'\a'
         ;;
     *)
         if [ ! -e fasl.$lisp/bootstrap.$saveext ]
@@ -358,15 +315,17 @@ if [ $coreonly ]; then exit; fi
 # Compile trace if necessary #
 ##############################
 
-if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
-then
-    echo $'\n+++++ Compiling trace'
-    time eval $runlisp << EOF &> log.$lisp/trace.blg
-(load "fasl.$lisp/sl-on-cl")
-(or (compile-file "trace.lisp") (exit 1))
-EOF
-    mv trace.$faslext fasl.$lisp
-fi || { echo '***** Compiling trace failed'; exit 1; }
+# Omit this for now and try "rtools/simplertrace.red" instead.
+
+# if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
+# then
+#     echo $'\n+++++ Compiling trace'
+#     time eval $runlisp << EOF &> log.$lisp/trace.blg
+# (load "fasl.$lisp/sl-on-cl")
+# (or (compile-file "trace.lisp") (exit 1))
+# EOF
+#     mv trace.$faslext fasl.$lisp
+# fi || { echo '***** Compiling trace failed'; exit 1; }
 
 ###############################
 # Build the REDUCE image file #
@@ -395,7 +354,8 @@ case $lisp in
         # compile the non-core modules.
 
         time eval $runlisp << EOF &> log.$lisp/reduce.blg
-(load "sl-on-cl") (load "trace") ; temporary -- until I can arrange autoloading!
+(load "sl-on-cl")
+;; (load "trace") ; temporary -- until I can arrange autoloading!
 (standard-lisp)
 
 (cl:defparameter !*init!-stats!* (list (time) (gtheap)))
