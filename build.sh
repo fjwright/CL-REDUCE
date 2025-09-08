@@ -4,7 +4,7 @@
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-09-07 18:20:02 franc>
+# Time-stamp: <2025-09-08 15:44:08 franc>
 # Preliminary support for Armed Bear Common Lisp by Rainer Schöpf.
 # Support for Clozure Common Lisp by Marco Ferraris.
 
@@ -315,17 +315,15 @@ if [ $coreonly ]; then exit; fi
 # Compile trace if necessary #
 ##############################
 
-# Omit this for now and try "rtools/simplertrace.red" instead.
-
-# if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
-# then
-#     echo $'\n+++++ Compiling trace'
-#     time eval $runlisp << EOF &> log.$lisp/trace.blg
-# (load "fasl.$lisp/sl-on-cl")
-# (or (compile-file "trace.lisp") (exit 1))
-# EOF
-#     mv trace.$faslext fasl.$lisp
-# fi || { echo '***** Compiling trace failed'; exit 1; }
+if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
+then
+    echo $'\n+++++ Compiling trace'
+    time eval $runlisp << EOF &> log.$lisp/trace.blg
+(load "fasl.$lisp/sl-on-cl")
+(or (compile-file "trace.lisp") (exit 1))
+EOF
+    mv trace.$faslext fasl.$lisp
+fi || { echo '***** Compiling trace failed'; exit 1; }
 
 ###############################
 # Build the REDUCE image file #
@@ -354,8 +352,7 @@ case $lisp in
         # compile the non-core modules.
 
         time eval $runlisp << EOF &> log.$lisp/reduce.blg
-(load "sl-on-cl")
-;; (load "trace") ; temporary -- until I can arrange autoloading!
+(load "sl-on-cl") (load "trace") ; temporary -- until I can arrange autoloading!
 (standard-lisp)
 
 (cl:defparameter !*init!-stats!* (list (time) (gtheap)))
