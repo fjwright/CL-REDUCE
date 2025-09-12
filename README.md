@@ -10,7 +10,7 @@ From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Gu
 
 The files in this directory are intended to build and run the current distributed version of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support [Steel Bank Common Lisp](http://www.sbcl.org/) (SBCL), [CLISP](https://clisp.sourceforge.io/) and [Clozure Common Lisp](https://ccl.clozure.com/) (CCL) on MS Windows and Linux, where Linux means current or recent versions of Ubuntu and Fedora.  I understand that REDUCE builds and runs on SBCL, CLISP and CCL on macOS, although I don't run macOS myself.
 
-I have built this revision using SBCL 2.5.5 on Windows (only).  It runs simple test input correctly, but I have not necessarily done any careful testing.
+I have built this revision using the latest version of SBCL (namely 2.5.8, released August 29, 2025) on both Windows 11 and Ubuntu 22.04.5 LTS (GNU/Linux 6.6.87.2-microsoft-standard-WSL2 x86_64).  It runs simple test input correctly, but I have not necessarily done any careful testing.  (On Ubuntu, some Redlog sub-packages fail to build.  An older version of SBCL available by default on this version of Ubuntu seems not to work at all!)
 
 The support for CCL is based on code provided by Marco Ferraris.  There is also some preliminary support for the Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) thanks to Rainer Schöpf, but it is not yet possible to preserve Lisp images so the ABCL version is not yet usable, and I am working on [Embeddable Common Lisp (ECL)](https://ecl.common-lisp.dev/).
 
@@ -170,6 +170,7 @@ I cannot see any way to support the facilities for restricting execution time on
 ## To do
 
 * Optimise SL-on-CL to improve its speed.
+* Make getd return something other than a lambda form for compiled code, cf. CSL/PSL, which gives the impression that compilation doesn't work.
 * Better error handling.
 * Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 * Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?

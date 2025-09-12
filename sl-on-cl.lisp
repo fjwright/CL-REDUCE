@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-07 18:00:36 franc>
+;; Time-stamp: <2025-09-12 17:50:47 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -843,7 +843,9 @@ FEXPR PROCEDURE DM(U);
   "GETD(FNAME:any):{NIL, dotted-pair} eval, spread
 If FNAME is not the name of a defined function, return NIL. If
 FNAME is a defined function then return the dotted-pair
-\(TYPE:ftype . DEF:{function-pointer, lambda})."
+\(TYPE:ftype . DEF:{function-pointer, lambda}).
+
+*** CURRENTLY RETURNS A LAMBDA FORM EVEN FOR COMPILED FUNCTIONS! ***"
   (the list
        (and (symbolp fname) (fboundp fname)
             ;; Assume expr unless fname was defined using SL dm macro.
@@ -3598,9 +3600,10 @@ interpret otherwise.  The default is compile."
    unwind-protect evenp oddp
    string-not-greaterp y-or-n-p         ; used in clprolo
    force-output                         ; used in clrend
-   catch throw                          ; used in rubi_red
+   catch throw                          ; used in corrundum (sic)
    sleep                                ; used in crack
    #+SBCL sb-ext:*muffled-warnings*     ; used in build.sh
+   symbol-function             ; since getd always returns lambda form
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for
