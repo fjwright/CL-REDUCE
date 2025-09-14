@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-12 17:50:47 franc>
+;; Time-stamp: <2025-09-14 11:47:35 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2633,12 +2633,8 @@ selected output file.
   (the filehandle
        (prog1
            %write-stream
-         ;; This fails to compile (report as SBCL bug?):
-         ;; (setq *standard-output* (cdr +default-write-stream+)
-         ;;    %write-stream +default-write-stream+)
-         ;; But this version compiles OK:
-         (setq %write-stream +default-write-stream+
-               *standard-output* (cadr %write-stream))
+         (setq *standard-output* (cadr +default-write-stream+)
+               %write-stream +default-write-stream+)
          (when filehandle
            (ecase (car filehandle)
              (file

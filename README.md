@@ -176,6 +176,7 @@ I cannot see any way to support the facilities for restricting execution time on
 * Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
 * Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
 * Implement the hash-table code (`mkhash` etc.) defined in `rlisp/proc.red` more efficiently in Lisp.
+* Command-line option to suppress reading the REDUCE Startup File.
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->
