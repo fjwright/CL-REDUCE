@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-14 11:47:35 franc>
+;; Time-stamp: <2025-09-17 12:03:19 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -55,7 +55,7 @@
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
-  (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
+  (:shadow :constantp :minusp :vectorp :zerop :nth :pnth
            :gensym :intern :get :remprop :error :expt :float :map
            :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
            :delete :length :member :sort :sublis :subla :subst :rassoc
@@ -287,24 +287,34 @@ the same value and type."               ; i.e. the same SL type!
 ;;    (and (floatp u) (floatp v) (= u v))
 ;;    (and (vectorp u) (vectorp v) (equalp u v))))
 
-(defun equal (u v)
-  "EQUAL(U:any, V:any):boolean eval, spread
-Returns T if U and V are the same. Dotted-pairs are compared
-recursively to the bottom levels of their trees. Vectors must
-have identical dimensions and EQUAL values in all
-positions. Strings must have identical characters. Function
-pointers must have EQ values. Other atoms must be EQN equal."
-  (and (cl:equal (type-of u) (type-of v))
-       (if (atom u) (cond ((cl:symbolp u) (eq u v))
-                          ((cl:floatp u) (= u v))
-                          ((cl:numberp u) (eql u v))
-                          ((cl:stringp u) (string= u v))
-                          ((cl:vectorp u) (equalp u v)))
-           ;; (and (equal (car u) (car v)) (equal (cdr u) (cdr v)))
-           (loop for utail on u for vtail on v
-              unless (equal (car utail) (car vtail)) do (return nil)
-              while (and (consp (cdr utail)) (consp (cdr vtail)))
-              finally (return (equal (cdr utail) (cdr vtail)))))))
+;; The following definition is too inefficient!
+;; ibalp.tst fails badly when using it.
+;; (defun equal (u v)
+;;   "EQUAL(U:any, V:any):boolean eval, spread
+;; Returns T if U and V are the same. Dotted-pairs are compared
+;; recursively to the bottom levels of their trees. Vectors must
+;; have identical dimensions and EQUAL values in all
+;; positions. Strings must have identical characters. Function
+;; pointers must have EQ values. Other atoms must be EQN equal."
+;;   (and (cl:equal (type-of u) (type-of v))
+;;        (if (atom u) (cond ((cl:symbolp u) (eq u v))
+;;                           ((cl:floatp u) (= u v))
+;;                           ((cl:numberp u) (eql u v))
+;;                           ((cl:stringp u) (string= u v))
+;;                           ((cl:vectorp u) (equalp u v)))
+;;            ;; (and (equal (car u) (car v)) (equal (cdr u) (cdr v)))
+;;            (loop for utail on u for vtail on v
+;;               unless (equal (car utail) (car vtail)) do (return nil)
+;;               while (and (consp (cdr utail)) (consp (cdr vtail)))
+;;               finally (return (equal (cdr utail) (cdr vtail)))))))
+
+(import 'cl:equal)
+;; EQUAL(U:any, V:any):boolean eval, spread
+;; Returns T if U and V are the same. Dotted-pairs are compared
+;; recursively to the bottom levels of their trees. Vectors must
+;; have identical dimensions and EQUAL values in all
+;; positions. Strings must have identical characters. Function
+;; pointers must have EQ values. Other atoms must be EQN equal.
 
 (defalias 'fixp 'cl:integerp
   "FIXP(U:any):boolean eval, spread
@@ -2178,7 +2188,7 @@ parent.  Called by `open' and `cd' on SBCL."
   (let ((d (copy-list (pathname-directory filename))))
     (when (eq (car d) :relative)
       ;; Replace a leading "." with the current working directory:
-      (when (equal (cadr d) ".")
+      (when (cl:equal (cadr d) ".")
         (setf (cdr d) (cddr d))         ; remove "." component
         (setq filename (merge-pathnames
                         (make-pathname :directory d :defaults filename))))
