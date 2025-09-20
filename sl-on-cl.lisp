@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-17 12:03:19 franc>
+;; Time-stamp: <2025-09-20 16:12:40 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2381,63 +2381,42 @@ in vector-notation.  The value of U is returned."
           finally (return
                     (cl:apply #'concatenate 'string (nreverse v))))))
 
-(defparameter *float-print-precision* 12
-  ;; The choice of 12 is somewhat arbitrary.  Algebraic output seems
-  ;; to default to 6.  13 or less makes arith.tst agree with its
-  ;; reference output.  Should perhaps try to compute this; cf. !!nfpd
-  ;; defined in the REDUCE source file "arith/paraset.red".
+(defparameter *float-print-precision* 6
   "Number of significant decimal digits to include when printing floats, or nil.
 If nil then floats are printed without any additional rounding.")
 
-;; (defun %prin-float-to-string (u)
-;;   "Print a float to a string rounded to include only significant digits."
-;;   ;; Rescale u so that the significant digits form the integer part,
-;;   ;; round that and then undo the rescaling.
-;;   (princ-to-string
-;;    (if (and *float-print-precision* (not (zerop u)))
-;;        (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
-;;               ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
-;;               ;; integer part of u contains e+1 digits.  To make u
-;;               ;; contain d significant digits, multiply by a scale
-;;               ;; factor s = 10^(d-e-1), round and divide s out again:
-;;               (s (expt 10d0 (- *float-print-precision* e 1))))
-;;          (setq u (/ (fround (* u s)) s)))
-;;        u)))
-
-;; Using `format' instead of `princ-to-string' below might be better.
-;; (format nil "~,,,,,,'ee" 1e10) -> "1.0e+10"
-;; But deciding between ~f and ~e format to emulate Standard Lisp
-;; print output might not be so easy.  So, at least for now, use the
-;; following hack!
-
-(defun %prin-float-to-string (u)
-  "Print a float to a string rounded to include only significant digits."
+(defun %round-float (u)
+  "Round a float to include only *float-print-precision* significant digits."
   ;; Rescale u so that the significant digits form the integer part,
   ;; round that and then undo the rescaling.
   (declare (double-float u))
-  (let ((s (cl:princ-to-string
-            (if (and *float-print-precision* (not (zerop u)))
-                (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
-                       ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
-                       ;; integer part of u contains e+1 digits.  To make u
-                       ;; contain d significant digits, multiply by a scale
-                       ;; factor s = 10^(d-e-1), round and divide s out again:
-                       (e1 (- *float-print-precision* e 1))
-                       (s (expt 10d0 (if (> e1 300) 300 e1)))
-                       ;; Code for (> e1 300) added by RS.
-                       (s1 (if (> e1 300) (expt 10d0 (- e1 300)) 1d0)))
-                  (if (> e1 300)
-                   (setq u (/ (/ (fround (* (* u s) s1)) s) s1))
-                  (setq u (/ (fround (* u s)) s))))
-                u)))
-        p)
-    ;; Lower-case an E if necessary and follow e with + unless there is already a -.
-    (when (setq p (position #+SBCL #\e #-SBCL #\E s))
-      #+CLISP (setf (aref s p) #\e)
-      (incf p)
-      (unless (char-equal (aref s p) #\-)
-        (setq s (concatenate 'string (subseq s 0 p) "+" (subseq s p)))))
-    (the simple-string s)))
+  (the double-float
+       (if (and *float-print-precision* (not (zerop u)))
+           (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
+                  ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
+                  ;; integer part of u contains e+1 digits.  To make u
+                  ;; contain d significant digits, multiply by a scale
+                  ;; factor s = 10^(d-e-1), round and divide s out again:
+                  (e1 (- *float-print-precision* e 1))
+                  ;; Code for e1 > 300 added by RS.
+                  (e1>300 (> e1 300))
+                  (s (expt 10d0 (if e1>300 300 e1)))
+                  (s1 (if e1>300 (expt 10d0 (- e1 300)))))
+             (if e1>300
+                 (/ (/ (fround (* (* u s) s1)) s) s1)
+                 (/ (fround (* u s)) s)))
+           u)))
+
+(defun %prin-float-to-string (u)
+  "Print a float to a string rounded to include only significant digits
+specified by the value of *float-print-precision*."
+  (declare (double-float u))
+  (setq u (%round-float u))
+  (the simple-string
+       (if (or (>= (abs u) 999999.5d0) (< (abs u) 0.0001d0))
+           ;; Should leave at most one insignificant zero in mantissa!
+           (format nil "~,5,2,,,,'ee" u)
+           (format nil "~f" u))))
 
 (defun %prin-vector (u prinfn)
   "Print vector U delimited by [ and ] using PRINFN to print each element."
