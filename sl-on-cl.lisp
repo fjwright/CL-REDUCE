@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-20 16:12:40 franc>
+;; Time-stamp: <2025-09-21 09:55:52 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2407,16 +2407,35 @@ If nil then floats are printed without any additional rounding.")
                  (/ (fround (* u s)) s)))
            u)))
 
+;; It might be better to use the integer mantissa and exponent
+;; computed in the above function to print the exponential format.
+
 (defun %prin-float-to-string (u)
   "Print a float to a string rounded to include only significant digits
 specified by the value of *float-print-precision*."
   (declare (double-float u))
   (setq u (%round-float u))
-  (the simple-string
-       (if (or (>= (abs u) 999999.5d0) (< (abs u) 0.0001d0))
-           ;; Should leave at most one insignificant zero in mantissa!
-           (format nil "~,5,2,,,,'ee" u)
-           (format nil "~f" u))))
+  (let ((absu (abs u)))
+    (the simple-string
+         (if (or (>= absu 999999.5d0) (and (> absu 0d0) (< absu 0.0001d0)))
+             ;; Exponential (e) format, e.g. 9.99999e-05
+             ;; Leave at most one insignificant zero in mantissa
+             ;; if it is the first after the decimal point:
+             (let* ((s (format nil "~,5,2,,,,'ee" u))
+                    (last0 (- (cl:length s) 5)) ; pointer to last mantissa digit
+                    (first0 last0)) ; pointer to first 0 to remove (maybe)
+               (loop
+                (if (and (char= (elt s first0) #\0)
+                         (char/= (elt s (1- first0)) #\.))
+                    (decf first0)
+                    (return)))
+               (if (/= first0 last0)
+                   (concatenate
+                    'string
+                    (subseq s 0 (1+ first0)) (subseq s (1+ last0)))
+                   s))
+             ;; Fixed (f) format, e.g. 99999.9
+             (format nil "~f" u)))))
 
 (defun %prin-vector (u prinfn)
   "Print vector U delimited by [ and ] using PRINFN to print each element."
