@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-21 09:55:52 franc>
+;; Time-stamp: <2025-09-21 16:27:49 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2390,7 +2390,7 @@ If nil then floats are printed without any additional rounding.")
   ;; Rescale u so that the significant digits form the integer part,
   ;; round that and then undo the rescaling.
   (declare (double-float u))
-  (the double-float
+  (the single-float
        (if (and *float-print-precision* (not (zerop u)))
            (let* ((e (floor (log (abs u) 10d0))) ; decimal exponent
                   ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
@@ -2400,40 +2400,36 @@ If nil then floats are printed without any additional rounding.")
                   (e1 (- *float-print-precision* e 1))
                   ;; Code for e1 > 300 added by RS.
                   (e1>300 (> e1 300))
-                  (s (expt 10d0 (if e1>300 300 e1)))
-                  (s1 (if e1>300 (expt 10d0 (- e1 300)))))
+                  (s (expt 10e0 (if e1>300 300 e1)))
+                  (s1 (if e1>300 (expt 10e0 (- e1 300)))))
              (if e1>300
-                 (/ (/ (fround (* (* u s) s1)) s) s1)
-                 (/ (fround (* u s)) s)))
-           u)))
+                 (/ (/ (fround (* (* (float u 0e0) s) s1)) s) s1)
+                 (/ (fround (* (float u 0e0) s)) s)))
+           0e0)))
 
 ;; It might be better to use the integer mantissa and exponent
 ;; computed in the above function to print the exponential format.
 
-(defun %prin-float-to-string (u)
+(defun %prin-float-to-string (uu)
   "Print a float to a string rounded to include only significant digits
 specified by the value of *float-print-precision*."
-  (declare (double-float u))
-  (setq u (%round-float u))
-  (let ((absu (abs u)))
+  (declare (double-float uu))
+  (let* ((u (%round-float uu)) (absu (abs u)))
     (the simple-string
-         (if (or (>= absu 999999.5d0) (and (> absu 0d0) (< absu 0.0001d0)))
+         (if (or (>= absu 999999.5e0) (and (> absu 0e0) (< absu 0.0001e0)))
              ;; Exponential (e) format, e.g. 9.99999e-05
              ;; Leave at most one insignificant zero in mantissa
              ;; if it is the first after the decimal point:
-             (let* ((s (format nil "~,5,2,,,,'ee" u))
-                    (last0 (- (cl:length s) 5)) ; pointer to last mantissa digit
-                    (first0 last0)) ; pointer to first 0 to remove (maybe)
-               (loop
-                (if (and (char= (elt s first0) #\0)
-                         (char/= (elt s (1- first0)) #\.))
-                    (decf first0)
-                    (return)))
-               (if (/= first0 last0)
-                   (concatenate
-                    'string
-                    (subseq s 0 (1+ first0)) (subseq s (1+ last0)))
-                   s))
+             (let* ((s (format nil "~,5,2e" u))
+                    (l (- (cl:length s) 5))) ; index of last mantissa digit
+               (do ((f l (1- f))) ; index of first 0 to remove (maybe)
+                   ((or (char/= (elt s f) #\0)
+                        (char= (elt s (1- f)) #\.))
+                    (if (/= f l)
+                        (concatenate
+                         'string
+                         (subseq s 0 (1+ f)) (subseq s (1+ l)))
+                        s))))
              ;; Fixed (f) format, e.g. 99999.9
              (format nil "~f" u)))))
 

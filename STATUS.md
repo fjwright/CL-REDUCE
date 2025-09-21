@@ -5,51 +5,52 @@
 This status report is based on running REDUCE 7172 on SBCL 2.5.8 on
 Cygwin using the standard REDUCE test framework:
 
+## Packages showing issues
+
 ```sh
 franc@Centaur23 /c/REDUCE/reduce-algebra-code/testing
 $ ../scripts/testall.sh --sbcl
 ```
 
-## Packages showing issues
-
-### First test
-
 Package     | Comment
 ------------|--------
-arith       | Insignificant numerical errors; IGNORE
-assist      | Insignificant gensym numbering differences; one other insignificant difference; IGNORE for now
-numeric     | Minor numerical errors; IGNORE for now
-economise   | Insignificant numerical errors & display format differences; IGNORE for now
-scope       | Insignificant gensym numbering differences; IGNORE for now
-ellipfn     | One (significant) numerical error -- SBCL REDUCE is correct, CSL REDUCE is wrong!
-redlog      | Insignificant numerical display differences; IGNORE for now
-ofsf        | **VERY SLOW**; timed out/killed
-ibalp       | Fixed by redefining equal as cl:equal
-xcolor      | **CRASHES**, stack overflow in EQUAL!
-lalr        | Minor cosmetic differences; IGNORE for now
-sstools     | Minor cosmetic difference; IGNORE for now
-f5          | Diffs -- to be investigated
-gf2         | Significant diffs -- to be investigated
-Regressions | IGNORE for now
+arith       | SBCL is numerically more accurate than CSL/PSL **IGNORE**
+assist      | Gensym numbering differences **FIX[2]**; one other minor difference IGNORE for now
+economise   | Insignificant numerical errors **IGNORE**; display format differences **FIX[1]**
+ellipfn     | One numerical difference **IGNORE** for now
+f5          | Issues to be investigated
+gf2         | Issues to be investigated
+lalr        | Minor cosmetic differences to be investigated
+numeric     | Insignificant numerical errors **IGNORE**
+ofsf        | **NOT TESTED**, **VERY SLOW**; timed out/killed
+redlog      | Display format differences **FIX[1]**
+scope       | Gensym numbering differences **FIX[2]**
+sparse      | **Issues to be investigated**
+sstools     | Minor cosmetic difference IGNORE for now
+xcolor      | **NOT TESTED**, **CRASHES**, stack overflow in EQUAL!
 
-### Second test with revised sl-on-cl 17/09/2025
+### 21/09/2025
 
+```sh
+franc@Centaur23 /c/REDUCE/reduce-algebra-code/testing
+$ ../scripts/testall.sh --sbcl $(../common-lisp/packages-to-test.sh)
+```
 Package     | Comment
 ------------|--------
-arith
-assist
-economise
-ellipfn
-f5
-gf2
-lalr
-numeric
-ofsf        | NOT TESTED, **VERY SLOW**; timed out/killed
-redlog
-scope
-sparse
-sstools
-xcolor      | NOT TESTED, **CRASHES**, stack overflow in EQUAL!
+arith       | SBCL is numerically more accurate than CSL/PSL **IGNORE**
+assist      | Gensym numbering differences **FIX[2]**; one other minor difference IGNORE for now
+economise   | Insignificant numerical errors **IGNORE**
+ellipfn     | One numerical difference **IGNORE** for now
+f5          | **Issues to be investigated**
+gf2         | **Issues to be investigated**
+lalr        | **Minor cosmetic differences to be investigated**
+numeric     | Insignificant numerical errors **IGNORE** for now
+ofsf        | **NOT TESTED**
+redlog      | Display format differences remain! **FIX[1]**
+scope       | Gensym numbering differences **FIX[2]**
+sparse      | **Issues to be investigated**
+sstools     | Minor cosmetic difference **IGNORE** for now
+xcolor      | **NOT TESTED**
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->
