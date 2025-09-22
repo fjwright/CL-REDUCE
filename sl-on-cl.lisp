@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-22 15:55:23 franc>
+;; Time-stamp: <2025-09-22 18:13:42 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -55,7 +55,7 @@
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
-  (:shadow :constantp :minusp :vectorp :zerop :nth :pnth
+  (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
            :gensym :intern :get :remprop :error :expt :float :map
            :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
            :delete :length :member :sort :sublis :subla :subst :rassoc
@@ -308,13 +308,29 @@ the same value and type."               ; i.e. the same SL type!
 ;;               while (and (consp (cdr utail)) (consp (cdr vtail)))
 ;;               finally (return (equal (cdr utail) (cdr vtail)))))))
 
-(import 'cl:equal)
+;; The following definition fails for the sparse package, which uses
+;; lists containing vectors; equivalent vectors are not cl:equal!
+;; (import 'cl:equal)
 ;; EQUAL(U:any, V:any):boolean eval, spread
 ;; Returns T if U and V are the same. Dotted-pairs are compared
 ;; recursively to the bottom levels of their trees. Vectors must
 ;; have identical dimensions and EQUAL values in all
 ;; positions. Strings must have identical characters. Function
 ;; pointers must have EQ values. Other atoms must be EQN equal.
+
+(defun equal (u v)
+  "EQUAL(U:any, V:any):boolean eval, spread
+Returns T if U and V are the same. Dotted-pairs are compared
+recursively to the bottom levels of their trees. Vectors must
+have identical dimensions and EQUAL values in all
+positions. Strings must have identical characters. Function
+pointers must have EQ values. Other atoms must be EQN equal."
+  (tree-equal u v :test
+              #'(lambda (u v)
+                  ;; Compare SL vectors using equalp:
+                  (if (vectorp u)
+                      (and (vectorp v) (equalp u v))
+                      (cl:equal u v)))))
 
 (defalias 'fixp 'cl:integerp
   "FIXP(U:any):boolean eval, spread
@@ -2823,6 +2839,7 @@ A function hung on the garbage collection hook."
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."
+  ;; NB: invert case because of symbol name case inversion!
   (typecase u
     (string (cl:map 'list #'%intern-character-invert-case u))
     (cl:float (cl:map 'list #'%intern-character-invert-case
