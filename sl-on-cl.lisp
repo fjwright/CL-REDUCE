@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-21 17:07:05 franc>
+;; Time-stamp: <2025-09-22 12:16:00 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -440,7 +440,7 @@ rplaca. If L is not a pair then a type mismatch error occurs.
   ;; The inconsistent description above is from the PSL manual!
   (if (atom l) l (cl:last l)))
 
-(defun lastcar (l)                      ; inlined
+(defun lastcar (l)                      ; inline
   "(lastcar L:pair): any expr
 Returns the last element of the pair L. A type mismatch error results
 if L is not a pair.
@@ -449,7 +449,7 @@ if L is not a pair.
   ;; The inconsistent description above is from the PSL manual!
   (if (atom l) l (car (cl:last l))))
 
-(defun nth (l n)                        ; inlined
+(defun nth (l n)                        ; inline
   "(nth L:pair N:integer): any expr
 Returns the Nth element of the list L. If L is atomic or contains
 fewer than N elements, an out of range error occurs.
@@ -463,7 +463,7 @@ of a list to be the \"zeroth\" element."
   (declare (list l) (fixnum n))
   (cl:nth (1- n) l))
 
-(defun pnth (l n)                       ; inlined
+(defun pnth (l n)                       ; inline
   "(pnth L:list N:integer): any expr
 Returns a list starting with the nth element of the list L. Note
 that the result is a pointer to the nth element of L, a
@@ -606,9 +606,12 @@ printing (using prin1) to a list.  E.g.
                   collect (%intern-character-invert-case c)
                   when (char= c #\") collect '\")
                (list '\")))
-             (number
+             (integer
               (cl:map 'list #'%intern-character-invert-case ; might not be portable!
                       (princ-to-string u)))
+             (cl:float
+              (cl:map 'list #'%intern-character-preserve-case
+                      (%prin-float-to-string u)))
              (t
               ;; Assume identifier -- insert ! before an upper-case
               ;; letter, leading digit or _, or special character
@@ -2407,9 +2410,6 @@ If nil then floats are printed without any additional rounding.")
                  (/ (fround (* u s)) s)))
            0d0)))
 
-;; It might be better to use the integer mantissa and exponent
-;; computed in the above function to print the exponential format.
-
 (defun %prin-float-to-string (u)
   "Print a float to a string rounded to include only significant digits
 specified by the value of *float-print-precision*."
@@ -2419,13 +2419,12 @@ specified by the value of *float-print-precision*."
     (the simple-string
          (if (or (>= absu 999999.5d0) (and (> absu 0d0) (< absu 0.0001d0)))
              ;; Exponential (e) format, e.g. 9.99999e-05
-             ;; Leave at most one insignificant zero in mantissa
-             ;; if it is the first after the decimal point:
+             ;; Trim up to 4 trailing 0s from mantissa:
              (let* ((s (format nil "~,5,2,,,,'ee" u))
                     (l (- (cl:length s) 5))) ; index of last mantissa digit
                (do ((f l (1- f))) ; index of first 0 to remove (maybe)
                    ((or (char/= (elt s f) #\0)
-                        (char= (elt s (1- f)) #\.))
+                        (= (- l f) 4))
                     (if (/= f l)
                         (concatenate
                          'string
@@ -2821,19 +2820,27 @@ A function hung on the garbage collection hook."
        #+CLISP (%nth-room-value 1)
        #+(not (or SBCL CLISP)) 0))
 
+(declaim (inline %explode2-to-string))
+
+(defun %explode2-to-string (u)          ; inline
+  "Internal explode2 to string."
+  (typecase u
+    (string u)
+    (cl:float (%prin-float-to-string u))
+    (t (princ-to-string u))))
+
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."
-  (cl:map 'list #'%intern-character-preserve-case
-          (if (or (stringp u) (floatp u))
-              (%string-invert-case (cl:princ-to-string u))
-              (cl:princ-to-string u))))
+  ;; NB: invert case because of symbol name case inversion!
+  (cl:map 'list #'%intern-character-invert-case
+          (%explode2-to-string u)))
 
 (defun explode2uc (u)                   ; defined in "pslrend.red"
   "Upper-case version of explode2."
   ;; NB: downcase because of symbol name case inversion!
   (cl:map 'list #'%intern-character-preserve-case
-          (cl:string-downcase (cl:princ-to-string u))))
+          (cl:string-downcase (%explode2-to-string u))))
 
 (defun concat2 (s1 s2)
   "Concatenates its two string arguments, returning the newly created string."
