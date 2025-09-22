@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-22 12:16:00 franc>
+;; Time-stamp: <2025-09-22 15:55:23 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -607,10 +607,10 @@ printing (using prin1) to a list.  E.g.
                   when (char= c #\") collect '\")
                (list '\")))
              (integer
-              (cl:map 'list #'%intern-character-invert-case ; might not be portable!
+              (cl:map 'list #'%intern-character-preserve-case
                       (princ-to-string u)))
              (cl:float
-              (cl:map 'list #'%intern-character-preserve-case
+              (cl:map 'list #'%intern-character-invert-case
                       (%prin-float-to-string u)))
              (t
               ;; Assume identifier -- insert ! before an upper-case
@@ -2820,27 +2820,25 @@ A function hung on the garbage collection hook."
        #+CLISP (%nth-room-value 1)
        #+(not (or SBCL CLISP)) 0))
 
-(declaim (inline %explode2-to-string))
-
-(defun %explode2-to-string (u)          ; inline
-  "Internal explode2 to string."
-  (typecase u
-    (string u)
-    (cl:float (%prin-float-to-string u))
-    (t (princ-to-string u))))
-
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."
-  ;; NB: invert case because of symbol name case inversion!
-  (cl:map 'list #'%intern-character-invert-case
-          (%explode2-to-string u)))
+  (typecase u
+    (string (cl:map 'list #'%intern-character-invert-case u))
+    (cl:float (cl:map 'list #'%intern-character-invert-case
+                      (%prin-float-to-string u)))
+    (t (cl:map 'list #'%intern-character-preserve-case
+               (princ-to-string u)))))
 
 (defun explode2uc (u)                   ; defined in "pslrend.red"
   "Upper-case version of explode2."
   ;; NB: downcase because of symbol name case inversion!
   (cl:map 'list #'%intern-character-preserve-case
-          (cl:string-downcase (%explode2-to-string u))))
+          (cl:string-downcase
+           (typecase u
+             (string u)
+             (cl:float (%prin-float-to-string u))
+             (t (princ-to-string u))))))
 
 (defun concat2 (s1 s2)
   "Concatenates its two string arguments, returning the newly created string."
