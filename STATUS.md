@@ -2,8 +2,7 @@
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur), September 2025**
 
-This status report is based on running REDUCE 7172 on SBCL 2.5.8 on
-Cygwin using the standard REDUCE test framework:
+This status report is based on running REDUCE 7172 on SBCL 2.5.8 on Cygwin using the standard REDUCE test framework (excluding regressions):
 
 ## Packages showing issues
 
@@ -29,7 +28,7 @@ sparse      | **Issues to be investigated**
 sstools     | Minor cosmetic difference IGNORE for now
 xcolor      | **NOT TESTED**, **CRASHES**, stack overflow in EQUAL!
 
-### 21/09/2025
+### 24/09/2025
 
 ```sh
 franc@Centaur23 /c/REDUCE/reduce-algebra-code/testing
@@ -39,18 +38,22 @@ Package     | Comment
 ------------|--------
 arith       | SBCL is numerically more accurate than CSL/PSL **IGNORE**
 assist      | Gensym numbering differences **FIX[2]**; one other minor difference IGNORE for now
-economise   | Insignificant numerical errors **IGNORE**
+economise   | Insignificant numerical differences **IGNORE**
 ellipfn     | One numerical difference **IGNORE** for now
-f5          | **Issues to be investigated**
 gf2         | **Issues to be investigated**
-lalr        | **Minor cosmetic differences to be investigated**
+ibalp       | Stack overflow in equal (again!)
+lalr        | **Minor cosmetic differences** c vs. !C, ordering of '; uses hash tables!
 numeric     | Insignificant numerical errors **IGNORE** for now
 ofsf        | **NOT TESTED**
-redlog      | Display format differences remain! **FIX[1]**
 scope       | Gensym numbering differences **FIX[2]**
-sparse      | **Issues to be investigated**
 sstools     | Minor cosmetic difference **IGNORE** for now
 xcolor      | **NOT TESTED**
+
+## TO DO
+
+* Implement gensym as a SL function to mimic CSL, since the CL format (e.g. g1) is different from CSL (e.g. g0001).
+
+* sstools: `bothtimes put('is_fermionic,'boolfn,'evalfermionicp)$` in "sstools.red" but when `is_fermionic` is called from within "sstools.red" it is not recognised as an operator, although it is when called in "sstools.tst".  This suggests that `bothtimes` is not working at compile time, so the compiled code is calling `is_fermionic` rather than `evalfermionicp`.
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->

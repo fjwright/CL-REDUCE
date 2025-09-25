@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-22 18:13:42 franc>
+;; Time-stamp: <2025-09-24 15:07:44 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3626,7 +3626,7 @@ interpret otherwise.  The default is compile."
    catch throw                          ; used in corrundum (sic)
    sleep                                ; used in crack
    #+SBCL sb-ext:*muffled-warnings*     ; used in build.sh
-   symbol-function             ; since getd always returns lambda form
+   symbol-function ; since *currently* getd always returns lambda form
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for

@@ -169,14 +169,15 @@ I cannot see any way to support the facilities for restricting execution time on
 
 ## To do
 
+* Implement the hash-table code (`mkhash` etc.) defined in `rlisp/proc.red` more efficiently in Lisp.  Re-implement the sparse package to use hash tables as a test?
+* Make `getd` return something other than a `lambda` form for compiled code, cf. CSL/PSL, which gives the impression that compilation doesn't work.  Revise printing to display arbitrary Common Lisp objects as a fall-back option.
+* Command-line option to suppress reading the REDUCE Startup File.
+
 * Optimise SL-on-CL to improve its speed.
-* Make getd return something other than a lambda form for compiled code, cf. CSL/PSL, which gives the impression that compilation doesn't work.
 * Better error handling.
 * Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 * Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
 * Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
-* Implement the hash-table code (`mkhash` etc.) defined in `rlisp/proc.red` more efficiently in Lisp.
-* Command-line option to suppress reading the REDUCE Startup File.
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->
