@@ -28,7 +28,7 @@ sparse      | **Issues to be investigated**
 sstools     | Minor cosmetic difference IGNORE for now
 xcolor      | **NOT TESTED**, **CRASHES**, stack overflow in EQUAL!
 
-### 25/09/2025
+### 26/09/2025
 
 ```sh
 franc@Centaur23 /c/REDUCE/reduce-algebra-code/testing
@@ -37,7 +37,6 @@ $ ../scripts/testall.sh --sbcl $(../common-lisp/packages-to-test.sh)
 Package     | Comment
 ------------|--------
 arith       | SBCL is numerically more accurate than CSL/PSL **IGNORE**
-assist      | One minor difference because tan not flagged lose **IGNORE** for now
 economise   | Insignificant numerical differences **IGNORE**
 ellipfn     | One numerical difference **IGNORE** for now
 gf2         | **Issues to be investigated**

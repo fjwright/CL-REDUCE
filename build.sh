@@ -298,6 +298,10 @@ time eval $runlisp << EOF &> log.$lisp/reduce.blg
 (load!-package 'mathpr)
 (load!-package 'entry)
 
+% cf. support/fastmath.red:
+(flag '(sin cos tan sind cosd tand cotd secd cscd asin acos atan
+   asecd acscd atan2d atan2 sqrt exp log hypot cosh sinh tanh) 'lose)
+
 (cl:fmakunbound 'prettyprint)   % otherwise defautoload has no effect!
 (defautoload prettyprint pretty)  % since only in entry file for PSL!
 
