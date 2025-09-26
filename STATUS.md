@@ -37,7 +37,7 @@ $ ../scripts/testall.sh --sbcl $(../common-lisp/packages-to-test.sh)
 Package     | Comment
 ------------|--------
 arith       | SBCL is numerically more accurate than CSL/PSL **IGNORE**
-assist      | One minor difference relating to tan function **IGNORE** for now
+assist      | One minor difference because tan not flagged lose **IGNORE** for now
 economise   | Insignificant numerical differences **IGNORE**
 ellipfn     | One numerical difference **IGNORE** for now
 gf2         | **Issues to be investigated**

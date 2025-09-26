@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-25 17:36:28 franc>
+;; Time-stamp: <2025-09-26 14:51:31 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3456,7 +3456,7 @@ When all done, execute FASLEND;~2%" name))
                      :direction :output :if-exists :supersede
                      #-CCL :external-format
                      #+CLISP charset:UTF-8
-                     #-CLISP :UTF-8))
+                     #-(or CLISP CCL) :UTF-8))
     (error-internal "FASLOUT cannot open ~a" %faslout-name.lisp))
   (if %faslout-header
       (cl:princ %faslout-header %faslout-stream))
@@ -3491,7 +3491,7 @@ When all done, execute FASLEND;~2%" name))
     (compile-file %faslout-name.lisp
                   #-CCL :external-format
                   #+CLISP charset:UTF-8
-                  #-CLISP :UTF-8))
+                  #-(or CLISP CCL) :UTF-8))
   ;;      ;; (progn
   ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
@@ -3571,7 +3571,7 @@ When all done, execute FASLEND;~2%" name))
 
 #+(or CCL ECL)
 (defun reduce-init-function ()
-  ;; (standard-lisp)                       ; redundant!
+  #+CCL (standard-lisp)
   (begin))
 
 (defun save-reduce-image (name)
@@ -3659,4 +3659,5 @@ interpret otherwise.  The default is compile."
 ;; Use pathnames more consistently.
 ;; Revise documentation strings and function order to follow PSL manual more closely.
 
-;; Move implementation into a separate package and only export required symbols.  This should make profiling easier!
+;; Move implementation into a separate package and only export
+;; required symbols.  This should make profiling easier!
