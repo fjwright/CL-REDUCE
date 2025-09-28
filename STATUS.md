@@ -28,7 +28,7 @@ sparse      | **Issues to be investigated**
 sstools     | Minor cosmetic difference IGNORE for now
 xcolor      | **NOT TESTED**, **CRASHES**, stack overflow in EQUAL!
 
-### 26/09/2025
+### 28/09/2025
 
 ```sh
 franc@Centaur23 /c/REDUCE/reduce-algebra-code/testing

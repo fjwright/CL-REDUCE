@@ -137,6 +137,7 @@ then
     #-CCL (exit #+SBCL :code 1))
 EOF
     mv sl-on-cl.$faslext fasl.$lisp
+    if [ $lisp = 'clisp' ]; then mv sl-on-cl.lib fasl.clisp; fi
 fi || { echo '***** Compilation failed'; exit 1; }
 
 ########################################################
@@ -261,6 +262,7 @@ then
 (or (compile-file "trace.lisp") (exit 1))
 EOF
     mv trace.$faslext fasl.$lisp
+    if [ $lisp = 'clisp' ]; then mv trace.lib fasl.clisp; fi
 fi || { echo '***** Compiling trace failed'; exit 1; }
 
 ###############################
