@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-28 17:05:49 franc>
+;; Time-stamp: <2025-09-29 14:49:11 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -25,7 +25,7 @@
 ;; For Common Lisp documentation see
 ;; https://www.lispworks.com/documentation/HyperSpec/Front/
 
-(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
@@ -274,63 +274,15 @@ the same value and type."               ; i.e. the same SL type!
   ;;  (eql/equal -0.0 0.0) is false in SBCL although true in CLISP!
   (if (and (floatp u) (floatp v)) (= u v) (eql u v)))
 
-;; (defun equal (u v)
-;;   "EQUAL(U:any, V:any):boolean eval, spread
-;; Returns T if U and V are the same. Dotted-pairs are compared
-;; recursively to the bottom levels of their trees. Vectors must
-;; have identical dimensions and EQUAL values in all
-;; positions. Strings must have identical characters. Function
-;; pointers must have EQ values. Other atoms must be EQN equal."
-;;   (or (cl:equal u v)
-;;    ;;  equal may not be true of two floats even when they represent
-;;    ;;  the same value. = is used to compare mathematical values.
-;;    (and (floatp u) (floatp v) (= u v))
-;;    (and (vectorp u) (vectorp v) (equalp u v))))
-
-;; The following definition is too inefficient!
-;; ibalp.tst fails badly when using it.
-;; (defun equal (u v)
-;;   "EQUAL(U:any, V:any):boolean eval, spread
-;; Returns T if U and V are the same. Dotted-pairs are compared
-;; recursively to the bottom levels of their trees. Vectors must
-;; have identical dimensions and EQUAL values in all
-;; positions. Strings must have identical characters. Function
-;; pointers must have EQ values. Other atoms must be EQN equal."
-;;   (and (cl:equal (type-of u) (type-of v))
-;;        (if (atom u) (cond ((cl:symbolp u) (eq u v))
-;;                           ((cl:floatp u) (= u v))
-;;                           ((cl:numberp u) (eql u v))
-;;                           ((cl:stringp u) (string= u v))
-;;                           ((cl:vectorp u) (equalp u v)))
-;;            ;; (and (equal (car u) (car v)) (equal (cdr u) (cdr v)))
-;;            (loop for utail on u for vtail on v
-;;               unless (equal (car utail) (car vtail)) do (return nil)
-;;               while (and (consp (cdr utail)) (consp (cdr vtail)))
-;;               finally (return (equal (cdr utail) (cdr vtail)))))))
-
-;; The following definition fails for the sparse package, which uses
-;; lists containing vectors; equivalent vectors are not cl:equal!
-;; (import 'cl:equal)
-;; EQUAL(U:any, V:any):boolean eval, spread
-;; Returns T if U and V are the same. Dotted-pairs are compared
-;; recursively to the bottom levels of their trees. Vectors must
-;; have identical dimensions and EQUAL values in all
-;; positions. Strings must have identical characters. Function
-;; pointers must have EQ values. Other atoms must be EQN equal.
-
-(defun equal (u v)
+(defalias 'equal 'cl:equalp
+  ;; This definition is not strictly correct but it seems to be the
+  ;; best compromise!
   "EQUAL(U:any, V:any):boolean eval, spread
 Returns T if U and V are the same. Dotted-pairs are compared
 recursively to the bottom levels of their trees. Vectors must
 have identical dimensions and EQUAL values in all
 positions. Strings must have identical characters. Function
-pointers must have EQ values. Other atoms must be EQN equal."
-  (tree-equal u v :test
-              #'(lambda (u v)
-                  ;; Compare SL vectors using equalp:
-                  (if (vectorp u)
-                      (and (vectorp v) (equalp u v))
-                      (cl:equal u v)))))
+pointers must have EQ values. Other atoms must be EQN equal.")
 
 (defalias 'fixp 'cl:integerp
   "FIXP(U:any):boolean eval, spread
