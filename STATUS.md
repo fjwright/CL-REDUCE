@@ -2,13 +2,13 @@
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur), September 2025**
 
-This status report is based on running REDUCE 7178 on SBCL 2.5.8 on Cygwin.
+This status report is based on running REDUCE 7181 on SBCL 2.5.8 on Cygwin.
 
-## Package builds showing issues 29/09/2025
+## Package builds showing issues 30/09/2025
 
-gf2: build fails if optimised for speed.
+None.
 
-## Package tests showing issues 29/09/2025
+## Package tests showing issues 30/09/2025
 
 Using the standard REDUCE test framework (excluding regressions):
 
@@ -21,7 +21,7 @@ Package     | Comment
 arith       | SBCL is numerically more accurate than CSL/PSL!
 economise   | Insignificant numerical differences
 ellipfn     | One (significant) numerical difference
-gf2         | **Issues to be investigated**
+gf2         | Missing final backtrace; not sure how to implement that!
 lalr        | **Minor cosmetic differences** (c vs. !C, ordering of ')
 numeric     | Insignificant numerical errors
 ofsf        | **VERY SLOW**

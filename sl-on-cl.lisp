@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-30 12:32:45 franc>
+;; Time-stamp: <2025-09-30 18:24:26 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -25,7 +25,7 @@
 ;; For Common Lisp documentation see
 ;; https://www.lispworks.com/documentation/HyperSpec/Front/
 
-;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
@@ -3056,6 +3056,28 @@ should be true with current REDUCE.  Ignore case."
 
 (defvar *backtrace nil
   "Used in various places in REDUCE.  Should make it do something!")
+
+;; CSL functions used in "gf2/gf2.tst":
+
+(defalias 'optterpri 'fresh-line)
+;; fresh-line is similar to terpri but outputs a newline only if the
+;; output-stream is not already at the start of a line. If for some
+;; reason this cannot be determined, then a newline is output
+;; anyway. fresh-line returns true if it outputs a newline; otherwise
+;; it returns false.
+
+(defun resource-limit (exprn time_limit)
+  "Evaluate EXPRN until TIME_LIMIT seconds have expired.
+But Lisps other than SBCL currently ignore the timeout!"
+  #+SBCL (with-timeout time_limit (eval exprn))
+  #-SBCL (declare (ignore time_limit))
+  #-SBCL (eval exprn))
+
+(defun force-output-radix (radix)
+  "Set the value of *print-base* to RADIX, which is the radix in which
+the printer will print rationals.  For radices above 10, letters of
+the alphabet are used to represent digits above 9."
+  (setq *print-base* radix))
 
 
 ;;; Hash Tables
