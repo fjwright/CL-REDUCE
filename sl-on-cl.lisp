@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-29 17:03:01 franc>
+;; Time-stamp: <2025-09-30 12:32:45 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3065,7 +3065,7 @@ should be true with current REDUCE.  Ignore case."
 ;; but not really documented anywhere, although fall-back versions are
 ;; defined in "rlisp/proc.red".
 
-(defun mkhash (size type &optional expansion)
+(defmacro mkhash (size type &optional expansion)
   "Create and return a new hash table.
 - SIZE is a non-negative integer that determines approximately the
   number of entries that can be inserted without having to enlarge the
@@ -3076,10 +3076,10 @@ should be true with current REDUCE.  Ignore case."
   which is the number of entries to add, or it can be a floating-point
   number greater than 1, which is the ratio of the new size to the old
   size. The default value for this argument is implementation-dependent."
-  (make-hash-table
-   :test (if (eql type 0) #'eq #'equal)  ; should this be equalp?
-   :size size
-   :rehash-size expansion))
+  `(make-hash-table
+   :test (if (eql ,type 0) 'eq 'cl:equal) ; should this be equalp?
+   :size ,size
+   ,@(and expansion `(:rehash-size ,expansion))))
 
 (flag '(mkhash) 'variadic)
 

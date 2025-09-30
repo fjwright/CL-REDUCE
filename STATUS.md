@@ -22,7 +22,7 @@ arith       | SBCL is numerically more accurate than CSL/PSL!
 economise   | Insignificant numerical differences
 ellipfn     | One (significant) numerical difference
 gf2         | **Issues to be investigated**
-lalr        | **Minor cosmetic differences** c vs. !C, ordering of '; uses hash tables!
+lalr        | **Minor cosmetic differences** (c vs. !C, ordering of ')
 numeric     | Insignificant numerical errors
 ofsf        | **VERY SLOW**
 sstools     | Minor cosmetic difference, apparently caused by failure of bothtimes, not clear how to fix; see below
