@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-09-30 18:24:26 franc>
+;; Time-stamp: <2025-10-03 17:37:57 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -126,7 +126,7 @@ system dependent messages may be displayed.")
 ;; **********************************************************************
 
 (defvar *raise t
-  "*RAISE = NIL global
+  "*RAISE = NIL fluid
 Follow the PSL convention: If !*RAISE is non-NIL all characters input
 through Standard LISP input functions will be converted to a standard
 case.  Currently, this is upper case on SBCL and lower case on CLISP.
@@ -2541,9 +2541,6 @@ selected input file is reached."
     ;; of curline* and this is used in rlisp88.tst.
     (cl:read-preserving-whitespace (%read-stream) nil $eof$)))
 
-(defvar %readch-escape nil
-  "True if the next character to be read by READCH should be escaped.")
-
 (defun readch ()
   "READCH():id
 Returns the next interned character from the file currently selected
@@ -2554,21 +2551,13 @@ Comments delimited by % and end-of-line are not transparent to READCH."
   ;; This function must perform any required case conversion.
   (the symbol
        (let ((c (read-char (%read-stream) nil $eof$)))
-         (if (eq c $eof$)
-             (progn
-               (setq %readch-escape nil)
-               $eof$)
-             (progn
-               (when *echo              ; track output position
-                 (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
-               (cond ((char= c #\!)
-                      (setq %readch-escape (not %readch-escape)) '!)
-                     (%readch-escape    ; preserve case
-                      (setq %readch-escape nil) (%intern-character-invert-case c))
-                     (*raise            ; down-case
-                      (%intern-character-preserve-case (cl:char-upcase c)))
-                     (t                 ; preserve case
-                      (%intern-character-invert-case c))))))))
+         (when *echo                    ; track output position
+           (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
+         (if *raise
+             ;; down-case (because REDUCE is now LC, not UC!)
+             (%intern-character-preserve-case (cl:char-upcase c))
+             ;; preserve case
+             (%intern-character-invert-case c)))))
 
 (defun terpri ()
   "TERPRI():NIL
@@ -3057,7 +3046,7 @@ should be true with current REDUCE.  Ignore case."
 (defvar *backtrace nil
   "Used in various places in REDUCE.  Should make it do something!")
 
-;; CSL functions used in "gf2/gf2.tst":
+;; CSL functions used in gf2 package:
 
 (defalias 'optterpri 'fresh-line)
 ;; fresh-line is similar to terpri but outputs a newline only if the
@@ -3067,7 +3056,9 @@ should be true with current REDUCE.  Ignore case."
 ;; it returns false.
 
 (defun resource-limit (exprn time_limit)
+  ;; THIS NEEDS MORE WORK!!!
   "Evaluate EXPRN until TIME_LIMIT seconds have expired.
+SBCL currently throws an exception if time limit is exceeded.
 But Lisps other than SBCL currently ignore the timeout!"
   #+SBCL (with-timeout time_limit (eval exprn))
   #-SBCL (declare (ignore time_limit))
