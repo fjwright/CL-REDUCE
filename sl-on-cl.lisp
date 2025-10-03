@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-03 17:37:57 franc>
+;; Time-stamp: <2025-10-03 18:09:25 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -25,7 +25,7 @@
 ;; For Common Lisp documentation see
 ;; https://www.lispworks.com/documentation/HyperSpec/Front/
 
-(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
@@ -2551,13 +2551,15 @@ Comments delimited by % and end-of-line are not transparent to READCH."
   ;; This function must perform any required case conversion.
   (the symbol
        (let ((c (read-char (%read-stream) nil $eof$)))
-         (when *echo                    ; track output position
-           (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
-         (if *raise
-             ;; down-case (because REDUCE is now LC, not UC!)
-             (%intern-character-preserve-case (cl:char-upcase c))
-             ;; preserve case
-             (%intern-character-invert-case c)))))
+         (if (eq c $eof$) $eof$         ; not a char!
+             (progn
+               (when *echo              ; track output position
+                 (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
+               (if *raise
+                   ;; down-case (because REDUCE is now LC, not UC!)
+                   (%intern-character-preserve-case (cl:char-upcase c))
+                   ;; preserve case
+                   (%intern-character-invert-case c)))))))
 
 (defun terpri ()
   "TERPRI():NIL
