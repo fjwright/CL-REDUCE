@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-04 15:23:39 franc>
+;; Time-stamp: <2025-10-04 17:24:31 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3036,27 +3036,32 @@ Returns the union of sets X and Y."
 (defalias 'lcmn 'cl:lcm)
 (defalias 'yesp1 'cl:y-or-n-p)
 
-;; (defun orderp (u v)
-;;   "This CL-specific definition of ORDERP is designed to work in
-;; lexicographical order.  It assumes arguments are truly id's, which
-;; should be true with current REDUCE.  Ignore case."
-;;   ;; Previously defined in clprolo, but I want to use cl:symbol-name
-;;   ;; to avoid unnecessary case inversions.
-;;   (declare (symbol u v))
-;;   (string-not-greaterp (cl:symbol-name u) (cl:symbol-name v)))
-
-;; orderp should not ignore case and should view lower case less than
-;; upper case, so that after case inversion upper case sorts ahead of
-;; lower case!  Re-implement efficiently if this works.
-
 (defun orderp (u v)
-  "Return true if U = V or U sorts before V, U and V identifiers.
+  "Return true if U = V or U sorts before V, where U and V are identifiers.
 Ordering is lexicographic with upper-case letters sorting before
 lower-case letters (i.e. ASCII code U <= ASCII code V)."
   (declare (symbol u v))
-  (string<=
-   (%string-invert-case (cl:symbol-name u))
-   (%string-invert-case (cl:symbol-name v))))
+  ;; (string<=
+  ;;  (%string-invert-case (cl:symbol-name u))
+  ;;  (%string-invert-case (cl:symbol-name v)))
+  ;; A more efficient character-based implementation
+  ;; following that in "support/pslrend.red":
+  (let ((u (cl:symbol-name u)) (v (cl:symbol-name v)))
+    (do ((i 0 (1+ i)) (j (1- (cl:length u))) (k (1- (cl:length v))) l m)
+        (nil)
+      (cond ((char/= (setq l (aref u i)) (setq m (aref v i)))
+             ;; Undo case inversion of letters before further testing:
+             (when (both-case-p l)
+               (setq l (if (upper-case-p l)
+                           (cl:char-downcase l)
+                           (cl:char-upcase l))))
+             (when (both-case-p m)
+               (setq m (if (upper-case-p m)
+                           (cl:char-downcase m)
+                           (cl:char-upcase m))))
+             (return (char< l m)))
+            ((= i j) (return (<= j k)))
+            ((= i k) (return nil))))))
 
 (defvar *backtrace nil
   "Used in various places in REDUCE.  Should make it do something!")
