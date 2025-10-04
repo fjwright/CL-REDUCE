@@ -4,11 +4,11 @@
 
 This status report is based on running REDUCE 7181 on SBCL 2.5.8 on Cygwin.
 
-## Package builds showing issues 30/09/2025
+## Package builds showing issues 03/10/2025
 
 None.
 
-## Package tests showing issues 30/09/2025
+## Package tests showing issues 03/10/2025
 
 Using the standard REDUCE test framework (excluding regressions):
 

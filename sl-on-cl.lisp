@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-03 18:09:25 franc>
+;; Time-stamp: <2025-10-04 10:12:12 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3062,7 +3062,7 @@ should be true with current REDUCE.  Ignore case."
   "Evaluate EXPRN until TIME_LIMIT seconds have expired.
 SBCL currently throws an exception if time limit is exceeded.
 But Lisps other than SBCL currently ignore the timeout!"
-  #+SBCL (with-timeout time_limit (eval exprn))
+  #+SBCL (with-timeout time_limit exprn)
   #-SBCL (declare (ignore time_limit))
   #-SBCL (eval exprn))
 
