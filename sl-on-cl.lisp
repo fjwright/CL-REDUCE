@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-04 11:55:35 franc>
+;; Time-stamp: <2025-10-04 15:23:39 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3036,14 +3036,27 @@ Returns the union of sets X and Y."
 (defalias 'lcmn 'cl:lcm)
 (defalias 'yesp1 'cl:y-or-n-p)
 
+;; (defun orderp (u v)
+;;   "This CL-specific definition of ORDERP is designed to work in
+;; lexicographical order.  It assumes arguments are truly id's, which
+;; should be true with current REDUCE.  Ignore case."
+;;   ;; Previously defined in clprolo, but I want to use cl:symbol-name
+;;   ;; to avoid unnecessary case inversions.
+;;   (declare (symbol u v))
+;;   (string-not-greaterp (cl:symbol-name u) (cl:symbol-name v)))
+
+;; orderp should not ignore case and should view lower case less than
+;; upper case, so that after case inversion upper case sorts ahead of
+;; lower case!  Re-implement efficiently if this works.
+
 (defun orderp (u v)
-  "This CL-specific definition of ORDERP is designed to work in
-lexicographical order.  It assumes arguments are truly id's, which
-should be true with current REDUCE.  Ignore case."
-  ;; Previously defined in clprolo, but I want to use cl:symbol-name
-  ;; to avoid unnecessary case inversions.
+  "Return true if U = V or U sorts before V, U and V identifiers.
+Ordering is lexicographic with upper-case letters sorting before
+lower-case letters (i.e. ASCII code U <= ASCII code V)."
   (declare (symbol u v))
-  (string-not-greaterp (cl:symbol-name u) (cl:symbol-name v)))
+  (string<=
+   (%string-invert-case (cl:symbol-name u))
+   (%string-invert-case (cl:symbol-name v))))
 
 (defvar *backtrace nil
   "Used in various places in REDUCE.  Should make it do something!")
