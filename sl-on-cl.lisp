@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-04 17:24:31 franc>
+;; Time-stamp: <2025-10-05 15:04:11 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3034,7 +3034,6 @@ Returns the union of sets X and Y."
 (defalias 'mod 'cl:mod) ; not just imported because cali redefines mod
 (defalias 'gcdn 'cl:gcd)
 (defalias 'lcmn 'cl:lcm)
-(defalias 'yesp1 'cl:y-or-n-p)
 
 (defun orderp (u v)
   "Return true if U = V or U sorts before V, where U and V are identifiers.
@@ -3664,7 +3663,6 @@ interpret otherwise.  The default is compile."
 (import
  '(lambda warning
    unwind-protect evenp oddp
-   string-not-greaterp y-or-n-p         ; used in clprolo
    force-output                         ; used in clrend
    catch throw                          ; used in corrundum (sic)
    sleep                                ; used in crack
