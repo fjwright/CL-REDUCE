@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-05 15:04:11 franc>
+;; Time-stamp: <2025-10-07 16:10:59 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3064,6 +3064,32 @@ lower-case letters (i.e. ASCII code U <= ASCII code V)."
 
 (defvar *backtrace nil
   "Used in various places in REDUCE.  Should make it do something!")
+
+(defvar bfz*)
+
+(defun fl2bf (x)
+  "Convert float x to REDUCE binary bigfloat format."
+  ;; Replace default version defined in "arith/smlbflot.red".
+  (if (cl:zerop x) bfz*
+      (multiple-value-bind (signif expon sign)
+          (integer-decode-float x)
+        (cons '\:rd\: (cons (* sign signif) expon)))))
+
+(flag '(fl2bf) 'lose)
+
+(defvar cursym*)
+(defvar curescaped*)
+
+(defun yesp (u)
+  "Ask the user the question that is the value of U.
+This may be an atom or a list."
+  ;; Redefine yesp and yesp1 defined in "rlisp/inter.red".
+  (prog1
+      (y-or-n-p (if (listp u) "~{~a ~}" "~a") u)
+    (setq cursym* '*semicol*
+          curescaped* nil)))
+
+(flag '(yesp yesp1) 'lose)
 
 ;; CSL functions used in gf2 package:
 

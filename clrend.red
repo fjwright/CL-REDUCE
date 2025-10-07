@@ -2,7 +2,7 @@ module clrend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2025-10-05 15:13:18 franc>
+% Time-stamp: <2025-10-07 17:19:55 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -128,41 +128,6 @@ symbolic procedure setpchar c;
       % else format(nil, "~a", c);  % so instead...
       else error(0, "Unexpected prompt in setpchar");
     return oldprompt
-   end;
-
-% Redefine yesp and yesp1 defined in "rlisp/inter.red":
-
-symbolic procedure yesp u;
-   % It might be better to bind *standard-output* to *query-io* here
-   % instead of using Standard Lisp IO switching.
-   begin scalar ifl,ofl,x;
-        if ifl!*
-          then <<ifl := ifl!* := list(car ifl!*,cadr ifl!*,curline!*);
-                 rds nil>>;
-        if ofl!* then <<ofl:= ofl!*; wrs nil>>;
-        if null !*lessspace then terpri();
-        if atom u then prin2 u else lpri u;
-        prin2 "(y or n) ";
-        force!-output();
-        x := yesp1();
-        if ofl then wrs cdr ofl;
-        if ifl then rds cadr ifl;
-        cursym!* := '!*semicol!*;
-        curescaped!* := nil;
-        return x
-   end;
-
-symbolic procedure yesp1;
-   % Basic loop for reading response.
-   begin scalar bool,x,y;
-    a:  while (x := readch()) eq !$eol!$ do nil;
-        % Assume an end-of-file means lost control and exit.
-         if x eq !$eof!$ then eval '(bye)
-         else if (y := x memq '(!y !Y)) or x memq '(!n !N)
-          then return y
-         else if null bool then
-            <<prin2 "Type y or n: "; force!-output(); bool := t>>;
-        go to a
    end;
 
 % This procedure has already been defined in "rlisp/superv.red", but
