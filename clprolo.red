@@ -2,7 +2,7 @@
 
 % Author: Anthony C. Hearn.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2025-10-04 18:06:04 franc>
+% Time-stamp: <2025-10-08 16:27:59 franc>
 % The standard version is "packages/support/pslprolo.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,6 +36,10 @@ fluid '(!*savedef !*gc!-hook!* !*noinlines);
 
 global '(!*psl !*csl);                  % CL is neither
 !*psl := t;                             % but pretend to be PSL!
+
+% NB: !*psl is used dynamically and essentially in readch1 in
+% "rlisp/tok.red" (and statically in code that is ignored in
+% "rlisp/switch.red").
 
 % Support for package creation.
 
