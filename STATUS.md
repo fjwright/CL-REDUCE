@@ -1,9 +1,9 @@
 # STATUS of REDUCE on Common Lisp (SBCL)
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**
-Time-stamp: <2025-10-04 15:12:37 franc>
+Time-stamp: <2025-10-08 18:12:24 franc>
 
-This status report is based on running REDUCE 7181 on SBCL 2.5.8 on Cygwin.
+This status report is based on running REDUCE 7189 on SBCL 2.5.8 on Cygwin.
 
 No build errors.
 
@@ -18,10 +18,9 @@ $ ../scripts/testall.sh --sbcl $(../common-lisp/packages-to-test.sh)
 Package     | Comment
 ------------|--------
 arith       | SBCL is numerically more accurate than CSL/PSL!
-economise   | Insignificant numerical differences
 ellipfn     | One (significant) numerical difference
 gf2         | Missing final backtrace
-numeric     | Insignificant numerical errors
+numeric     | Minor numerical differences
 sstools     | Minor cosmetic difference, apparently caused by failure of bothtimes, not clear how to fix; see below
 xcolor      | Crashes with stack overflow if compiled for debugging!
 
