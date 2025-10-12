@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-08 17:49:06 franc>
+;; Time-stamp: <2025-10-12 16:55:32 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2760,7 +2760,7 @@ A function hung on the garbage collection hook."
 
 (defun %run-gc-hook ()
   "Run the REDUCE procedure (if any) assigned to the variable *gc-hook*."
-  (if *gc-hook* (funcall *gc-hook*))
+  (if (boundp '*gc-hook*) (funcall *gc-hook*))
   nil)
 
 (push #'%run-gc-hook sb-ext:*after-gc-hooks*)
@@ -3004,6 +3004,8 @@ elements (for example ids, strings, and vectors) are not.")
 (defmacro compiletime (u)               ; PSL
   "Evaluate the expression U at compile time only."
   `(eval-when (:compile-toplevel :execute) ,u))
+
+(flag '(bothtimes compiletime) 'eval)   ; eval despite "on defn"
 
 (defmacro loadtime (u)                  ; PSL
   "Evaluate the expression U at load time only."
@@ -3639,7 +3641,7 @@ When all done, execute FASLEND;~2%" name))
 
 (pushnew :standard-lisp *features*)
 
-(defparameter lispsystem* '(common-lisp)
+(defparameter lispsystem* '(common-lisp sl-on-cl)
   "Information about the Lisp system supporting REDUCE.
 A list of identifiers indicating system properties.")
 

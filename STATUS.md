@@ -1,9 +1,9 @@
 # STATUS of REDUCE on Common Lisp (SBCL)
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**
-Time-stamp: <2025-10-08 18:12:24 franc>
+Time-stamp: <2025-10-12 17:18:24 franc>
 
-This status report is based on running REDUCE 7189 on SBCL 2.5.8 on Cygwin.
+This status report is based on running REDUCE 7190 on (native Windows) SBCL 2.5.8 on Cygwin.
 
 No build errors.
 
@@ -21,12 +21,9 @@ arith       | SBCL is numerically more accurate than CSL/PSL!
 ellipfn     | One (significant) numerical difference
 gf2         | Missing final backtrace
 numeric     | Minor numerical differences
-sstools     | Minor cosmetic difference, apparently caused by failure of bothtimes, not clear how to fix; see below
 xcolor      | Crashes with stack overflow if compiled for debugging!
 
 ## TO DO
-
-* sstools: `bothtimes put('is_fermionic,'boolfn,'evalfermionicp)$` in "sstools.red" but when `is_fermionic` is called from within "sstools.red" it is not recognised as an operator, although it is when called in "sstools.tst".  This suggests that `bothtimes` is not working at compile time, so the compiled code is calling `is_fermionic` rather than `evalfermionicp`.  Also, fluid declarations seem to be ignored!
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->
