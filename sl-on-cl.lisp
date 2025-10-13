@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-12 16:55:32 franc>
+;; Time-stamp: <2025-10-13 18:11:42 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -25,7 +25,7 @@
 ;; For Common Lisp documentation see
 ;; https://www.lispworks.com/documentation/HyperSpec/Front/
 
-;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
@@ -947,27 +947,70 @@ the name may be used subsequently as a variable."
           (put x 'fluid t))))
   nil)
 
+;; (defmacro fluid (idlist)
+;;   "FLUID(IDLIST:id-list):NIL eval, spread
+;; The ids in IDLIST are declared as FLUID type variables (ids not
+;; previously declared are initialized to NIL). Variables in IDLIST
+;; already declared FLUID are ignored. Changing a variable's type
+;; from GLOBAL to FLUID is not permissible and results in the error:
+;; ***** ID cannot be changed to FLUID"
+;;   ;; A warning, as for PSL, is more convenient than an error!
+;;   (declare (type (or list symbol) idlist))
+;;   (the list
+;;        (if (eqcar idlist 'quote)
+;;            ;; Assume a top-level call that needs to output `defvar' forms
+;;            ;; at compile time.
+;;            (cons 'prog1
+;;                  (cons nil
+;;                        (cl:mapcan
+;;                         #'(lambda (x) `((%fluid ',x)))
+;;                         (cl:eval idlist))))
+;;            ;; Assume a run-time call.
+;;            `(prog1 nil
+;;               (cl:mapc #'%fluid ,idlist)))))
+
 (defmacro fluid (idlist)
+  ;; Must be a macro to be active at compile time!
   "FLUID(IDLIST:id-list):NIL eval, spread
 The ids in IDLIST are declared as FLUID type variables (ids not
 previously declared are initialized to NIL). Variables in IDLIST
 already declared FLUID are ignored. Changing a variable's type
 from GLOBAL to FLUID is not permissible and results in the error:
 ***** ID cannot be changed to FLUID"
-  ;; A warning, as for PSL, is more convenient than an error!
-  (declare (type (or list symbol) idlist))
-  (the list
-       (if (eqcar idlist 'quote)
-           ;; Assume a top-level call that needs to output `defvar' forms
-           ;; at compile time.
-           (cons 'prog1
-                 (cons nil
-                       (cl:mapcan
-                        #'(lambda (x) `((%fluid ',x)))
-                        (cl:eval idlist))))
-           ;; Assume a run-time call.
-           `(prog1 nil
-              (cl:mapc #'%fluid ,idlist)))))
+  ;; But a warning, as for PSL, is more convenient than an error!
+  ;; (declare (list idlist))
+
+  ;; Macro expansion produces:
+  ;; (progn
+  ;;   (progn
+  ;;     (defvar var1 nil "Standard LISP fluid variable")
+  ;;     (put var1 'fluid t))
+  ;;   (progn
+  ;;     (defvar var2 nil "Standard LISP fluid variable")
+  ;;     (put 'var2 'fluid t))
+  ;;   ...)
+  ;; but *** should remove inner progns by splicing! ***
+
+  (if (eqcar idlist 'quote)
+    ;; Assume a top-level call that needs to output `defvar' forms
+    ;; at compile time.
+    (cons 'progn
+          (cl:mapcar
+           #'(lambda (x)
+               ;; Check x is a symbol?
+               (unless (cl:get x 'fluid)
+                 (if (cl:get x 'global)
+                     (warn "GLOBAL ~a cannot be changed to FLUID" x)
+                     `(progn
+                        ;; defvar is a macro, so ...
+                        (defvar ,x nil "Standard LISP fluid variable")
+                        (put ',x 'fluid t)))))
+           (cl:eval idlist)))
+    ;; Assume a run-time call, e.g.
+    ;; if not fluidp y and not globalp y then fluid list y;
+    ;; in procedure switch in "rlisp/switch.red".
+    `(prog1 nil
+       (cl:mapc #'%fluid ,idlist))))
 
 (defun fluidp (u)
   "FLUIDP(U:any):boolean eval, spread
@@ -2753,14 +2796,15 @@ A function hung on the garbage collection hook."
 ;; similar that use garbage collection to provide an interrupt by
 ;; assigning a function to the variable `!*gc!-hook!*`:
 
-(defvar *gc-hook*)
+(defvar *gc-hook* nil
+  "Can be assigned a REDUCE procedure to be run at GC time.")
 
 ;; For example, this works:
 ;; (setq *gc-hook* (lambda () (format *terminal-io* "Running hook!")))
 
 (defun %run-gc-hook ()
   "Run the REDUCE procedure (if any) assigned to the variable *gc-hook*."
-  (if (boundp '*gc-hook*) (funcall *gc-hook*))
+  (when *gc-hook* (funcall *gc-hook*))
   nil)
 
 (push #'%run-gc-hook sb-ext:*after-gc-hooks*)
