@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-13 18:11:42 franc>
+;; Time-stamp: <2025-10-15 18:30:07 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -992,25 +992,27 @@ from GLOBAL to FLUID is not permissible and results in the error:
   ;; but *** should remove inner progns by splicing! ***
 
   (if (eqcar idlist 'quote)
-    ;; Assume a top-level call that needs to output `defvar' forms
-    ;; at compile time.
-    (cons 'progn
+      ;; Assume a top-level call that needs to output `defvar' forms
+      ;; at compile time.
+      `(prog1 nil
+         (cl:apply
+          #'cl:append
           (cl:mapcar
            #'(lambda (x)
                ;; Check x is a symbol?
                (unless (cl:get x 'fluid)
                  (if (cl:get x 'global)
                      (warn "GLOBAL ~a cannot be changed to FLUID" x)
-                     `(progn
-                        ;; defvar is a macro, so ...
-                        (defvar ,x nil "Standard LISP fluid variable")
-                        (put ',x 'fluid t)))))
-           (cl:eval idlist)))
-    ;; Assume a run-time call, e.g.
-    ;; if not fluidp y and not globalp y then fluid list y;
-    ;; in procedure switch in "rlisp/switch.red".
-    `(prog1 nil
-       (cl:mapc #'%fluid ,idlist))))
+                     (list
+                      ;; defvar is a macro, so ...
+                      `(defvar ,x nil "Standard LISP fluid variable")
+                      `(put ',x 'fluid t)))))
+           (cl:eval idlist))))
+      ;; Assume a run-time call, e.g.
+      ;; if not fluidp y and not globalp y then fluid list y;
+      ;; in procedure switch in "rlisp/switch.red".
+      `(prog1 nil
+         (cl:mapc #'%fluid ,idlist))))
 
 (defun fluidp (u)
   "FLUIDP(U:any):boolean eval, spread
