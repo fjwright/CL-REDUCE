@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-15 18:30:07 franc>
+;; Time-stamp: <2025-10-26 17:00:41 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -982,32 +982,33 @@ from GLOBAL to FLUID is not permissible and results in the error:
 
   ;; Macro expansion produces:
   ;; (progn
-  ;;   (progn
-  ;;     (defvar var1 nil "Standard LISP fluid variable")
-  ;;     (put var1 'fluid t))
-  ;;   (progn
-  ;;     (defvar var2 nil "Standard LISP fluid variable")
-  ;;     (put 'var2 'fluid t))
-  ;;   ...)
-  ;; but *** should remove inner progns by splicing! ***
+  ;;   (cl:defvar var1 nil "Standard LISP fluid variable")
+  ;;   (put 'var1 'fluid t)
+  ;;   (cl:defvar var2 nil "Standard LISP fluid variable")
+  ;;   (put 'var2 'fluid t)
+  ;;   ...
+  ;;   nil)
 
   (if (eqcar idlist 'quote)
-      ;; Assume a top-level call that needs to output `defvar' forms
-      ;; at compile time.
-      `(prog1 nil
-         (cl:apply
-          #'cl:append
-          (cl:mapcar
-           #'(lambda (x)
-               ;; Check x is a symbol?
-               (unless (cl:get x 'fluid)
-                 (if (cl:get x 'global)
-                     (warn "GLOBAL ~a cannot be changed to FLUID" x)
-                     (list
-                      ;; defvar is a macro, so ...
-                      `(defvar ,x nil "Standard LISP fluid variable")
-                      `(put ',x 'fluid t)))))
-           (cl:eval idlist))))
+      ;; Assume a top level call that needs to output top level
+      ;; `defvar' forms at compile time.  (NB: If progn appears as a
+      ;; top level form, then all forms within that progn are
+      ;; considered by the compiler to be top level forms.)
+      `(progn
+         ,@(cl:apply
+            #'cl:append
+            (cl:mapcar
+             #'(lambda (x)
+                 ;; Check x is a symbol?
+                 (unless (cl:get x 'fluid)
+                   (if (cl:get x 'global)
+                       (warn "GLOBAL ~a cannot be changed to FLUID" x)
+                       (list
+                        ;; defvar is a macro, so ...
+                        `(defvar ,x nil "Standard LISP fluid variable")
+                        `(put ',x 'fluid t)))))
+             (cl:eval idlist)))
+         nil)
       ;; Assume a run-time call, e.g.
       ;; if not fluidp y and not globalp y then fluid list y;
       ;; in procedure switch in "rlisp/switch.red".
