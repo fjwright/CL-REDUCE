@@ -1,33 +1,11 @@
 # STATUS of REDUCE on Common Lisp (SBCL)
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**
-Time-stamp: <2025-10-29 16:58:40 franc>
+Time-stamp: <2025-11-02 16:37:00 franc>
 
 This status report is based on running REDUCE 7190 on (native Windows) SBCL 2.5.8 on Cygwin.
 
 No build errors.
-
-But `sstools.blg` shows a *large number* of warnings of the form
-
-```
-*** nonlocal use of undeclared variable foo in procedure bar
-```
-
-which I think are due to fluid declarations not working at compile time.  Similar warnings also appear in `conlaw.blg`, `crack.blg`, `liepde.blg`, `plot.blg`, `scope.blg`, `v3tools.blg`, but no other packages!  (Why only these?)
-
-If fluid declarations fail at *load* time, the build fails when remaking `ineq` and `modsr` because
-
-```
-***** module solve1 of package solve cannot be loaded
-```
-
-when loading `solve`.  This happens because `solveeval1`, defined in `solve.red`, is undefined because the fluid declaration for `solvemethods!*` fails, so that `solvemethods!*` is unbound in
-
-```
-solvemethods!* := union('(odesolve!*),solvemethods!*);
-```
-
-Similarly, `inside!-solveeval` is unbound.
 
 ## Package tests showing issues
 
@@ -51,7 +29,9 @@ xcolor      | Crashes with stack overflow if compiled for debugging!
 * Fix fluid to work correctly when compiling, loading and executing!
 * Revise readch1 to make the *psl case the default?
 * Revise yesp to handle id case and spacing correctly?
-
+* Fix
+  * `crack.blg:*** nonlocal use of undeclared variable *used-space* in procedure crackmain`
+  * `crack.blg:*** nonlocal use of undeclared variable *avail-space* in procedure crackmain`
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->

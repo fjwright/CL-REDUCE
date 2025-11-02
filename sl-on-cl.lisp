@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-10-29 15:43:15 franc>
+;; Time-stamp: <2025-11-02 16:40:55 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -645,17 +645,17 @@ having properties, flags, functions and the like. U is returned."
 ;;
 ;; FLAG('(DEFLIST FLAG FLUID GLOBAL REMFLAG REMPROP UNFLUID),'EVAL);
 ;;
-;; which (I think) means that the functions listed are evaluated even
-;; after `ON DEFN', which is necessary to ensure that some source code
-;; reads correctly.  However, `REMPROP' is usually followed by `PUT'
-;; to reinstate whatever property was removed, but `PUT' is not
-;; flagged `EVAL', so this reinstatement doesn't happen because
-;; evaluating `PUT' at the wrong time can cause similar problems,
-;; e.g. with `rlisp88'.  Hence, viewing code with `ON DEFN' can break
-;; subsequent code.  For example, inputting "rlisp/module.red" with
-;; `ON DEFN' removes the `STAT' property from `LOAD_PACKAGE', which
-;; then no longer works correctly.  This is a major problem for the
-;; way I generate fasl files!
+;; which means that the functions listed are evaluated even with `ON
+;; DEFN', which is necessary to ensure that some source code reads
+;; correctly.  However, `REMPROP' is usually followed by `PUT' to
+;; reinstate whatever property was removed, but `PUT' is not flagged
+;; `EVAL', so this reinstatement doesn't happen because evaluating
+;; `PUT' at the wrong time can cause similar problems, e.g. with
+;; `rlisp88'.  Hence, viewing code with `ON DEFN' can break subsequent
+;; code.  For example, inputting "rlisp/module.red" with `ON DEFN'
+;; removes the `STAT' property from `LOAD_PACKAGE', which then no
+;; longer works correctly.  This is a major problem for the way I
+;; generate fasl files!
 ;;
 ;; I therefore provide a workaround to make the functions DEFLIST,
 ;; FLAG, REMFLAG and REMPROP save the property list of any identifier
@@ -935,6 +935,20 @@ the name may be used subsequently as a variable."
 ;;; Variables and Bindings
 ;;; ======================
 
+;; Note that FLUID and GLOBAL forms must be evaluated when the LISP
+;; version of a REDUCE file is generated for compilation, i.e. with ON
+;; DEFN, and they normally are because in file "rlisp/superv.red" is
+;; the statement
+;;
+;; FLAG('(DEFLIST FLAG FLUID GLOBAL REMFLAG REMPROP UNFLUID),'EVAL);
+;;
+;; However, if one of these functions is preceded by LISP or SYMBOLIC
+;; then it is not evaluated!  If LISP or SYMBOLIC is flagged EVAL then
+;; it causes havoc, so don't precede these functions by LISP or
+;; SYMBOLIC.  This is almost always redundant in REDUCE because if the
+;; first argument of a function is quoted then the function is
+;; automatically evaluated in symbolic mode.
+
 (defun %fluid (x)
   "If id X is already GLOBAL then display a warning; otherwise flag X as FLUID."
   (declare (symbol x))
@@ -947,28 +961,6 @@ the name may be used subsequently as a variable."
           (put x 'fluid t))))
   nil)
 
-;; (defmacro fluid (idlist)
-;;   "FLUID(IDLIST:id-list):NIL eval, spread
-;; The ids in IDLIST are declared as FLUID type variables (ids not
-;; previously declared are initialized to NIL). Variables in IDLIST
-;; already declared FLUID are ignored. Changing a variable's type
-;; from GLOBAL to FLUID is not permissible and results in the error:
-;; ***** ID cannot be changed to FLUID"
-;;   ;; A warning, as for PSL, is more convenient than an error!
-;;   (declare (type (or list symbol) idlist))
-;;   (the list
-;;        (if (eqcar idlist 'quote)
-;;            ;; Assume a top-level call that needs to output `defvar' forms
-;;            ;; at compile time.
-;;            (cons 'prog1
-;;                  (cons nil
-;;                        (cl:mapcan
-;;                         #'(lambda (x) `((%fluid ',x)))
-;;                         (cl:eval idlist))))
-;;            ;; Assume a run-time call.
-;;            `(prog1 nil
-;;               (cl:mapc #'%fluid ,idlist)))))
-
 (defmacro fluid (idlist)
   ;; Must be a macro to be active at compile time!
   "FLUID(IDLIST:id-list):NIL eval, spread
@@ -978,8 +970,10 @@ already declared FLUID are ignored. Changing a variable's type
 from GLOBAL to FLUID is not permissible and results in the error:
 ***** ID cannot be changed to FLUID"
   ;; But a warning, as for PSL, is more convenient than an error!
-  ;; (declare (list idlist))
-  (if (eqcar idlist 'quote)
+  ;; NB: idlist could be anything that EVALUATES to a list!
+  (declare (list idlist))
+  ;; (format t "~&+++ (FLUID ~a)~%" idlist) ; only for debugging!
+  (if (eqcar idlist 'quote)             ; GET RID OF THIS TEST!!!
       ;; Assume a top level call that needs to output top level
       ;; `defvar' forms at compile time (and to evaluate them when
       ;; loaded or executed).  (NB: If progn appears as a top level
@@ -987,16 +981,7 @@ from GLOBAL to FLUID is not permissible and results in the error:
       ;; compiler to be top level forms.)
       `(progn
          (eval-when (:compile-toplevel)
-           ,@(cl:mapcan                 ; concatenate lists
-              #'(lambda (x)
-                  ;; Check x is a symbol?
-                  (unless (cl:get x 'fluid)
-                    (if (cl:get x 'global)
-                        (warn "GLOBAL ~a cannot be changed to FLUID" x)
-                        (list
-                         `(defvar ,x nil "Standard LISP fluid variable")
-                         `(setf (cl:get ',x 'fluid) t)))))
-              (cl:cadr idlist)))
+           (declaim (special ,@(cl:eval idlist))))
          (eval-when (:load-toplevel :execute)
            (cl:mapc #'%fluid ,idlist))
          nil)
@@ -3663,6 +3648,8 @@ When all done, execute FASLEND;~2%" name))
 (defun save-reduce-image (name)
   "Save a REDUCE memory image with main filename component NAME."
   (declare (string name))
+  #+SBCL
+  (sb-ext:enable-debugger)
   #+SBCL
   (sb-ext:save-lisp-and-die (concat "fasl.sbcl/" name ".img")
                             :toplevel #'reduce-init-function)
