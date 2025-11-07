@@ -1,9 +1,9 @@
 # STATUS of REDUCE on Common Lisp (SBCL)
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**
-Time-stamp: <2025-11-04 18:10:34 franc>
+Time-stamp: <2025-11-06 15:30:26 franc>
 
-This status report is based on running REDUCE 7199 on (native Windows) SBCL 2.5.8 on Cygwin.
+This status report is based on running REDUCE 7202 on (native Windows) SBCL 2.5.8 on Cygwin.
 
 No build errors.
 
@@ -28,9 +28,6 @@ xcolor      | Crashes with stack overflow if compiled for debugging!
 
 * Revise readch1 to make the *psl case the default?
 * Revise yesp to handle id case and spacing correctly?
-* Fix
-  * `crack.blg:*** nonlocal use of undeclared variable *used-space* in procedure crackmain`
-  * `crack.blg:*** nonlocal use of undeclared variable *avail-space* in procedure crackmain`
 * Disable interactive debugger when run in batch mode.  (Test on xcolor.)
 
 <!-- Local Variables: -->
