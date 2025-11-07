@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-06 16:59:52 franc>
+;; Time-stamp: <2025-11-07 11:51:18 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3145,10 +3145,10 @@ lower-case letters (i.e. ASCII code U <= ASCII code V)."
   "Ask the user the question that is the value of U.
 This may be an atom or a list."
   ;; Redefine yesp and yesp1 defined in "rlisp/inter.red".
-  (prog1
-      (y-or-n-p (if (listp u) "~{~a ~}" "~a") u)
-    (setq cursym* '*semicol*
-          curescaped* nil)))
+  (let ((*print-case* :downcase))
+    (if (atom u)
+        (y-or-n-p "~a" u)
+        (y-or-n-p "~a~{ ~a~}" (car u) (cdr u)))))
 
 (flag '(yesp yesp1) 'lose)
 
@@ -3652,6 +3652,10 @@ When all done, execute FASLEND;~2%" name))
 ;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
 (defun reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
+  (if  (and (interactive-stream-p *standard-input*)
+            (interactive-stream-p *standard-output*))
+       (sb-ext:enable-debugger)
+       (sb-ext:disable-debugger))
   (standard-lisp)
   (loop
    ;; CLHS recommends that there should always be an
@@ -3660,11 +3664,7 @@ When all done, execute FASLEND;~2%" name))
    (with-simple-restart
        (abort "~@<Exit debugger, returning to top level.~@:>")
      (catch 'toplevel-catcher
-       (begin)
-       ;; This doesn't work because *int does not determine
-       ;; genuinely interactive input.
-       ;; (unless *int (sb-ext:disable-debugger))
-       ))))
+       (begin)))))
 
 #+CLISP
 ;; See function `main-loop' in
@@ -3687,8 +3687,6 @@ When all done, execute FASLEND;~2%" name))
 (defun save-reduce-image (name)
   "Save a REDUCE memory image with main filename component NAME."
   (declare (string name))
-  #+SBCL
-  (sb-ext:enable-debugger)
   #+SBCL
   (sb-ext:save-lisp-and-die (concat "fasl.sbcl/" name ".img")
                             :toplevel #'reduce-init-function)

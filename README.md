@@ -183,6 +183,7 @@ I cannot see any way to support the facilities for restricting execution time on
 * Re-implement the sparse package to use hash tables as a test?
 * Make `getd` return something other than a `lambda` form for compiled code, cf. CSL/PSL, which gives the impression that compilation doesn't work.  Revise printing to display arbitrary Common Lisp objects as a fall-back option.
 * Command-line option to suppress reading the REDUCE Startup File.
+* Check command-line options to redsbcl etc. work; the preserved REDUCE executable may not handle them!
 
 * Optimise SL-on-CL to improve its speed.
 * Better error handling.

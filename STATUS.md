@@ -1,7 +1,7 @@
 # STATUS of REDUCE on Common Lisp (SBCL)
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**
-Time-stamp: <2025-11-06 15:30:26 franc>
+Time-stamp: <2025-11-07 11:37:54 franc>
 
 This status report is based on running REDUCE 7202 on (native Windows) SBCL 2.5.8 on Cygwin.
 
@@ -27,8 +27,6 @@ xcolor      | Crashes with stack overflow if compiled for debugging!
 ## TO DO
 
 * Revise readch1 to make the *psl case the default?
-* Revise yesp to handle id case and spacing correctly?
-* Disable interactive debugger when run in batch mode.  (Test on xcolor.)
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->
