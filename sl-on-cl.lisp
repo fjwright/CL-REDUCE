@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-07 11:51:18 franc>
+;; Time-stamp: <2025-11-08 16:59:43 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -191,11 +191,9 @@ determined by DEFINITION.  The return value is undefined."
   (setf ,@(if docstring `((documentation ,symbol 'cl:function) ,docstring))
          (symbol-function ,symbol) (symbol-function ,definition))))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  ;; Needed to expand macros fluid and global when compiling.
-  (defun eqcar (u v)
-    "Return true if U is a cons cell and its car is eq to V."
-    (and (consp u) (eq (car u) v))))
+(defun eqcar (u v)
+  "Return true if U is a cons cell and its car is eq to V."
+  (and (consp u) (eq (car u) v)))
 
 (defun %character-invert-case (c)
   "Invert the case of character C (if it is a letter)."
@@ -836,9 +834,7 @@ FEXPR PROCEDURE DM(U);
   "GETD(FNAME:any):{NIL, dotted-pair} eval, spread
 If FNAME is not the name of a defined function, return NIL. If
 FNAME is a defined function then return the dotted-pair
-\(TYPE:ftype . DEF:{function-pointer, lambda}).
-
-*** CURRENTLY RETURNS A LAMBDA FORM EVEN FOR COMPILED FUNCTIONS! ***"
+\(TYPE:ftype . DEF:{function-pointer, lambda})."
   (the list
        (and (symbolp fname) (fboundp fname)
             ;; Assume expr unless fname was defined using SL dm macro.
@@ -854,18 +850,15 @@ FNAME is a defined function then return the dotted-pair
                      `(lambda (x)
                         (funcall ,(macro-function fname) x nil))))
               (t
-               ;; Return a lambda expression if possible, since this is
-               ;; most useful (although perhaps not most efficient in
-               ;; some cases):
-               (let (f)
-                 ;; Note that a CL function definition may contain
-                 ;; declarations and a documentation string, and the
-                 ;; body MAY BE wrapped in a block form, i.e.
-                 ;; (lambda params [decls] [doc] (block name body))
-                 ;; [A compiled CLISP function may not contain a block!]
-                 ;; Extract the function body:
-                 (when (and (functionp (setq fname (symbol-function fname)))
-                            (setq f (function-lambda-expression fname)))
+               (setq fname (symbol-function fname))
+               (when (not (compiled-function-p fname))
+                 (let ((f (function-lambda-expression fname)))
+                   ;; Note that a CL function definition may contain
+                   ;; declarations and a documentation string, and the
+                   ;; body MAY BE wrapped in a block form, i.e.
+                   ;; (lambda params [decls] [doc] (block name body))
+                   ;; [A compiled CLISP function may not contain a block!]
+                   ;; Extract the function body:
                    (setq fname (car (last f))) ; block or body form
                    (if (eqcar fname 'block) (setq fname (caddr fname)))
                    (setq fname `(lambda ,(cadr f) ,fname))))
