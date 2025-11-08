@@ -1,9 +1,9 @@
 # STATUS of REDUCE on Common Lisp (SBCL)
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**
-Time-stamp: <2025-11-07 11:37:54 franc>
+Time-stamp: <2025-11-08 15:57:13 franc>
 
-This status report is based on running REDUCE 7202 on (native Windows) SBCL 2.5.8 on Cygwin.
+This status report is based on running REDUCE 7204 on (native Windows) SBCL 2.5.10 on Cygwin.
 
 No build errors.
 
@@ -18,15 +18,12 @@ $ ../scripts/testall.sh --sbcl $(../common-lisp/packages-to-test.sh)
 Package     | Comment
 ------------|--------
 arith       | SBCL is numerically more accurate than CSL/PSL!
-ellipfn     | One (significant) numerical difference
+ellipfn     | One numerical difference (due I think to evaluating a function on a branch cut)
 gf2         | Missing final backtrace
 numeric     | Minor numerical differences
 xcolor      | Crashes with stack overflow if compiled for debugging!
 
-
 ## TO DO
-
-* Revise readch1 to make the *psl case the default?
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->

@@ -10,7 +10,7 @@ From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Gu
 
 The files in this directory are intended to build and run the current distributed version of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support [Steel Bank Common Lisp](http://www.sbcl.org/) (SBCL), [CLISP](https://clisp.sourceforge.io/) and [Clozure Common Lisp](https://ccl.clozure.com/) (CCL) on MS Windows and Linux, where Linux means current or recent versions of Ubuntu and Fedora.  I understand that REDUCE builds and runs on SBCL, CLISP and CCL on macOS, although I don't run macOS myself.
 
-I have built this revision using the latest version of SBCL (namely 2.5.8, released August 29, 2025) on both Windows 11 and Ubuntu 22.04.5 LTS (GNU/Linux 6.6.87.2-microsoft-standard-WSL2 x86_64).  It runs simple test input correctly, and I am in the process of doing more careful testing.  (An older version of SBCL available by default on this version of Ubuntu seems not to work at all!)
+I have built this revision using recent versions of SBCL, namely 2.5.10 on Windows 11 and 2.5.8 on Ubuntu 22.04.5 LTS (GNU/Linux 6.6.87.2-microsoft-standard-WSL2 x86_64).  It runs the standard REDUCE test files with correct output except for a few insignificant differences.  (An older version of SBCL available by default on this version of Ubuntu seems not to work at all!)
 
 The support for CCL is based on code provided by Marco Ferraris.  There is also some preliminary support for the Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) thanks to Rainer Schöpf, but it is not yet possible to preserve Lisp images so the ABCL version is not yet usable, and I am working on [Embeddable Common Lisp (ECL)](https://ecl.common-lisp.dev/).
 
@@ -137,7 +137,7 @@ The commands `pwd()` or `cd "<directory>"` respectively return or change (and re
 
 Environment variables and dots ("." or "..") in filenames are expanded by `cd/chdir` and `open` relative to the current working directory of the REDUCE process.
 
-The identifier `common-lisp` is always included in the list assigned to the standard REDUCE fluid variable `lispsystem!*` and the identifiers `sbcl`, `clisp`, etc. and `win32`, `cygwin`, `unix`, etc. are included as appropriate.  These identifiers indicate the Lisp and operating system on which REDUCE was built and can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier `win32` means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier `unix` appears for Linux builds, and both `cygwin` and `unix` appear for Cygwin builds.
+The identifiers `common-lisp` and `sl-on-cl` are always included in the list assigned to the standard REDUCE fluid variable `lispsystem!*` and the identifiers `sbcl`, `clisp`, etc. and `win32`, `cygwin`, `unix`, etc. are included as appropriate.  These identifiers indicate the Lisp and operating system on which REDUCE was built and can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier `win32` means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier `unix` appears for Linux builds, and both `cygwin` and `unix` appear for Cygwin builds.
 
 For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to run Cygwin gnuplot if it is available and if not then it tries to run native MS Windows gnuplot (which is included in REDUCE binary distributions for MS Windows).  Cygwin gnuplot produces graphical output if REDUCE is run under the X Window System and text output otherwise.  For CLISP REDUCE on Linux and SBCL REDUCE on both MS Windows and Linux, gnuplot produces graphical output.
 
@@ -152,7 +152,7 @@ All available test files produce output that agrees with CSL REDUCE apart for ti
 * The `pasf` test output appears to be mathematically correct but is ordered differently on CLISP, whereas it agrees on SBCL (and appears to run twice as fast as on CSL!).
 * The `lalr` test output appears to be correct apart from two issues causing minor cosmetic differences.
 * The `rubi_red` test is very slow, generates very much output, and timeouts can't work on CLISP (see below), but otherwise the early part of the test file appears to run correctly &ndash; excluded from regular testing.  On SBCL, the first error is similar to that shown on CSL, but SBCL REDUCE does not recover after this error, probably due to the currently crude general error handling.
-* The `xcolor` test only runs to completion on SBCL with `(declaim (optimize speed))`. I think this is because it involves a highly recursive procedure (color1), which runs out of stack on the most complicated examples at the end of the test file unless optimized for maximum speed.
+* The `xcolor` test only runs to completion on SBCL with `(declaim (optimize speed))`.  I think this is because it involves a highly recursive procedure (color1), which runs out of stack on the most complicated examples at the end of the test file unless optimized for maximum speed.
 
 ## Timings (July 2019)
 
@@ -183,6 +183,7 @@ I cannot see any way to support the facilities for restricting execution time on
 * Re-implement the sparse package to use hash tables as a test?
 * Make `getd` return something other than a `lambda` form for compiled code, cf. CSL/PSL, which gives the impression that compilation doesn't work.  Revise printing to display arbitrary Common Lisp objects as a fall-back option.
 * Command-line option to suppress reading the REDUCE Startup File.
+* Revise interaction between SL-on-CL `readch` and RLISP `readch1`.
 * Check command-line options to redsbcl etc. work; the preserved REDUCE executable may not handle them!
 
 * Optimise SL-on-CL to improve its speed.
