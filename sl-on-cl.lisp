@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-10 15:38:13 franc>
+;; Time-stamp: <2025-11-10 16:21:52 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3645,10 +3645,15 @@ When all done, execute FASLEND;~2%" name))
 ;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
 (defun reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
+  ;; Enable the interactive debugger only if the input and output are
+  ;; both interactive:
   (if  (and (interactive-stream-p *standard-input*)
             (interactive-stream-p *standard-output*))
        (sb-ext:enable-debugger)
        (sb-ext:disable-debugger))
+  ;; Enable compilation only if *comp is true:
+  (setq sb-ext:*evaluator-mode*
+        (if *comp :compile :interpret))
   (standard-lisp)
   (loop
    ;; CLHS recommends that there should always be an
@@ -3721,7 +3726,8 @@ A list of identifiers indicating system properties.")
 #+SBCL
 (defun compilation (on)
   "Set the SBCL evaluation mode to compile if ON is non-nil and to
-interpret otherwise.  The default is compile."
+interpret otherwise.  The default is compile.
+Called by ON/OFF COMP; see “clrend.red”."
   (the symbol
        (setq sb-ext:*evaluator-mode*
              (if on :compile :interpret))))
