@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-08 16:59:43 franc>
+;; Time-stamp: <2025-11-10 15:38:13 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -579,10 +579,10 @@ printing (using prin1) to a list.  E.g.
               (cl:map 'list #'%intern-character-invert-case
                       (%prin-float-to-string u)))
              (t
-              ;; Assume identifier -- insert ! before an upper-case
-              ;; letter, leading digit or _, or special character
-              ;; (except _):
-              (loop with s = (cl:symbol-name u) and c
+              ;; Identifier, function-pointer, etc -- insert ! before
+              ;; an upper-case letter, leading digit or _, or special
+              ;; character (except _):
+              (loop with s = (princ-to-string u) and c
                  for i below (cl:length s)
                  do (setq c (aref s i))
                  unless (or (upper-case-p c) ; case-inverted!
