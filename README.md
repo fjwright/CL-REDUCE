@@ -1,8 +1,16 @@
 # REDUCE on Common Lisp
 
-**[Francis Wright](https://sites.google.com/site/fjwcentaur)**
+**[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
+Time-stamp: <2025-11-16 18:17:00 franc>
 
-Time-stamp: <2025-11-12 15:58:40 franc>
+* [Building REDUCE](#building-reduce)
+* [Running REDUCE](#running-reduce)
+* [Alternative builds](#alternative-builds)
+* [Required version of `bash`](#required-version-of-bash)
+* [Implementation-specific functionality](#implementation-specific-functionality)
+* [Status](#status)
+* [Known limitations](#known-limitations)
+* [To do](#to-do)
 
 From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Guy L. Steele Jr.](https://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html):
 
@@ -65,7 +73,7 @@ REDUCE should run from any directory and the command to start it can be specifie
 Interrupting REDUCE (with Control-C) invokes a Lisp break loop and aborting that should return you to REDUCE.  Within the break loop you can run arbitrary Lisp code, but remember that you are running Common Lisp and in particular Lisp output uses Common Lisp syntax, although you are initially in the Standard Lisp package.  However, package prefixes are recognised (which they are not from within REDUCE) so you can access most of Common Lisp, but beware that you might break REDUCE so that you cannot return to it!  Evaluating the Lisp expression `(exit)` from a Lisp break loop should completely terminate REDUCE.
 
 
-## Alternative Builds
+## Alternative builds
 
 The build directory must contain the following files from the `common-lisp` directory:
 
@@ -118,7 +126,7 @@ The order of precedence of the two mechanisms for determining the REDUCE revisio
 There is some preliminary support for the Java-based [Armed Bear Common Lisp (ABCL)](https://abcl.org/) thanks to Rainer Schöpf, but it is not yet possible to preserve Lisp images so the ABCL version is not yet usable, and I am working on support for [Embeddable Common Lisp (ECL)](https://ecl.common-lisp.dev/).  But these need a different build script that I do not currently distribute.  To use ABCL, you need to ensure that you have a suitable Java runtime environment installed; the build and run scripts expect to find the command `java` on your search path.  You also need to download [abcl-bin-1.8.0.zip](https://abcl.org/releases/1.8.0/abcl-bin-1.8.0.zip) and unzip it (or build and install it) so that `abcl-bin-1.8.0/abcl.jar` exists in the `common-lisp` directory.
 
 
-## Required Version of `bash`
+## Required version of `bash`
 
 If you get `bash` errors then it is probably because you are running too old a version, so I recommend that you update it.  Alternatively, if you have a recent version of `bash` available but it is not run by default, you could run any of the commands described here using
 ```sh
@@ -169,7 +177,6 @@ No build errors.
 Package  | Output Issues
 ---------|--------------
 arith    | SBCL is numerically more accurate than CSL/PSL!
-ellipfn  | One numerical difference (due I think to evaluating a function on a branch cut)
 gf2      | Missing final backtrace
 numeric  | Minor numerical differences
 (xcolor) | (Crashes with stack overflow if compiled for debugging!)
