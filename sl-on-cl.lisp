@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-10 16:21:52 franc>
+;; Time-stamp: <2025-11-19 10:23:56 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -25,6 +25,8 @@
 ;; For Common Lisp documentation see
 ;; https://www.lispworks.com/documentation/HyperSpec/Front/
 
+;; Uncomment the next line for a debug build; comment it out for a
+;; production build:
 (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 #-DEBUG (declaim (optimize speed))
@@ -838,31 +840,31 @@ FNAME is a defined function then return the dotted-pair
   (the list
        (and (symbolp fname) (fboundp fname)
             ;; Assume expr unless fname was defined using SL dm macro.
-            (case (cl:get fname '%ftype)
-              (macro
-               ;; ;; Return the (uncompiled) SL macro form:
-               ;; (cl:get fname '%macro)
-               ;; This may need more work.
+            (cond
+              ((eq (cl:get fname '%ftype) 'macro)
+               ;; Return the (uncompiled) SL macro form:
+               ;; This may need more work!
                ;; A CL macro expansion needs an environment.
                ;; Try the null environment (nil) initially.
                ;; (The parameter x should perhaps be a gensym.)
                (cons 'macro
                      `(lambda (x)
                         (funcall ,(macro-function fname) x nil))))
-              (t
-               (setq fname (symbol-function fname))
-               (when (not (compiled-function-p fname))
-                 (let ((f (function-lambda-expression fname)))
-                   ;; Note that a CL function definition may contain
+              ;; Several forms of expr:
+              ((special-operator-p fname)
+               (cons 'expr (symbol-function fname)))
+              ((compiled-function-p (setq fname (symbol-function fname)))
+               (cons 'expr fname))
+              (t (let ((f (function-lambda-expression fname)))
+                   ;; Note that a CL lambda expression may contain
                    ;; declarations and a documentation string, and the
                    ;; body MAY BE wrapped in a block form, i.e.
                    ;; (lambda params [decls] [doc] (block name body))
                    ;; [A compiled CLISP function may not contain a block!]
                    ;; Extract the function body:
                    (setq fname (car (last f))) ; block or body form
-                   (if (eqcar fname 'block) (setq fname (caddr fname)))
-                   (setq fname `(lambda ,(cadr f) ,fname))))
-               (cons 'expr fname))))))
+                   (when (eqcar fname 'block) (setq fname (caddr fname)))
+                   (cons 'expr `(lambda ,(cadr f) ,fname))))))))
 
 (defun putd (fname type body)
   "PUTD(FNAME:id, TYPE:ftype, BODY:function):id eval, spread
@@ -1196,6 +1198,10 @@ variables are not affected by the process."
 It can be defined as ERROR(99,NIL) if necessary.
 In PSL it is throw('!$error!$,99)."
   (cl:error 'sl-error-no-message))
+
+(defvar *backtrace nil
+  "When true display `errorset' backtrace or message in some REDUCE code.
+Defaults to nil.")
 
 (defvar *debug nil
   "If non-nil then `errorset' always enters the debugger on errors
@@ -3116,9 +3122,6 @@ lower-case letters (i.e. ASCII code U <= ASCII code V)."
             ((= i j) (return (<= j k)))
             ((= i k) (return nil))))))
 
-(defvar *backtrace nil
-  "Used in various places in REDUCE.  Should make it do something!")
-
 (defvar bfz*)
 
 (defun fl2bf (x)
@@ -3727,7 +3730,7 @@ A list of identifiers indicating system properties.")
 (defun compilation (on)
   "Set the SBCL evaluation mode to compile if ON is non-nil and to
 interpret otherwise.  The default is compile.
-Called by ON/OFF COMP; see “clrend.red”."
+Called by ON/OFF COMP; see 'clrend.red'."
   (the symbol
        (setq sb-ext:*evaluator-mode*
              (if on :compile :interpret))))
