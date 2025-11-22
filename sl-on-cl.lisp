@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-19 10:23:56 franc>
+;; Time-stamp: <2025-11-22 11:56:06 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -31,7 +31,7 @@
 
 #-DEBUG (declaim (optimize speed))
 #+DEBUG (declaim (optimize debug safety))
-#+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+;; #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
@@ -179,19 +179,31 @@ is printed whenever a function is redefined by PUTD.")
 
 ;; First, some utility functions used only internally:
 
-;; For ABCL, autoloaded functions must be loaded before copying the
-;; function cell. Otherwise only the autoload stub is copied.
-;; The call to resolve does this.
-(defmacro defalias (symbol definition &optional docstring)
-  "Set SYMBOL's function definition to DEFINITION.
-The optional third argument DOCSTRING specifies the documentation string
-for SYMBOL; if it is omitted or nil, SYMBOL uses the documentation string
-determined by DEFINITION.  The return value is undefined."
-  (declare (list symbol definition) (type (or null simple-string) docstring))
+(defmacro defalias (newname oldname &optional docstring)
+  "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
+Both NEWNAME and OLDNAME should be symbols.
+The optional third argument DOCSTRING specifies the documentation
+string for NEWNAME; if it is omitted or nil, NEWNAME uses the
+documentation string for OLDNAME."
+  ;; Improvements taken from https://github.com/ruricolist/serapeum.
+  (declare (symbol newname oldname) (type (or null simple-string) docstring))
   `(progn
-#+ABCL (if (ext:autoloadp ,definition) (ext:resolve ,definition))
-  (setf ,@(if docstring `((documentation ,symbol 'cl:function) ,docstring))
-         (symbol-function ,symbol) (symbol-function ,definition))))
+     ;; Give the function a temporary definition at compile time so
+     ;; the compiler doesn't complain about it being undefined.
+     (eval-when (:compile-toplevel)
+       (unless (fboundp ',newname)
+         (defun ,newname (&rest args)
+           (declare (ignore args)))))
+     (eval-when (:load-toplevel :execute)
+       ;; For ABCL, autoloaded functions must be loaded before copying
+       ;; the function cell. Otherwise only the autoload stub is
+       ;; copied.  The call to resolve does this.
+       #+ABCL (when (ext:autoloadp ',oldname) (ext:resolve ',oldname))
+       (setf (symbol-function ',newname) (symbol-function ',oldname))
+       ;; symbol-function includes docstring.
+       ,@(when docstring
+           `((setf (documentation ',newname 'cl:function) ,docstring)))
+       ',newname)))
 
 (defun eqcar (u v)
   "Return true if U is a cons cell and its car is eq to V."
@@ -232,7 +244,7 @@ determined by DEFINITION.  The return value is undefined."
 ;; EXPR PROCEDURE ATOM(U);
 ;;    NULL PAIRP U;
 
-(defalias 'codep 'cl:compiled-function-p
+(defalias codep cl:compiled-function-p
   "CODEP(U:any):boolean eval, spread
 Returns T if U is a function-pointer.")
 ;; This means compiled code only!
@@ -274,7 +286,7 @@ the same value and type."               ; i.e. the same SL type!
   ;;  (eql/equal -0.0 0.0) is false in SBCL although true in CLISP!
   (if (and (floatp u) (floatp v)) (= u v) (eql u v)))
 
-(defalias 'equal 'cl:equalp
+(defalias equal cl:equalp
   ;; This definition is not strictly correct but it seems to be the
   ;; best compromise!
   "EQUAL(U:any, V:any):boolean eval, spread
@@ -284,7 +296,7 @@ have identical dimensions and EQUAL values in all
 positions. Strings must have identical characters. Function
 pointers must have EQ values. Other atoms must be EQN equal.")
 
-(defalias 'fixp 'cl:integerp
+(defalias fixp cl:integerp
   "FIXP(U:any):boolean eval, spread
 Returns T if U is an integer (a fixed number).")
 
@@ -292,7 +304,7 @@ Returns T if U is an integer (a fixed number).")
 ;; FLOATP(U:any):boolean eval, spread
 ;; Returns T if U is a floating point number.
 
-(defalias 'idp 'cl:symbolp
+(defalias idp cl:symbolp
   "IDP(U:any):boolean eval, spread
 Returns T if U is an id.")
 
@@ -324,7 +336,7 @@ EXPR PROCEDURE ONEP(U);
    OR(EQN(U, 1), EQN(U, 1.0));"
   (equalp u 1))
 
-(defalias 'pairp 'cl:consp
+(defalias pairp cl:consp
   "PAIRP(U:any):boolean eval, spread
 Returns T if U is a dotted-pair.")
 
@@ -593,7 +605,7 @@ printing (using prin1) to a list.  E.g.
                  collect '\!
                  collect (%intern-character-preserve-case c)))))))
 
-;; (defalias 'gensym 'cl:gensym)
+;; (defalias gensym cl:gensym)
 ;; GENSYM():identifier eval, spread
 ;; Creates an identifier which is not interned on the OBLIST and
 ;; consequently not EQ to anything else.
@@ -1265,7 +1277,7 @@ not lie within 0...UPBV(V) inclusive:
   (declare (simple-vector v) (fixnum index))
   (aref v index))
 
-(defalias 'igetv 'getv)
+(defalias igetv getv)
 
 (defun mkvect (uplim)                   ; PSL
   "(mkvect UPLIM:integer): vector expr
@@ -1286,7 +1298,7 @@ lie in 0...UPBV(V) an error occurs:
   (declare (simple-vector v) (fixnum index))
   (setf (aref v index) value))
 
-(defalias 'iputv 'putv)
+(defalias iputv putv)
 
 (defun upbv (u)
   "UPBV(U:any):NIL,integer eval, spread
@@ -1388,13 +1400,13 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;; EXPR PROCEDURE ABS(U);
 ;;    IF LESSP(U, 0) THEN MINUS(U) ELSE U;
 
-(defalias 'add1 'cl:1+
+(defalias add1 cl:1+
   "ADD1(U:number):number eval, spread
 Returns the value of U plus 1 of the same type as U (fixed or floating).
 EXPR PROCEDURE ADD1(U);
    PLUS2(U, 1);")
 
-(defalias 'difference 'cl:-
+(defalias difference cl:-
   "DIFFERENCE(U:number, V:number):number eval, spread
 The value U - V is returned.")
 
@@ -1456,18 +1468,18 @@ error occurs:
   (declare (type number u))
   (the double-float (cl:float u 1d0)))
 
-(defalias 'greaterp 'cl:>
+(defalias greaterp cl:>
   "GREATERP(U:number, V:number):boolean eval, spread
 Returns T if U is strictly greater than V, otherwise returns NIL.")
 
-(defalias 'lessp 'cl:<
+(defalias lessp cl:<
   "LESSP(U:number, V:number):boolean eval, spread
 Returns T if U is strictly less than V, otherwise returns NIL.")
 
 ;; The definitions in REDUCE don't work correctly with mixed integer
 ;; and float arguments, so...
-(defalias 'geq 'cl:>=)
-(defalias 'leq 'cl:<=)
+(defalias geq cl:>=)
+(defalias leq cl:<=)
 
 (import 'cl:max)
 ;; MAX([U:number]):number noeval, nospread, or macro
@@ -1476,7 +1488,7 @@ Returns T if U is strictly less than V, otherwise returns NIL.")
 ;; MACRO PROCEDURE MAX(U);
 ;;    EXPAND(CDR U, 'MAX2);
 
-(defalias 'max2 'cl:max
+(defalias max2 cl:max
   "MAX2(U:number, V:number):number eval, spread
 Returns the larger of U and V. If U and V are the same value U is
 returned (U and V might be of different types).
@@ -1490,26 +1502,26 @@ EXPR PROCEDURE MAX2(U, V);
 ;; MACRO PROCEDURE MIN(U);
 ;;    EXPAND(CDR U, 'MIN2);
 
-(defalias 'min2 'cl:min
+(defalias min2 cl:min
   "MIN2(U:number, V:number):number eval, spread
 Returns the smaller of its arguments. If U and V are the same value,
 U is returned (U and V might be of different types).
 EXPR PROCEDURE MIN2(U, V);
    IF GREATERP(U, V) THEN V ELSE U;")
 
-(defalias 'minus 'cl:-
+(defalias minus cl:-
   "MINUS(U:number):number eval, spread
 Returns -U.
 EXPR PROCEDURE MINUS(U);
    DIFFERENCE(0, U);")
 
-(defalias 'plus 'cl:+
+(defalias plus cl:+
   "PLUS([U:number]):number noeval, nospread, or macro
 Forms the sum of all its arguments.
 MACRO PROCEDURE PLUS(U);
    EXPAND(CDR U, 'PLUS2);")
 
-(defalias 'plus2 'cl:+
+(defalias plus2 cl:+
   "PLUS2(U:number, V:number):number eval, spread
 Returns the sum of U and V.")
 
@@ -1531,7 +1543,7 @@ absolute value of V. An error occurs if division by zero is attempted:
            #-CLISP (/ u v)
            (values (truncate u v)))))
 
-(defalias 'remainder 'cl:rem
+(defalias remainder cl:rem
   "REMAINDER(U:number, V:number):number eval, spread
 If both U and V are integers the result is the integer remainder of
 U divided by V. If either parameter is floating point, the result is
@@ -1543,20 +1555,20 @@ zero:
 EXPR PROCEDURE REMAINDER(U, V);
    DIFFERENCE(U, TIMES2(QUOTIENT(U, V), V));")
 
-(defalias 'sub1 'cl:1-
+(defalias sub1 cl:1-
   "SUB1(U:number):number eval, spread
 Returns the value of U less 1. If U is a FLOAT type number, the
 value returned is U less 1.0.
 EXPR PROCEDURE SUB1(U);
    DIFFERENCE(U, 1);")
 
-(defalias 'times 'cl:*
+(defalias times cl:*
   "TIMES([U:number]):number noeval, nospread, or macro
 Returns the product of all its arguments.
 MACRO PROCEDURE TIMES(U);
    EXPAND(CDR U, 'TIMES2);")
 
-(defalias 'times2 'cl:*
+(defalias times2 cl:*
   "TIMES2(U:number, V:number):number eval, spread
 Returns the product of U and V.")
 
@@ -1616,7 +1628,7 @@ Returns the product of U and V.")
 ;; always have integer arguments!  But I assume it will not be called
 ;; with float arguments.
 
-(defalias 'iequal 'eql)
+(defalias iequal eql)
 
 ;; Small integer (fixnum) arithmetic operators required but not defined:
 
@@ -1630,26 +1642,26 @@ Returns the product of U and V.")
 
 ;; Fast built-in floating point functions:
 
-;; (defalias 'ACOS 'acos)
-;; (defalias 'ASIN 'asin)
-;; (defalias 'ATAN 'atan)
-;; (defalias 'ATAN2 'atan)
-;; (defalias 'COS 'cos)
-;; (defalias 'EXP 'exp)
-;; (defalias 'LN 'log)
-;; (defalias 'LOG 'log)
-;; (defalias 'LOGB 'log)
+;; (defalias ACOS acos)
+;; (defalias ASIN asin)
+;; (defalias ATAN atan)
+;; (defalias ATAN2 atan)
+;; (defalias COS cos)
+;; (defalias EXP exp)
+;; (defalias LN log)
+;; (defalias LOG log)
+;; (defalias LOGB log)
 ;; (defsubst LOG10 (x) (log x 10))
-;; (defalias 'SIN 'sin)
-;; (defalias 'SQRT 'sqrt)
-;; (defalias 'TAN 'tan)
+;; (defalias SIN sin)
+;; (defalias SQRT sqrt)
+;; (defalias TAN tan)
 ;; ;; The following will fail for floats with very large magnitudes since
 ;; ;; they return fixnums rather than big integers.  If that is a problem
 ;; ;; then remove these aliases and in particular remove the lose flags
 ;; ;; in "eslrend.red".
-;; (defalias 'CEILING 'ceiling)
-;; (defalias 'FLOOR 'floor)
-;; (defalias 'ROUND 'round)
+;; (defalias CEILING ceiling)
+;; (defalias FLOOR floor)
+;; (defalias ROUND round)
 
 ;; The above cause errors in the arith test file when trig results or
 ;; arguments are complex so all commented out for now.
@@ -1891,7 +1903,7 @@ EXPR PROCEDURE PAIR(U, V);
 ;;    RETURN W
 ;; END;
 
-(defalias 'reversip 'cl:nreverse)       ; PSL function
+(defalias reversip cl:nreverse)       ; PSL function
 
 (defun sassoc (u v fn)
   "SASSOC(U:any, V:alist, FN:function):any eval, spread
@@ -1905,7 +1917,7 @@ EXPR PROCEDURE SASSOC(U, V, FN);
   (or (cl:assoc u v :test #'equal) (funcall fn)))
 
 ;; (import 'cl:sort)                       ; CSL function
-(defalias 'sort 'cl:sort)
+(defalias sort cl:sort)
 ;; Defined this way so that it can be redefined in "rtools/sort.red"
 ;; because this is what happens with CSL and PSL!  (The function sort
 ;; is built into CSL and for PSL it is defined as an alias for gsort
@@ -2365,7 +2377,7 @@ in vector-notation.  The value of U is returned."
     (t (%prin-cons u #'prin2)))
   u)
 
-(defalias 'princ 'prin2)
+(defalias princ prin2)
 
 (defun %princ-id-to-string (u)
   "Convert identifier U to a string without any escapes."
@@ -2532,6 +2544,10 @@ returns the internal name of the previously selected input file.
   "Readtable implementing Standard Lisp string syntax.
 No escape characters are defined.")
 (set-syntax-from-char #\! #\A *string-readtable*)
+
+;; ***** NEED BETTER HANDLING FOR %CL-READ-STRING! *****
+
+(defun %cl-read-string (&rest args) (declare (ignore args)))
 
 (unless (fboundp '%cl-read-string)
   (setf (symbol-function '%cl-read-string)
@@ -2729,7 +2745,7 @@ The date in the form \"day-month-year\"
          (format nil "~2,'0d-~a-~d"
                  date (aref +short-month-names+ (1- month)) year))))
 
-(defalias 'datestamp 'get-universal-time
+(defalias datestamp get-universal-time
   "The number of seconds that have elapsed since some epoch.
 This version uses the Common Lisp epoch at the beginning of the year
 1900, whereas the CSL version uses the \"Unix time\" epoch at the
@@ -2869,7 +2885,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
   ;; (declare ((list string) s))  ; can't easily specify list of strings!
   (the simple-string (cl:apply #'concatenate 'string s)))
 
-;; (defalias 'allocate-string 'cl:make-string ; PSL
+;; (defalias allocate-string cl:make-string ; PSL
 ;;   "(allocate-string SIZE:integer): string expr
 ;; Constructs and returns a string with SIZE characters. The contents of
 ;; the string are not initialized.")
@@ -2939,7 +2955,7 @@ are not valid UTF-8 is to be considered undefined."
 ;; Stores into a PSL string. String indexes start with 0."
 ;;   (setf (aref s i) (%character x)))
 
-(defalias 'string-length 'cl:length     ; PSL
+(defalias string-length cl:length     ; PSL
   "(string-length S:string): integer expr
 Returns the number of elements in a PSL string. Since indexes start with
 index 0, the size is one larger than the greatest legal index. Compare this
@@ -2952,7 +2968,7 @@ function with string-upper-bound, documented below.")
   (the symbol
        (values (cl:intern (cl:string-upcase (cl:symbol-name c))))))
 
-(defalias 'red-char-downcase 'char-downcase) ; PSL
+(defalias red-char-downcase char-downcase) ; PSL
 
 (defun char-upcase (c)                  ; CSL
   "Convert single-character identifier C to lower case."
@@ -3004,19 +3020,19 @@ character ! does not appear in the result.
   (declare (symbol d))
   (the simple-string (%string-invert-case (cl:symbol-name d))))
 
-(defalias 'symbol-name 'id2string)
+(defalias symbol-name id2string)
 
 (defun string-downcase (u)
   "Convert identifier or string U to a lower-case string."
   (declare (type (or symbol simple-string) u))
   (the simple-string (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u))))
 
-(defalias 'land 'cl:logand           ; PSL
+(defalias land cl:logand           ; PSL
   "(land U:integer V:integer): integer expr
 Bitwise or logical and. Each bit of the result is independently
 determined from the corresponding bits of the operands.")
 
-(defalias 'lshift 'cl:ash            ; PSL
+(defalias lshift cl:ash            ; PSL
   ;; Not quite right for negative integers N!
   "(lshift N:integer K:integer): integer expr
 Shifts N to the left by K bits. The effect is similar to multiplying
@@ -3032,7 +3048,7 @@ Copy the elements of the list into a vector of the same size.
   (declare (list l))
   (the simple-vector (cl:apply #'cl:vector l)))
 
-(defalias 'list-to-vector 'list2vector)
+(defalias list-to-vector list2vector)
 
 (defun vector2list (v)                  ; PSL (should be flagged lose!)
   "(vector2list V:vector): list expr
@@ -3043,14 +3059,14 @@ order.
   (declare (simple-vector v))
   (the list (cl:map 'list #'cl:identity v)))
 
-(defalias 'copy 'cl:copy-tree        ; PSL
+(defalias copy cl:copy-tree        ; PSL
   "(copy X:any): any expr
 This function returns a copy of X. While each pair is copied, atomic
 elements (for example ids, strings, and vectors) are not.")
 
 ;; REDUCE needs complexp in various places but also needs to be able
 ;; to overwrite it, as in rlisp88.tst:
-(defalias 'complexp 'cl:complexp)
+(defalias complexp cl:complexp)
 
 ;; The next three PSL definitions are based on those at the end of
 ;; support/csl.red:
@@ -3069,8 +3085,8 @@ elements (for example ids, strings, and vectors) are not.")
   "Evaluate the expression U at load time only."
   `(eval-when (:load-toplevel :execute) ,u))
 
-(defalias 'prop 'cl:symbol-plist)    ; PSL
-(defalias 'plist 'cl:symbol-plist)   ; CSL
+(defalias prop cl:symbol-plist)    ; PSL
+(defalias plist cl:symbol-plist)   ; CSL
 
 (defun setprop (u l)                    ; PSL
   "(setprop U:id L:any): L:any expr
@@ -3091,9 +3107,9 @@ Returns the union of sets X and Y."
   (declare (list x y))
   (the list (cl:union x y :test #'equal)))
 
-(defalias 'mod 'cl:mod) ; not just imported because cali redefines mod
-(defalias 'gcdn 'cl:gcd)
-(defalias 'lcmn 'cl:lcm)
+(defalias mod cl:mod) ; not just imported because cali redefines mod
+(defalias gcdn cl:gcd)
+(defalias lcmn cl:lcm)
 
 (defun orderp (u v)
   "Return true if U = V or U sorts before V, where U and V are identifiers.
@@ -3354,7 +3370,7 @@ not sucessful, the value Nil is returned."
   (and (probe-file dir) (namestring (ccl::cd dir))))
 
 #+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
-(defalias 'chdir 'cd)                   ; CSL / MS Windows
+(defalias chdir cd)                   ; CSL / MS Windows
 
 (defun filep (file)                     ; PSL
   "Return false if FILE does not exist, otherwise return the truename of
@@ -3372,7 +3388,7 @@ in file name."
   (cl:file-write-date (substitute-in-file-name file)))
 
 #+SBCL (import 'sb-posix:getpid)
-#+CLISP (defalias 'getpid 'os:process-id)
+#+CLISP (defalias getpid os:process-id)
 
 #+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
 (defun setenv (name value)
@@ -3470,7 +3486,9 @@ Load a \".sl\" file using Standard Lisp read syntax."
 ;; ".lisp"], and then tries to load the source file with no filetype.
 ;; ***** CCL may do something similar - CHECK! *****
 #-ECLP
-(defalias '%load-extensions 'cl:load)
+(progn               ; defun necessary to avoid CLISP compiler warning
+  (defun %load-extensions (&rest args) (declare (ignore args)))
+  (defalias %load-extensions cl:load))
 
 #+ECLP
 (defun %load-extensions (&rest args)
@@ -3603,6 +3621,8 @@ When all done, execute FASLEND;~2%" name))
 
 (defvar cursym*)
 
+(defun comm1 (&rest args) (declare (ignore args)))
+
 (defun faslendstat ()
   "Terminate reading faslend and turn defn off."
   ;; Modelled on endstat in rlisp/parser.
@@ -3643,6 +3663,8 @@ When all done, execute FASLEND;~2%" name))
   "Switch to Common Lisp read syntax."
   (setq *readtable* (copy-readtable nil))
   nil)
+
+(defun begin ())
 
 #+SBCL
 ;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
@@ -3740,6 +3762,15 @@ Called by ON/OFF COMP; see 'clrend.red'."
 #+SBCL (setq sb-ext:*debug-print-variable-alist* '((*print-escape* . nil)))
 
 #+ABCL (setq *autoload-verbose* t)
+
+;; Experimental support primarily for CLISP:
+(deflist '((fluid macro)
+           (global macro)
+           (return macro)
+           (prog macro)
+           (lambda macro)
+           )
+    '%ftype)
 
 ;; Common Lisp symbols used in REDUCE source code:
 (import
