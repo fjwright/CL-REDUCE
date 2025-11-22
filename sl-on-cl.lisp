@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-22 11:56:06 franc>
+;; Time-stamp: <2025-11-22 12:37:56 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -179,31 +179,37 @@ is printed whenever a function is redefined by PUTD.")
 
 ;; First, some utility functions used only internally:
 
+(define-compiler-macro defalias (newname oldname &optional docstring)
+  "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
+Both NEWNAME and OLDNAME should be symbols.
+The optional third argument DOCSTRING specifies the documentation
+string for NEWNAME; if it is omitted or nil, NEWNAME uses the
+documentation string for OLDNAME."
+  ;; Uses ideas from https://github.com/ruricolist/serapeum.
+  (declare (symbol newname) (ignore oldname docstring))
+  ;; Give the function a temporary definition at compile time so
+  ;; the compiler doesn't complain about it being undefined.
+  `(defun ,newname (&rest args)
+     (declare (ignore args))))
+
 (defmacro defalias (newname oldname &optional docstring)
   "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
 Both NEWNAME and OLDNAME should be symbols.
 The optional third argument DOCSTRING specifies the documentation
 string for NEWNAME; if it is omitted or nil, NEWNAME uses the
 documentation string for OLDNAME."
-  ;; Improvements taken from https://github.com/ruricolist/serapeum.
+  ;; Uses ideas from https://github.com/ruricolist/serapeum.
   (declare (symbol newname oldname) (type (or null simple-string) docstring))
-  `(progn
-     ;; Give the function a temporary definition at compile time so
-     ;; the compiler doesn't complain about it being undefined.
-     (eval-when (:compile-toplevel)
-       (unless (fboundp ',newname)
-         (defun ,newname (&rest args)
-           (declare (ignore args)))))
-     (eval-when (:load-toplevel :execute)
-       ;; For ABCL, autoloaded functions must be loaded before copying
-       ;; the function cell. Otherwise only the autoload stub is
-       ;; copied.  The call to resolve does this.
-       #+ABCL (when (ext:autoloadp ',oldname) (ext:resolve ',oldname))
-       (setf (symbol-function ',newname) (symbol-function ',oldname))
-       ;; symbol-function includes docstring.
-       ,@(when docstring
-           `((setf (documentation ',newname 'cl:function) ,docstring)))
-       ',newname)))
+  `(eval-when (:load-toplevel :execute)
+     ;; For ABCL, autoloaded functions must be loaded before copying
+     ;; the function cell. Otherwise only the autoload stub is
+     ;; copied.  The call to resolve does this.
+     #+ABCL (when (ext:autoloadp ',oldname) (ext:resolve ',oldname))
+     (setf (symbol-function ',newname) (symbol-function ',oldname))
+     ;; symbol-function includes docstring.
+     ,@(when docstring
+         `((setf (documentation ',newname 'cl:function) ,docstring)))
+     ',newname))
 
 (defun eqcar (u v)
   "Return true if U is a cons cell and its car is eq to V."
@@ -3486,9 +3492,7 @@ Load a \".sl\" file using Standard Lisp read syntax."
 ;; ".lisp"], and then tries to load the source file with no filetype.
 ;; ***** CCL may do something similar - CHECK! *****
 #-ECLP
-(progn               ; defun necessary to avoid CLISP compiler warning
-  (defun %load-extensions (&rest args) (declare (ignore args)))
-  (defalias %load-extensions cl:load))
+(defalias %load-extensions cl:load)
 
 #+ECLP
 (defun %load-extensions (&rest args)
