@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-23 15:05:44 franc>
+;; Time-stamp: <2025-11-23 17:10:02 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -863,8 +863,8 @@ FNAME is a defined function then return the dotted-pair
 \(TYPE:ftype . DEF:{function-pointer, lambda})."
   (the list
        (and (symbolp fname) (fboundp fname)
-            ;; Assume expr unless fname was defined using SL dm macro.
             (cond
+              ;; MACRO if fname defined using SL dm macro:
               ((eq (cl:get fname '%ftype) 'macro)
                ;; Return the (uncompiled) SL macro form:
                ;; This may need more work!
@@ -874,9 +874,10 @@ FNAME is a defined function then return the dotted-pair
                (cons 'macro
                      `(lambda (x)
                         (funcall ,(macro-function fname) x nil))))
-              ;; Several forms of expr:
-              ((special-operator-p fname)
-               (cons 'expr (symbol-function fname)))
+              ;; FEXPR for CL (but not SL) macro or special operator:
+              ((or (macro-function fname) (special-operator-p fname))
+               (cons 'fexpr (symbol-function fname)))
+              ;; EXPR otherwise:
               ((compiled-function-p (setq fname (symbol-function fname)))
                (cons 'expr fname))
               (t (let ((f (function-lambda-expression fname)))
@@ -913,14 +914,14 @@ the !*COMP global variable is non-NIL."
   ;; body = (lambda (u) body-form) or function-pointer
   (let (*redefmsg)                  ; don't report redefinitions twice
     (case type
-      (expr
+      (expr                             ; normal function
        (cond ((eqcar body 'lambda)
               (eval `(de ,fname ,(cadr body) ,@(cddr body))))
              ((functionp body)
               (setf (symbol-function fname) body)
               (put fname '%ftype 'expr))
              (t (error-internal "Invalid expr body in PUTD"))))
-      (macro
+      (macro                      ; SL macro (implemented as CL macro)
        (cond ((eqcar body 'lambda)
               (if (eq (car (caddr body)) 'funcall)
                   ;; This "hybrid form" is returned by getd.
@@ -933,6 +934,10 @@ the !*COMP global variable is non-NIL."
              ;;  (setf (macro-function fname) body)
              ;;  (put fname '%ftype 'macro))
              (t (error-internal "Invalid macro body in PUTD"))))
+      ;; I hope putd doesn't get called for a fexpr!
+      ;; (fexpr         ; CL special operator or macro (but not SL macro)
+      ;;  (setf (symbol-function fname) body) ; FAILS FOR BOTH TYPES!
+      ;;  (put fname '%ftype 'fexpr))
       (t (error-internal "Invalid type in PUTD"))))
   (the symbol fname))
 
@@ -3772,12 +3777,6 @@ Called by ON/OFF COMP; see 'clrend.red'."
 #+SBCL (setq sb-ext:*debug-print-variable-alist* '((*print-escape* . nil)))
 
 #+ABCL (setq *autoload-verbose* t)
-
-;; Experimental support primarily for CLISP:
-;; #+CLISP
-;; (deflist '((fluid macro) (global macro)
-;;            (return macro) (prog macro) (lambda macro))
-;;     '%ftype)
 
 ;; Common Lisp symbols used in REDUCE source code:
 (import
