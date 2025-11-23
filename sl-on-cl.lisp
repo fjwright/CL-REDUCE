@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-22 12:37:56 franc>
+;; Time-stamp: <2025-11-23 15:05:44 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -179,18 +179,18 @@ is printed whenever a function is redefined by PUTD.")
 
 ;; First, some utility functions used only internally:
 
-(define-compiler-macro defalias (newname oldname &optional docstring)
-  "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
-Both NEWNAME and OLDNAME should be symbols.
-The optional third argument DOCSTRING specifies the documentation
-string for NEWNAME; if it is omitted or nil, NEWNAME uses the
-documentation string for OLDNAME."
-  ;; Uses ideas from https://github.com/ruricolist/serapeum.
-  (declare (symbol newname) (ignore oldname docstring))
-  ;; Give the function a temporary definition at compile time so
-  ;; the compiler doesn't complain about it being undefined.
-  `(defun ,newname (&rest args)
-     (declare (ignore args))))
+;; (define-compiler-macro defalias (newname oldname &optional docstring)
+;;   "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
+;; Both NEWNAME and OLDNAME should be symbols.
+;; The optional third argument DOCSTRING specifies the documentation
+;; string for NEWNAME; if it is omitted or nil, NEWNAME uses the
+;; documentation string for OLDNAME."
+;;   ;; Uses ideas from https://github.com/ruricolist/serapeum.
+;;   (declare (symbol newname) (ignore oldname docstring))
+;;   ;; Give the function a temporary definition at compile time so
+;;   ;; the compiler doesn't complain about it being undefined.
+;;   `(defun ,newname (&rest args)
+;;      (declare (ignore args))))
 
 (defmacro defalias (newname oldname &optional docstring)
   "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
@@ -808,7 +808,13 @@ returned."
   `(progn
      (%redefmsg ',fname)
      (put ',fname '%ftype 'expr)
-     (defun ,fname ,params ,@fn)
+     (defun ,fname ,params
+       ;; #+CLISP ,@(progn
+       ;;             (when (and (listp (car fn)) (eqcar (car fn) 'function))
+       ;;               (setf (car fn) (cadar fn)))
+       ;;             fn)
+       ;; #-CLISP
+       ,@fn)
      ;; It makes no sense to include code to compile this function
      ;; when the function definition is being compiled into a fasl
      ;; file, so examine *COMP when the macro is expanded/compiled and
@@ -2553,7 +2559,7 @@ No escape characters are defined.")
 
 ;; ***** NEED BETTER HANDLING FOR %CL-READ-STRING! *****
 
-(defun %cl-read-string (&rest args) (declare (ignore args)))
+;; (defun %cl-read-string (&rest args) (declare (ignore args)))
 
 (unless (fboundp '%cl-read-string)
   (setf (symbol-function '%cl-read-string)
@@ -3625,7 +3631,7 @@ When all done, execute FASLEND;~2%" name))
 
 (defvar cursym*)
 
-(defun comm1 (&rest args) (declare (ignore args)))
+;; (defun comm1 (&rest args) (declare (ignore args)))
 
 (defun faslendstat ()
   "Terminate reading faslend and turn defn off."
@@ -3668,7 +3674,7 @@ When all done, execute FASLEND;~2%" name))
   (setq *readtable* (copy-readtable nil))
   nil)
 
-(defun begin ())
+;; (defun begin ())
 
 #+SBCL
 ;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
@@ -3768,13 +3774,10 @@ Called by ON/OFF COMP; see 'clrend.red'."
 #+ABCL (setq *autoload-verbose* t)
 
 ;; Experimental support primarily for CLISP:
-(deflist '((fluid macro)
-           (global macro)
-           (return macro)
-           (prog macro)
-           (lambda macro)
-           )
-    '%ftype)
+;; #+CLISP
+;; (deflist '((fluid macro) (global macro)
+;;            (return macro) (prog macro) (lambda macro))
+;;     '%ftype)
 
 ;; Common Lisp symbols used in REDUCE source code:
 (import
