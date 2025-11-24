@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-23 17:10:02 franc>
+;; Time-stamp: <2025-11-24 12:32:49 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -29,9 +29,9 @@
 ;; production build:
 (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
-#-DEBUG (declaim (optimize speed))
-#+DEBUG (declaim (optimize debug safety))
-;; #+SBCL (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+(declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
+#+(and SBCL (not DEBUG))
+(declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
@@ -179,37 +179,27 @@ is printed whenever a function is redefined by PUTD.")
 
 ;; First, some utility functions used only internally:
 
-;; (define-compiler-macro defalias (newname oldname &optional docstring)
-;;   "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
-;; Both NEWNAME and OLDNAME should be symbols.
-;; The optional third argument DOCSTRING specifies the documentation
-;; string for NEWNAME; if it is omitted or nil, NEWNAME uses the
-;; documentation string for OLDNAME."
-;;   ;; Uses ideas from https://github.com/ruricolist/serapeum.
-;;   (declare (symbol newname) (ignore oldname docstring))
-;;   ;; Give the function a temporary definition at compile time so
-;;   ;; the compiler doesn't complain about it being undefined.
-;;   `(defun ,newname (&rest args)
-;;      (declare (ignore args))))
-
 (defmacro defalias (newname oldname &optional docstring)
   "Make NEWNAME a new name for function OLDNAME and return NEWNAME.
 Both NEWNAME and OLDNAME should be symbols.
 The optional third argument DOCSTRING specifies the documentation
 string for NEWNAME; if it is omitted or nil, NEWNAME uses the
 documentation string for OLDNAME."
-  ;; Uses ideas from https://github.com/ruricolist/serapeum.
   (declare (symbol newname oldname) (type (or null simple-string) docstring))
-  `(eval-when (:load-toplevel :execute)
+  ;; Eval when compiling to suppress undefined function warnings.
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
      ;; For ABCL, autoloaded functions must be loaded before copying
      ;; the function cell. Otherwise only the autoload stub is
      ;; copied.  The call to resolve does this.
      #+ABCL (when (ext:autoloadp ',oldname) (ext:resolve ',oldname))
-     (setf (symbol-function ',newname) (symbol-function ',oldname))
-     ;; symbol-function includes docstring.
-     ,@(when docstring
-         `((setf (documentation ',newname 'cl:function) ,docstring)))
-     ',newname))
+     ;; New functions (like getv) will not be defined at compile time,
+     ;; so can only be aliased at run time!
+     (when (fboundp ',oldname)
+       (setf (symbol-function ',newname) (symbol-function ',oldname))
+       ;; symbol-function includes docstring.
+       ,@(when docstring
+           `((setf (documentation ',newname 'cl:function) ,docstring)))
+       ',newname)))
 
 (defun eqcar (u v)
   "Return true if U is a cons cell and its car is eq to V."
@@ -2564,11 +2554,9 @@ No escape characters are defined.")
 
 ;; ***** NEED BETTER HANDLING FOR %CL-READ-STRING! *****
 
-;; (defun %cl-read-string (&rest args) (declare (ignore args)))
-
-(unless (fboundp '%cl-read-string)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (setf (symbol-function '%cl-read-string)
-        (get-macro-character #\" *sl-readtable*)))
+        (get-macro-character #\" *readtable*)))
 
 (defun %sl-read-string (stream closech)
   ;; This accumulates chars until it sees same char that invoked it,
@@ -3461,6 +3449,31 @@ a load.")
   "A list of loaded `modules', which are loaded only once.
 These are files referenced by symbols rather than strings.")
 
+;; ECL docstring for load [with corrections]:
+;; If the filetype is not specified, ECL first tries to load the fasl
+;; file with filetype ".fasl" [also, apparently, ".fas"], then tries
+;; to load the source file with filetype ".lsp" [also, apparently,
+;; ".lisp"], and then tries to load the source file with no filetype.
+;; ***** CCL may do something similar - CHECK! *****
+
+#-ECLP
+(defalias %load-extensions cl:load)
+
+#+ECLP
+(defun %load-extensions (&rest args)
+  "As cl:load but add a filename extension if missing.
+If filename has an extension then load it; otherwise try adding first
+the fasl extension (\".fasc\", system dependent) and then the source
+extension (\".lisp\")."
+  (cl:cond
+    ((pathname-type (car args)) (cl:apply #'cl:load args))
+    ((cl:apply #'cl:load
+               (merge-pathnames (car args) (make-pathname :type "fasc"))
+               :if-does-not-exist nil (cdr args)))
+    ((cl:apply #'cl:load
+               (merge-pathnames (car args) (make-pathname :type "lisp"))
+               (cdr args)))))
+
 (defun load (file)             ; currently only supports a single file
   "(load [FILE:{string, id}]): nil macro
 For each argument FILE, an attempt is made to locate a corresponding
@@ -3496,30 +3509,6 @@ Load a \".sl\" file using Standard Lisp read syntax."
                               :if-does-not-exist nil)
             (%load-extensions file-pathname)))))
 
-;; ECL docstring for load [with corrections]:
-;; If the filetype is not specified, ECL first tries to load the fasl
-;; file with filetype ".fasl" [also, apparently, ".fas"], then tries
-;; to load the source file with filetype ".lsp" [also, apparently,
-;; ".lisp"], and then tries to load the source file with no filetype.
-;; ***** CCL may do something similar - CHECK! *****
-#-ECLP
-(defalias %load-extensions cl:load)
-
-#+ECLP
-(defun %load-extensions (&rest args)
-  "As cl:load but add a filename extension if missing.
-If filename has an extension then load it; otherwise try adding first
-the fasl extension (\".fasc\", system dependent) and then the source
-extension (\".lisp\")."
-  (cl:cond
-    ((pathname-type (car args)) (cl:apply #'cl:load args))
-    ((cl:apply #'cl:load
-               (merge-pathnames (car args) (make-pathname :type "fasc"))
-               :if-does-not-exist nil (cdr args)))
-    ((cl:apply #'cl:load
-               (merge-pathnames (car args) (make-pathname :type "lisp"))
-               (cdr args)))))
-
 
 ;;; Faslout/faslend interface
 ;;; =========================
@@ -3542,12 +3531,13 @@ extension (\".lisp\")."
 (defconstant %faslout-header
   (concatenate
    'string
-  #-DEBUG "(cl:declaim (cl:optimize cl:speed))"
-  #+DEBUG "(cl:declaim (cl:optimize cl:debug cl:safety))"
+   #-DEBUG "(cl:declaim (cl:optimize cl:speed))"
+   #+DEBUG "(cl:declaim (cl:optimize cl:debug cl:safety))"
    (string #\Newline)
-   #+SBCL "(cl:declaim (sb-ext:muffle-conditions sb-ext:compiler-note cl:style-warning))"
-   #+CLISP "(setq custom:*suppress-check-redefinition* t
-              custom:*compile-warnings* nil)")
+   #+(and SBCL (not DEBUG))
+   "(cl:declaim (sb-ext:muffle-conditions sb-ext:compiler-note cl:style-warning))"
+   #+(and CLISP (not DEBUG))
+   "(setq custom:*suppress-check-redefinition* t custom:*compile-warnings* nil)")
   "Header string written at the top of every Lisp file generated by `faslout'
 or nil, meaning no header.")
 
@@ -3636,7 +3626,7 @@ When all done, execute FASLEND;~2%" name))
 
 (defvar cursym*)
 
-;; (defun comm1 (&rest args) (declare (ignore args)))
+(defun comm1 (&rest args) (declare (ignore args)))
 
 (defun faslendstat ()
   "Terminate reading faslend and turn defn off."
@@ -3679,7 +3669,7 @@ When all done, execute FASLEND;~2%" name))
   (setq *readtable* (copy-readtable nil))
   nil)
 
-;; (defun begin ())
+(defun begin ())
 
 #+SBCL
 ;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
