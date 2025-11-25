@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-24 12:32:49 franc>
+;; Time-stamp: <2025-11-25 12:52:54 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -27,7 +27,7 @@
 
 ;; Uncomment the next line for a debug build; comment it out for a
 ;; production build:
-(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
@@ -798,13 +798,7 @@ returned."
   `(progn
      (%redefmsg ',fname)
      (put ',fname '%ftype 'expr)
-     (defun ,fname ,params
-       ;; #+CLISP ,@(progn
-       ;;             (when (and (listp (car fn)) (eqcar (car fn) 'function))
-       ;;               (setf (car fn) (cadar fn)))
-       ;;             fn)
-       ;; #-CLISP
-       ,@fn)
+     (defun ,fname ,params ,@fn)
      ;; It makes no sense to include code to compile this function
      ;; when the function definition is being compiled into a fasl
      ;; file, so examine *COMP when the macro is expanded/compiled and

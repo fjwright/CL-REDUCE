@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-11-16 18:17:00 franc>
+Time-stamp: <2025-11-25 17:12:18 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -157,7 +157,7 @@ For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to r
 
 ## Status
 
-All testing was performed on the same Windows 11 computer and used the standard REDUCE test framework by running the command
+All testing was performed on the same Windows 11 computer and used the standard REDUCE test framework by running commands of the form
 
 ```sh
 ../scripts/testall.sh --noregressions --csl --sbcl
@@ -168,7 +168,9 @@ from the directory
 reduce-algebra-code/testing
 ```
 
-### Cygwin
+### Steel Bank Common Lisp
+
+#### Cygwin
 
 REDUCE 7205 on native Windows SBCL 2.5.10.
 
@@ -187,7 +189,7 @@ Lisp | Run Time (ms) | GC Time (ms)
 csl  |         77140 | 1493
 sbcl |        254429 | 8813
 
-### Ubuntu 24 on WSL
+#### Ubuntu 24 on WSL
 
 REDUCE 7205 on SBCL 2.5.10.
 
@@ -197,6 +199,28 @@ Lisp | Run Time (ms) | GC Time (ms)
 -----|---------------|-------------
 csl  |        102508 | 1156
 sbcl |        192035 | 3180
+
+### GNU CLISP
+
+#### Cygwin
+
+REDUCE 7206 on Cygwin CLISP 2.49+
+
+No build errors.
+
+Package  | Output Issues
+---------|--------------
+applysym | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
+arith    | CLISP is numerically more accurate than CSL/PSL!
+eds      | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
+gf2      | Hangs in an infinite loop!
+ibalp    | Stack overflow.
+liepde   | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
+numeric  | Minor numerical differences
+sstools  | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
+(xcolor) | (Crashes with stack overflow if compiled for debugging!)
+
+The test output differences for the `arith` and `numeric` package are identical for SBCL and CLISP, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!
 
 
 ## Known limitations

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-11-24 12:31:08 franc>
+# Time-stamp: <2025-11-25 12:44:19 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -137,8 +137,7 @@ if [ "sl-on-cl.lisp" -nt "fasl.$lisp/sl-on-cl.$faslext" ]
 then
     echo $'\n+++++ Compiling sl-on-cl'
     time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg &&
-(or (compile-file "sl-on-cl.lisp"
-       #+(and CLISP (not DEBUG)) :warnings #+(and CLISP (not DEBUG)) nil)
+(or (compile-file "sl-on-cl.lisp")
     #+CCL (quit 1)
     #-CCL (exit #+SBCL :code 1))
 EOF
