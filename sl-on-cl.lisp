@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-25 12:52:54 franc>
+;; Time-stamp: <2025-11-28 15:33:50 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3256,7 +3256,7 @@ already exists, it is removed before the new entry is added."
 ;;                     :search t :output t :escape-arguments nil)))
 
 #+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
-(defun system (command)                 ; PSL
+(defun system (command)    ; PSL
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
 COMMAND to the interpreter and return the process exit code."
@@ -3278,7 +3278,17 @@ COMMAND to the interpreter and return the process exit code."
         1
         (ccl:external-process-status    ; returns status, exit code
          #+WINDOWS
-         (ccl:run-program "cmd" (list "/c" command) :output *standard-output*)
+         (progn
+           ;; Split off the arguments:
+           (setq command
+                 (loop with beg and end = 0
+                       while end
+                       do (setq beg (position-if #'(lambda (x) (char/= x #\Space))
+                                                 command :start end))
+                       (unless beg (loop-finish))
+                       (setq end (position #\Space command :start beg))
+                       collect (subseq command beg end)))
+           (ccl:run-program "cmd" (list "/c" command) :output *standard-output*))
          #-WINDOWS
          (ccl:run-program "sh" (list "-c" command) :output t)))
        ))
@@ -3694,11 +3704,20 @@ When all done, execute FASLEND;~2%" name))
 (defun reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
   (standard-lisp)
-  (system::driver       ; build driver-frame; do #'lambda "infinitely"
-   #'(lambda ()
-       (system::with-abort-restart (:report (system::text "Abort main loop"))
-         ;; ANSI CL wants an ABORT restart to be available.
-         (begin))))
+  ;; (if  (and (interactive-stream-p *standard-input*)
+  ;;           (interactive-stream-p *standard-output*))
+  ;;      (system::driver       ; build driver-frame; do #'lambda "infinitely"
+  ;;       #'(lambda ()
+  ;;           (system::with-abort-restart (:report (system::text "Abort main loop"))
+  ;;             ;; ANSI CL wants an ABORT restart to be available.
+  ;;             (begin))))
+  ;;      ;; Non-interactively, when an ERROR occurs, or when a
+  ;;      ;; Control+C interrupt occurs, the error message is
+  ;;      ;; printed and CLISP terminates with an error status.
+  ;;      (progn
+  ;;        #+DEBUG (setq custom:*report-error-print-backtrace* t)
+  ;;        (system::driver #'(lambda () (ext:exit-on-error (begin))))))
+  (ext:exit-on-error (begin))
   (ext:exit))
 
 #+(or CCL ECL)
@@ -3713,16 +3732,15 @@ When all done, execute FASLEND;~2%" name))
   (sb-ext:save-lisp-and-die (concat "fasl.sbcl/" name ".img")
                             :toplevel #'reduce-init-function)
   #+CLISP
-  (ext:saveinitmem (concat "fasl.clisp/" name ".mem")
-                   :init-function #'reduce-init-function
-                   :quiet t :norc t)
-  #+ABCL
-  (asdf-jar:package name :verbose t)
+  (ext:saveinitmem
+   (concat "fasl.clisp/" name ".mem")
+   :init-function #'reduce-init-function :quiet t :norc t
+   :documentation "REDUCE Computer Algebra System")
   #+CCL
   (ccl:save-application (concat "fasl.ccl/" name ".image")
                         :toplevel-function #'reduce-init-function)
   #+ECL (reduce-init-function)
-  )
+  #+ABCL (asdf-jar:package name :verbose t))
 
 (pushnew :standard-lisp *features*)
 

@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-11-25 17:12:18 franc>
+Time-stamp: <2025-11-28 15:35:27 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -168,7 +168,7 @@ from the directory
 reduce-algebra-code/testing
 ```
 
-### Steel Bank Common Lisp
+### Steel Bank Common Lisp (SBCL)
 
 #### Cygwin
 
@@ -210,18 +210,33 @@ No build errors.
 
 Package  | Output Issues
 ---------|--------------
-applysym | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
 arith    | CLISP is numerically more accurate than CSL/PSL!
-eds      | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
 gf2      | Hangs in an infinite loop!
 ibalp    | Stack overflow.
-liepde   | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
 numeric  | Minor numerical differences
-sstools  | WARNING: FLUID *PLOTINTERRUPTS cannot be changed to GLOBAL (8 similar)
-(xcolor) | (Crashes with stack overflow if compiled for debugging!)
+(xcolor) | (Crashes with stack overflow if compiled for debugging!) MAYBE
 
 The test output differences for the `arith` and `numeric` package are identical for SBCL and CLISP, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!
 
+### Clozure Common Lisp (CCL)
+
+#### Cygwin
+
+REDUCE 7208 on native Windows CCL 1.13
+
+No build errors.
+
+Package  | Output Issues
+---------|--------------
+arith    | SBCL is numerically more accurate than CSL/PSL!
+cantens  | `***** numeric indices out of range`
+laplace  | `***** Factorizer error: Term content division failed` (multiple)
+numeric  | Minor numerical differences
+scope    | External program error [FIXED?]
+solve    | `***** check-solns` (3)
+ofsf     | Hangs in ccl::lock-free-puthash! [EXCLUDE]
+
+The test output differences for the `arith` and `numeric` package are identical for CCL and CLISP, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!  However, CCL uses CRLF line endings, which is a bit annoying!
 
 ## Known limitations
 
@@ -234,6 +249,7 @@ I cannot see any way to support the facilities for restricting execution time on
 * Command-line option to suppress reading the REDUCE Startup File.
 * Revise interaction between SL-on-CL `readch` and RLISP `readch1`.
 * Check that command-line options to redsbcl etc. work; the preserved REDUCE executable may not handle them!
+* Review my hacked version of `gnuintfc.red` for Common Lisp.
 
 * Optimise SL-on-CL to improve its speed.
 * Better error handling.
