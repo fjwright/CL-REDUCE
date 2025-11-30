@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-28 15:33:50 franc>
+;; Time-stamp: <2025-11-30 16:03:58 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -38,16 +38,16 @@
 
 #+CLISP (eval-when (:compile-toplevel :load-toplevel :execute)
           (setq custom:*suppress-check-redefinition* t
-                custom:*compile-warnings* nil))
-
-#+ABCL (eval-when (:compile-toplevel :load-toplevel :execute)
-         (require :abcl-contrib)
-         (require :asdf-jar))
+                #-DEBUG custom:*compile-warnings* #-DEBUG nil))
 
 #+CCL (eval-when (:compile-toplevel :load-toplevel :execute)
         (require :asdf)             ; used for various OS interactions
         (setq ccl:*warn-if-redefine* nil
-              ccl::*suppress-compiler-warnings* t))
+              #-DEBUG ccl::*suppress-compiler-warnings* #-DEBUG t))
+
+#+ABCL (eval-when (:compile-toplevel :load-toplevel :execute)
+         (require :abcl-contrib)
+         (require :asdf-jar))
 
 (defpackage :standard-lisp
   (:nicknames :sl)
@@ -3288,7 +3288,7 @@ COMMAND to the interpreter and return the process exit code."
                        (unless beg (loop-finish))
                        (setq end (position #\Space command :start beg))
                        collect (subseq command beg end)))
-           (ccl:run-program "cmd" (list "/c" command) :output *standard-output*))
+           (ccl:run-program "cmd" (cons "/c" command) :output *standard-output*))
          #-WINDOWS
          (ccl:run-program "sh" (list "-c" command) :output t)))
        ))
@@ -3409,8 +3409,8 @@ in file name."
 (defun exit (&optional code)
   #+SBCL (sb-ext:exit :code code)
   #+CLISP (ext:exit code)
-  #+ABCL (ext:exit :status code)
   #+CCL (ccl:quit code)
+  #+ABCL (ext:exit :status code)
   #+ECL (ext:quit code t)               ; kill-all-threads
   )
 
@@ -3420,7 +3420,7 @@ in file name."
 ;;; Compile and load
 ;;; ================
 
-(defconstant %fasl-directory-pathname   ; MUST be absolute
+(defparameter %fasl-directory-pathname   ; MUST be absolute
   (let* ((dir (pathname-directory
                (or *load-truename* *default-pathname-defaults*)))
          ;; Should be a list ending with either "fasl.*" or "common-lisp".
@@ -3458,7 +3458,6 @@ These are files referenced by symbols rather than strings.")
 ;; file with filetype ".fasl" [also, apparently, ".fas"], then tries
 ;; to load the source file with filetype ".lsp" [also, apparently,
 ;; ".lisp"], and then tries to load the source file with no filetype.
-;; ***** CCL may do something similar - CHECK! *****
 
 #-ECLP
 (defalias %load-extensions cl:load)
@@ -3528,7 +3527,7 @@ Load a \".sl\" file using Standard Lisp read syntax."
   #+ECLP ".fasc" #+ECLN ".fas"
   "Standard Lisp fasl filename extension beginning with \".\", used by \"remake.red\".")
 
-(defconstant fasl-dir*
+(defparameter fasl-dir*
   (namestring %fasl-directory-pathname)
   "Standard Lisp fasl directory name ending with \"/\", used by \"remake.red\".")
 

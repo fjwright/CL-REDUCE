@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-11-28 15:35:27 franc>
+Time-stamp: <2025-11-30 15:24:16 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -160,7 +160,7 @@ For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to r
 All testing was performed on the same Windows 11 computer and used the standard REDUCE test framework by running commands of the form
 
 ```sh
-../scripts/testall.sh --noregressions --csl --sbcl
+../scripts/testall.sh --noregressions --csl --<lisp>
 ```
 from the directory
 
@@ -170,7 +170,7 @@ reduce-algebra-code/testing
 
 ### Steel Bank Common Lisp (SBCL)
 
-#### Cygwin
+#### Windows
 
 REDUCE 7205 on native Windows SBCL 2.5.10.
 
@@ -189,7 +189,7 @@ Lisp | Run Time (ms) | GC Time (ms)
 csl  |         77140 | 1493
 sbcl |        254429 | 8813
 
-#### Ubuntu 24 on WSL
+#### Ubuntu 24 (on WSL)
 
 REDUCE 7205 on SBCL 2.5.10.
 
@@ -202,7 +202,7 @@ sbcl |        192035 | 3180
 
 ### GNU CLISP
 
-#### Cygwin
+#### Windows
 
 REDUCE 7206 on Cygwin CLISP 2.49+
 
@@ -220,7 +220,7 @@ The test output differences for the `arith` and `numeric` package are identical 
 
 ### Clozure Common Lisp (CCL)
 
-#### Cygwin
+#### Windows
 
 REDUCE 7208 on native Windows CCL 1.13
 
@@ -229,12 +229,18 @@ No build errors.
 Package  | Output Issues
 ---------|--------------
 arith    | SBCL is numerically more accurate than CSL/PSL!
-cantens  | `***** numeric indices out of range`
-laplace  | `***** Factorizer error: Term content division failed` (multiple)
+cantens  | subeval repeats error message `***** numeric indices out of range`
+conlaw   | missing output
+crack    | Program args; multiple issues
+gf2      | Hangs in interactive debugger! [EXCLUDE]
+lalr     | compiled function instead of lambda
+laplace  | `***** Factorizer error: Term content division failed` (2*4)
+liepde   | Undefined function GETPID
 numeric  | Minor numerical differences
-scope    | External program error [FIXED?]
-solve    | `***** check-solns` (3)
 ofsf     | Hangs in ccl::lock-free-puthash! [EXCLUDE]
+solve    | Error in check!-solns2, possibly in substitution (3)
+sstools  | missing output
+taylor   | `***** Invalid substitution`
 
 The test output differences for the `arith` and `numeric` package are identical for CCL and CLISP, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!  However, CCL uses CRLF line endings, which is a bit annoying!
 
