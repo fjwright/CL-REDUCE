@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-11-30 15:24:16 franc>
+Time-stamp: <2025-12-02 15:18:10 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -18,11 +18,9 @@ From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Gu
 
 **This code is currently experimental!**
 
-The files in this directory are intended to build and run recent versions of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support [Steel Bank Common Lisp](http://www.sbcl.org/) (SBCL), [CLISP](https://clisp.sourceforge.io/) and [Clozure Common Lisp](https://ccl.clozure.com/) (CCL) on MS Windows 11 and Ubuntu 24.  I understand that REDUCE builds and runs on SBCL, CLISP and CCL on macOS, although I don't run macOS myself.  The support for CCL is based on code provided by Marco Ferraris.
+The files in this directory are intended to build and run recent versions of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support [Steel Bank Common Lisp](http://www.sbcl.org/) (SBCL), [CLISP](https://clisp.sourceforge.io/) and [Clozure Common Lisp](https://ccl.clozure.com/) (CCL) on MS Windows 11 and Ubuntu 24.  I understand that REDUCE builds and runs on SBCL, CLISP and CCL on macOS, although I don't run macOS myself.  The support for CCL is based on code provided by Marco Ferraris.  See [Status](#status) below for build and test details.
 
-I have built this revision using SBCL 2.5.10 on Windows 11 and Ubuntu 24.04.3 LTS (GNU/Linux 6.6.87.2-microsoft-standard-WSL2 x86_64).  It runs the standard REDUCE test files with correct output except for a few insignificant differences; see [Status](#status) below.
-
-I recommend SBCL because in my experience it is the fastest and it is easy to install and set up.  CLISP is slow, and CCL is tricky to set up (at least, on MS Windows).
+I recommend SBCL because in my experience it is the fastest, it is easy to install and set up, binary distributions are readily available, and it is frequently updated.  CLISP is slow, and I find CCL tricky to install and set up.
 
 
 ## Building REDUCE
@@ -157,7 +155,7 @@ For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to r
 
 ## Status
 
-All testing was performed on the same Windows 11 computer and used the standard REDUCE test framework by running commands of the form
+I performed all testing on the same computer using Windows 11, a recent version of Cygwin and Ubuntu 24.04.3 LTS (GNU/Linux 6.6.87.2-microsoft-standard-WSL2 x86_64).  I used the standard REDUCE test framework by running commands of the form
 
 ```sh
 ../scripts/testall.sh --noregressions --csl --<lisp>
@@ -182,7 +180,6 @@ arith    | SBCL is numerically more accurate than CSL/PSL!
 gf2      | Missing final backtrace
 numeric  | Minor numerical differences
 (xcolor) | (Crashes with stack overflow if compiled for debugging!)
-
 
 Lisp | Run Time (ms) | GC Time (ms)
 -----|---------------|-------------
@@ -216,8 +213,6 @@ ibalp    | Stack overflow.
 numeric  | Minor numerical differences
 (xcolor) | (Crashes with stack overflow if compiled for debugging!) MAYBE
 
-The test output differences for the `arith` and `numeric` package are identical for SBCL and CLISP, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!
-
 ### Clozure Common Lisp (CCL)
 
 #### Windows
@@ -230,19 +225,16 @@ Package  | Output Issues
 ---------|--------------
 arith    | SBCL is numerically more accurate than CSL/PSL!
 cantens  | subeval repeats error message `***** numeric indices out of range`
-conlaw   | missing output
-crack    | Program args; multiple issues
 gf2      | Hangs in interactive debugger! [EXCLUDE]
 lalr     | compiled function instead of lambda
 laplace  | `***** Factorizer error: Term content division failed` (2*4)
-liepde   | Undefined function GETPID
 numeric  | Minor numerical differences
 ofsf     | Hangs in ccl::lock-free-puthash! [EXCLUDE]
 solve    | Error in check!-solns2, possibly in substitution (3)
-sstools  | missing output
 taylor   | `***** Invalid substitution`
 
-The test output differences for the `arith` and `numeric` package are identical for CCL and CLISP, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!  However, CCL uses CRLF line endings, which is a bit annoying!
+The test output differences for the `arith` and `numeric` package are identical for SBCL, CLISP and CCL, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!  However, CCL uses CRLF line endings, which is a bit annoying!
+
 
 ## Known limitations
 

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-11-30 16:03:58 franc>
+;; Time-stamp: <2025-12-01 17:35:47 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3287,8 +3287,9 @@ COMMAND to the interpreter and return the process exit code."
                                                  command :start end))
                        (unless beg (loop-finish))
                        (setq end (position #\Space command :start beg))
-                       collect (subseq command beg end)))
-           (ccl:run-program "cmd" (cons "/c" command) :output *standard-output*))
+                       ;; Quoted args seem to fail, so...
+                       collect (string-trim "\"" (subseq command beg end))))
+           (ccl:run-program "cmd" (cons "/c" command) :output t))
          #-WINDOWS
          (ccl:run-program "sh" (list "-c" command) :output t)))
        ))
@@ -3398,6 +3399,15 @@ in file name."
 
 #+SBCL (import 'sb-posix:getpid)
 #+CLISP (defalias getpid os:process-id)
+;; #+CCL (defalias getpid #_getpid)        ; ???
+#+CCL
+(defun getpid ()
+  "Return the process ID of the calling process."
+  ;; According to the CCL manual (#_getpid) should work, but on
+  ;; Windows it doesn't, so for now fudge it by just returning an
+  ;; arbitrary fixed number.
+  #-WINDOWS (#_getpid)
+  #+WINDOWS 1234)
 
 #+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
 (defun setenv (name value)
@@ -3779,6 +3789,8 @@ Called by ON/OFF COMP; see 'clrend.red'."
 
 #+ABCL (setq *autoload-verbose* t)
 
+(setf (macro-function 'cltrace) (macro-function 'trace)) ; for debugging
+
 ;; Common Lisp symbols used in REDUCE source code:
 (import
  '(lambda warning
@@ -3788,7 +3800,6 @@ Called by ON/OFF COMP; see 'clrend.red'."
    room sleep                           ; used in crack
    *print-base*                         ; used in gf2.tst
    #+SBCL sb-ext:*muffled-warnings*     ; used in build.sh
-   symbol-function ; since *currently* getd always returns lambda form
    ))
 
 ;; Cease inheriting the external symbols of :common-lisp except for
