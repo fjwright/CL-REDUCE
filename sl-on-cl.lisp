@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-02 16:50:12 franc>
+;; Time-stamp: <2025-12-05 15:37:56 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3399,20 +3399,22 @@ in file name."
 
 #+SBCL (import 'sb-posix:getpid)
 #+CLISP (defalias getpid os:process-id)
-;; Only CCL understands the reader macro #_, so...
-#-CCL
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (set-dispatch-macro-character
-   #\# #\_ #'(lambda (&rest args) (declare (ignore args)))))
-;; #+CCL (defalias getpid #_getpid)        ; ???
+;; Availability of a working getpid function in CCL currently depends
+;; on the version and platform, and might use a non-standard reader
+;; macro, which causes portability problems.  But REDUCE only uses
+;; getpid (in CRACK and REDLOG/OFSF) to create unique file and/or
+;; directory names, which needs a number that is unique to the current
+;; Lisp run but not necessarily the actual PID.  So...
 #+CCL
-(defun getpid ()
-  "Return the process ID of the calling process."
-  ;; According to the CCL manual (#_getpid) should work, but on
-  ;; Windows it doesn't, so for now fudge it by just returning an
-  ;; arbitrary fixed number.
-  #-WINDOWS (#_getpid)
-  #+WINDOWS 1234)
+(progn
+  (defparameter *pseudo-pid* (rem (get-universal-time) 10000)
+    "A unique non-negative integer less than 10000.
+Actually, it should be (fairly reliably) unique to this Lisp run.")
+
+  (defun getpid ()
+    "Return a unique non-negative integer less than 10000.
+Actually, it should be (fairly reliably) unique to this Lisp run."
+    *pseudo-pid*))
 
 #+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
 (defun setenv (name value)
