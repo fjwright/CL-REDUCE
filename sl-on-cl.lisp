@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-05 15:37:56 franc>
+;; Time-stamp: <2025-12-07 17:40:53 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3399,22 +3399,7 @@ in file name."
 
 #+SBCL (import 'sb-posix:getpid)
 #+CLISP (defalias getpid os:process-id)
-;; Availability of a working getpid function in CCL currently depends
-;; on the version and platform, and might use a non-standard reader
-;; macro, which causes portability problems.  But REDUCE only uses
-;; getpid (in CRACK and REDLOG/OFSF) to create unique file and/or
-;; directory names, which needs a number that is unique to the current
-;; Lisp run but not necessarily the actual PID.  So...
-#+CCL
-(progn
-  (defparameter *pseudo-pid* (rem (get-universal-time) 10000)
-    "A unique non-negative integer less than 10000.
-Actually, it should be (fairly reliably) unique to this Lisp run.")
-
-  (defun getpid ()
-    "Return a unique non-negative integer less than 10000.
-Actually, it should be (fairly reliably) unique to this Lisp run."
-    *pseudo-pid*))
+#+CCL (import 'ccl::getpid)
 
 #+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
 (defun setenv (name value)
@@ -3797,6 +3782,7 @@ Called by ON/OFF COMP; see 'clrend.red'."
 #+ABCL (setq *autoload-verbose* t)
 
 (setf (macro-function 'cltrace) (macro-function 'trace)) ; for debugging
+(setf (macro-function 'cluntrace) (macro-function 'untrace))
 
 ;; Common Lisp symbols used in REDUCE source code:
 (import
