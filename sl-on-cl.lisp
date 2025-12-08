@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-07 17:40:53 franc>
+;; Time-stamp: <2025-12-08 15:41:08 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -27,7 +27,7 @@
 
 ;; Uncomment the next line for a debug build; comment it out for a
 ;; production build:
-;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
@@ -3681,11 +3681,16 @@ When all done, execute FASLEND;~2%" name))
 (defun reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
   ;; Enable the interactive debugger only if the input and output are
-  ;; both interactive:
-  (if  (and (interactive-stream-p *standard-input*)
-            (interactive-stream-p *standard-output*))
-       (sb-ext:enable-debugger)
-       (sb-ext:disable-debugger))
+  ;; both interactive: ***** DOESN'T DETECT INTERACTIVE RUN *****
+  ;; (if  (and (interactive-stream-p *standard-input*)
+  ;;           (interactive-stream-p *standard-output*))
+  ;;      (progn
+  ;;        #+DEBUG (format t "Interactive mode -- debugger enabled")
+  ;;        (sb-ext:enable-debugger))
+  ;;      (progn
+  ;;        #+DEBUG (format t "Batch mode -- debugger disabled")
+  ;;        (sb-ext:disable-debugger)))
+  (sb-ext:enable-debugger)
   ;; Enable compilation only if *comp is true:
   (setq sb-ext:*evaluator-mode*
         (if *comp :compile :interpret))

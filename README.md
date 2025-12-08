@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-12-04 10:45:06 franc>
+Time-stamp: <2025-12-08 12:19:40 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -140,15 +140,15 @@ instead of
 
 The following facilities are modelled on those provided by PSL; please see the PSL manual for further details.
 
-Lisp-level function tracing is provided by the commands `tr` and `trst`.  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similarly but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros.  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output of REDUCE incomprehensible!
+Lisp-level function tracing is provided by the commands `tr` and `trst`, which are available in both algebraic and symbolic modes.  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similar but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros, which are also made available (in symbolic mode only) via the names `cltrace` and `cluntrace` (to avoid clashing with the matrix trace operator).  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output from REDUCE look a little strange!  If a REDUCE algebraic-mode operator that is implemented by a Lisp function with a different name is traced, then the underlying Lisp function is traced.
 
-Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided.  The functions `getenv` and `getpid` respectively provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems.
+Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided.  The functions `getenv`, `setenv` and `getpid` provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems.
 
 The commands `pwd()` or `cd "<directory>"` respectively return or change (and return) the current working directory.  The name `chdir` is an alias for `cd`.
 
-Environment variables and dots ("." or "..") in filenames are expanded by `cd/chdir` and `open` relative to the current working directory of the REDUCE process.
+Environment variables and dots (`.` or `..`) in filenames are expanded by `cd/chdir` and `open` relative to the current working directory of the REDUCE process.
 
-The identifiers `common-lisp` and `sl-on-cl` are always included in the list assigned to the standard REDUCE fluid variable `lispsystem!*` and the identifiers `sbcl`, `clisp`, etc. and `win32`, `cygwin`, `unix`, etc. are included as appropriate.  These identifiers indicate the Lisp and operating system on which REDUCE was built and can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier `win32` means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier `unix` appears for Linux builds, and both `cygwin` and `unix` appear for Cygwin builds.
+The identifiers `common!-lisp` and `sl!-on!-cl` are always included in the list assigned to the standard REDUCE symbolic-mode variable `lispsystem!*` and the identifiers `sbcl`, `clisp`, `ccl` and `win32`, `cygwin`, `unix`, etc. are included as appropriate.  These identifiers indicate the Lisp and operating system on which REDUCE was built and can be used to customise the behaviour of REDUCE, as is done in some of the REDUCE files in this directory (but not at present in any other files).  The identifier `win32` means Microsoft Windows in general and appears for both 32 and 64-bit builds.  The identifier `unix` appears for Linux builds, and both `cygwin` and `unix` appear for Cygwin builds.
 
 For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to run Cygwin gnuplot if it is available and if not then it tries to run native MS Windows gnuplot (which is included in REDUCE binary distributions for MS Windows).  Cygwin gnuplot produces graphical output if REDUCE is run under the X Window System and text output otherwise.  For CLISP REDUCE on Linux and SBCL REDUCE on both MS Windows and Linux, gnuplot produces graphical output.
 
