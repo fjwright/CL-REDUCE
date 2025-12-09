@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019, 2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-08 15:58:18 franc>
+;; Time-stamp: <2025-12-09 11:57:10 franc>
 ;; Created: 20 February 2019
 
 ;; Based on, and hopefully consistent with, the portable REDUCE
@@ -49,20 +49,21 @@
 
 (defmacro tr (&rest fns)
   "Trace the functions specified.
-If no functions are specified then list all traced functions."
-  (if fns
+List all traced functions if no functions or nil are specified."
+  (if (and fns (not (equal fns '(nil))))
       `(cl:mapcar #'trace1 ',fns)
       '*traced-functions*))
 
 (defmacro untr (&rest fns)
   "Untrace(set) the functions specified.
-Untrace(set) all traced functions if no functions are specified."
-  `(cl:mapcar #'untrace1 ',(or fns *traced-functions*)))
+Untrace(set) all traced functions if no functions or nil are specified."
+  `(cl:mapcar #'untrace1
+              ',(or (and (not (equal fns '(nil))) fns) *traced-functions*)))
 
 (defmacro trst (&rest fns)
   "Traceset the functions specified.
-If no functions are specified then list all traced functions."
-  (if fns
+List all traced functions if no functions or nil are specified."
+  (if (and fns (not (equal fns '(nil))))
       `(cl:mapcar #'(lambda (name) (trace1 name t)) ',fns)
       '*traced-functions*))
 

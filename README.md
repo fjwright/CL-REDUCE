@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-12-08 12:19:40 franc>
+Time-stamp: <2025-12-09 12:42:42 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -140,7 +140,7 @@ instead of
 
 The following facilities are modelled on those provided by PSL; please see the PSL manual for further details.
 
-Lisp-level function tracing is provided by the commands `tr` and `trst`, which are available in both algebraic and symbolic modes.  A command of the form `tr fn1, fn2, ...;` (without any quotes) enables tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified it lists all traced functions.  The command `trst` is similar but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) disable tracing; if no functions are specified they untrace all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros, which are also made available (in symbolic mode only) via the names `cltrace` and `cluntrace` (to avoid clashing with the matrix trace operator).  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output from REDUCE look a little strange!  If a REDUCE algebraic-mode operator that is implemented by a Lisp function with a different name is traced, then the underlying Lisp function is traced.
+Lisp-level function tracing is provided by the commands `tr` and `trst`, which are available in both algebraic and symbolic modes.  A command of the form `tr fn1, fn2, ...;` (without any quotes) turns on tracing of the argument and return values of each of the functions `fn1`, `fn2`, etc.; if no functions are specified, i.e. `tr();` (or `tr nil;`), it lists all traced functions.  The command `trst` is similar but also traces assignments, which works for functions that have been compiled using `faslout` provided the appropriate Lisp file is still available in the `fasl` directory.  The commands `untr` and `untrst` (which is just a synonym for `untr`) turns off tracing; if no functions are specified they turn off tracing for all traced functions.  These tracing commands are independent of the Common Lisp `trace` and `untrace` macros, which are also made available (in symbolic mode only) via the names `cltrace` and `cluntrace` (to avoid clashing with the matrix trace operator).  Input of function names uses Standard Lisp (i.e. REDUCE) syntax but output uses Common Lisp syntax, although it does not include any package prefixes, which can make Common Lisp tracing output from REDUCE look a little strange.  If a REDUCE algebraic-mode operator that is implemented by a Lisp function with a different name is traced, then the underlying Lisp function is automatically traced instead.
 
 Preliminary implementations of the `system`, `pipe-open` and `channelflush` functions are provided.  The functions `getenv`, `setenv` and `getpid` provide access to environment variables and the REDUCE process identifier, and should be portable across operating systems.
 
@@ -249,7 +249,7 @@ Package  | Output Issues
 arith    | SBCL is numerically more accurate than CSL/PSL!
 cantens  | subeval repeats error message `***** numeric indices out of range`
 gf2      | Hangs in interactive debugger! [EXCLUDE]
-lalr     | compiled function instead of lambda
+lalr     | compiled functions instead of lambdas (because CCL always compiles)
 laplace  | `***** Factorizer error: Term content division failed` (2*4)
 numeric  | Minor numerical differences
 ofsf     | Hangs in ccl::lock-free-puthash! [EXCLUDE]
