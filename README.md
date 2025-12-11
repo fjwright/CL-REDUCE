@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-12-09 12:42:42 franc>
+Time-stamp: <2025-12-09 16:58:20 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -254,7 +254,7 @@ laplace  | `***** Factorizer error: Term content division failed` (2*4)
 numeric  | Minor numerical differences
 ofsf     | Hangs in ccl::lock-free-puthash! [EXCLUDE]
 solve    | Error in check!-solns2, possibly in substitution (3)
-taylor   | `***** Invalid substitution`
+taylor   | subeval repeats error message `***** Invalid substitution` (rerror issue?)
 
 #### Ubuntu 24 (on WSL)
 

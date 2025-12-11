@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019, 2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-09 11:57:10 franc>
+;; Time-stamp: <2025-12-11 18:05:27 franc>
 ;; Created: 20 February 2019
 
 ;; Based on, and hopefully consistent with, the portable REDUCE
@@ -194,21 +194,15 @@ NAME must be quoted when called!"
     ;;
     (if params
         (setq params (car params))      ; unwrap params
-        (if (setq params (get name 'sl::number-of-args))
-            (progn
-              (setq params
-                    (loop
-                          for i from 1 upto params collect
-                          (intern (format nil "Arg~d" i))))
-              (format *trace-output*
-                      "~&*** ~a is compiled: ~a~%"
-                      name
-                      "portable tracing may not show recursive calls."))
-            (progn
-              (format *trace-output*
-                      "~&***** parameters for ~a unavailable so cannot apply portable tracing.~%"
-                      name)
-              (return-from trace1))))
+        (progn
+          (format *trace-output*
+                  "~&*** ~a source unavailable, so portable tracing may not show recursive calls
+and using generic parameters names.~%"
+                  name)
+          (when (setq params (get name 'sl::number-of-args))
+            (setq params
+                  (loop for i from 1 upto params collect
+                        (format nil "Arg~d" i))))))
     ;;
     (pushnew name *traced-functions*)
     (if trace-setq
@@ -262,18 +256,19 @@ Abort with an error if the answer is no.")
   (let ((trace-depth (1+ trace-depth))
         (result (get name 'traced-function)))
     (format *trace-output* "~&Enter (~a) ~a~%" trace-depth name)
-    (loop for param in params for arg in args do
-         (format *trace-output* "   ~a:  ~s~%" param arg))
-
+    (if params
+        (loop for param in params for arg in args do
+              (format *trace-output* "   ~a:  ~a~%" param arg))
+        (loop for i from 1 for arg in args do
+              (format *trace-output* "   Arg~d:  ~a~%" i arg)))
     (if (and *trpause (not (y-or-n-p "Continue?")))
         (error "Tracing aborted!"))
-
     (setq result
           (sl::errorset `(apply ,(eval result) ',args) nil nil))
     (if (or (atom result) (cdr result)) ; errorp result
         (sl::error 0 sl::emsg*)
         (setq result (car result)))
-    (format *trace-output* "~&Leave (~a) ~a = ~s~%" trace-depth name result)
+    (format *trace-output* "~&Leave (~a) ~a = ~a~%" trace-depth name result)
     result))
 
 (defmacro traced-setq (left right)
