@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-08 15:41:08 franc>
+;; Time-stamp: <2025-12-13 16:14:56 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3278,17 +3278,16 @@ COMMAND to the interpreter and return the process exit code."
         1
         (ccl:external-process-status    ; returns status, exit code
          #+WINDOWS
-         (progn
-           ;; Split off the arguments:
-           (setq command
-                 (loop with beg and end = 0
-                       while end
-                       do (setq beg (position-if #'(lambda (x) (char/= x #\Space))
-                                                 command :start end))
-                       (unless beg (loop-finish))
-                       (setq end (position #\Space command :start beg))
-                       ;; Quoted args seem to fail, so...
-                       collect (string-trim "\"" (subseq command beg end))))
+         (let ((command
+                ;; Split off the arguments:
+                (loop with beg and end = 0
+                      while end
+                      do (setq beg (position-if #'(lambda (x) (char/= x #\Space))
+                                                command :start end))
+                      (unless beg (loop-finish))
+                      (setq end (position #\Space command :start beg))
+                      ;; Quoted args seem to fail, so...
+                      collect (string-trim "\"" (subseq command beg end)))))
            (ccl:run-program "cmd" (cons "/c" command) :output t))
          #-WINDOWS
          (ccl:run-program "sh" (list "-c" command) :output t)))
@@ -3726,10 +3725,30 @@ When all done, execute FASLEND;~2%" name))
   (ext:exit-on-error (begin))
   (ext:exit))
 
+;; From: Common Lisp the Language, 2nd Edition
+;; https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node341.html
+
+;; Implementation note: Implementors are encouraged to make sure that
+;; there is always a restart named abort around any user code so that
+;; user code can call abort at any time and expect something
+;; reasonable to happen; exactly what the reasonable thing is may vary
+;; somewhat. Typically, in an interactive program, invoking abort
+;; should return the user to top level, though in some batch or
+;; multi-processing situations killing the running process might be
+;; more appropriate.
+
+;; The initialisation code below is based on the REPL example on the
+;; web page cited above.
+
 #+(or CCL ECL)
 (defun reduce-init-function ()
   #+CCL (standard-lisp)
-  (begin))
+  (with-simple-restart
+      (abort "Exit REDUCE.")
+    (loop
+     (with-simple-restart
+         (abort "Return to REDUCE.")
+       (begin)))))
 
 (defun save-reduce-image (name)
   "Save a REDUCE memory image with main filename component NAME."

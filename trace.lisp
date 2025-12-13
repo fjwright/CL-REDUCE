@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019, 2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-11 18:05:27 franc>
+;; Time-stamp: <2025-12-13 16:36:16 franc>
 ;; Created: 20 February 2019
 
 ;; Based on, and hopefully consistent with, the portable REDUCE
@@ -14,9 +14,6 @@
 ;; psopfn or simpfn by tracing the underlying Lisp function.
 
 ;; ***** Must load "sl-on-cl" before loading or compiling this file. *****
-
-;; TO DO
-;; Trace compiled functions that have no source available.
 
 ;; ****************************
 ;; Can be loaded into REDUCE by
@@ -186,18 +183,19 @@ NAME must be quoted when called!"
           (if trace-setq
               (progn
                 (format *trace-output*
-                        "~&*** ~a ~a~%~a~%"
-                        name
-                        "must be interpreted for portable assignment tracing."
-                        "*** Tracing arguments and return value only.")
+                        "~&*** ~a ~
+must be interpreted for assignment tracing.
+    Tracing arguments and return value only."
+                        name)
                 (setq trace-setq nil)))))
     ;;
     (if params
         (setq params (car params))      ; unwrap params
         (progn
           (format *trace-output*
-                  "~&*** ~a source unavailable, so portable tracing may not show recursive calls
-and using generic parameters names.~%"
+                  "~&*** ~a source unavailable.
+    Recursive calls may not be traced.
+    Using generic parameter names.~%"
                   name)
           (when (setq params (get name 'sl::number-of-args))
             (setq params
@@ -213,8 +211,8 @@ and using generic parameters names.~%"
         (remprop name 'traced-setq))
     (put name 'untraced-function olddefn)
     (put name 'traced-function defn)
-    (eval `(defun ,name ,params
-             (run-traced-function ',name ',params (list . ,params))))))
+    (eval `(defun ,name (&rest args)
+             (run-traced-function ',name ',params args)))))
 
 (defun untrace1 (name)
   "Remove all tracing for function or algebraic operator NAME.
@@ -255,12 +253,12 @@ Abort with an error if the answer is no.")
 (defun run-traced-function (name params args)
   (let ((trace-depth (1+ trace-depth))
         (result (get name 'traced-function)))
-    (format *trace-output* "~&Enter (~a) ~a~%" trace-depth name)
+    (format *trace-output* "~&Enter (~d) ~a~%" trace-depth name)
     (if params
         (loop for param in params for arg in args do
-              (format *trace-output* "   ~a:  ~a~%" param arg))
+              (format *trace-output* "   ~a:  ~s~%" param arg))
         (loop for i from 1 for arg in args do
-              (format *trace-output* "   Arg~d:  ~a~%" i arg)))
+              (format *trace-output* "   Arg~d:  ~s~%" i arg)))
     (if (and *trpause (not (y-or-n-p "Continue?")))
         (error "Tracing aborted!"))
     (setq result
@@ -268,7 +266,7 @@ Abort with an error if the answer is no.")
     (if (or (atom result) (cdr result)) ; errorp result
         (sl::error 0 sl::emsg*)
         (setq result (car result)))
-    (format *trace-output* "~&Leave (~a) ~a = ~a~%" trace-depth name result)
+    (format *trace-output* "~&Leave (~d) ~a = ~s~%" trace-depth name result)
     result))
 
 (defmacro traced-setq (left right)
