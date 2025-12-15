@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-12-09 16:58:20 franc>
+Time-stamp: <2025-12-15 10:55:23 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -175,7 +175,7 @@ The test output differences for the `arith` and `numeric` package are identical 
 
 #### Windows
 
-REDUCE 7205 on native Windows SBCL 2.5.10.
+REDUCE 7214 on native Windows SBCL 2.5.11.
 
 No build errors.
 
@@ -205,15 +205,15 @@ sbcl |        192035 | 3180
 
 #### Windows
 
-REDUCE 7206 on Cygwin CLISP 2.49
+REDUCE 7214 on Cygwin CLISP 2.49
 
 No build errors.
 
 Package  | Output Issues
 ---------|--------------
 arith    | CLISP is numerically more accurate than CSL/PSL!
-gf2      | Hangs in an infinite loop!
-ibalp    | Stack overflow.
+gf2      | Crashes - break loop - Lisp
+ibalp    | Stack overflow. `reset() found no driver frame`
 numeric  | Minor numerical differences
 
 #### Ubuntu 24 (on WSL)
@@ -240,21 +240,17 @@ xideal   | Lots of issues (probably from excalc)
 
 #### Windows
 
-REDUCE 7208 on native Windows CCL 1.13
+REDUCE 7214 on native Windows CCL 1.13
 
 No build errors.
 
 Package  | Output Issues
 ---------|--------------
 arith    | SBCL is numerically more accurate than CSL/PSL!
-cantens  | subeval repeats error message `***** numeric indices out of range`
 gf2      | Hangs in interactive debugger! [EXCLUDE]
 lalr     | compiled functions instead of lambdas (because CCL always compiles)
-laplace  | `***** Factorizer error: Term content division failed` (2*4)
 numeric  | Minor numerical differences
-ofsf     | Hangs in ccl::lock-free-puthash! [EXCLUDE]
-solve    | Error in check!-solns2, possibly in substitution (3)
-taylor   | subeval repeats error message `***** Invalid substitution` (rerror issue?)
+ofsf     | Hangs in interactive debugger! [EXCLUDE]
 
 #### Ubuntu 24 (on WSL)
 

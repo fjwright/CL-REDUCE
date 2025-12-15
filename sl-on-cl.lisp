@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-13 16:14:56 franc>
+;; Time-stamp: <2025-12-14 17:10:23 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -27,7 +27,7 @@
 
 ;; Uncomment the next line for a debug build; comment it out for a
 ;; production build:
-(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
@@ -1173,10 +1173,22 @@ in interpreted functions are automatically considered fluid."
 ;;; Error Handling
 ;;; ==============
 
-(define-condition sl-error (cl:error)
-  ((errno :initarg :errno)
-   (errmsg :initarg :errmsg))
-  (:documentation "Standard Lisp error including an error number and message")
+(define-condition sl-error-no-message (cl:error)
+  ()
+  (:documentation "Standard Lisp error without error number or message")
+  (:report (lambda (condition stream)
+             (declare (ignore condition stream)))))
+
+(defun error1 ()
+  "This is the simplest error return, without a message printed.
+It can be defined as ERROR(99,NIL) if necessary.
+In PSL it is throw('!$error!$,99)."
+  ;; This error is called by rederr.
+  (cl:error 'sl-error-no-message))
+
+(define-condition sl-error (sl-error-no-message)
+  ((errno :initarg :errno) (errmsg :initarg :errmsg))
+  (:documentation "Standard Lisp error with an error number and message")
   (:report (lambda (condition stream)
              (with-slots (errno errmsg) condition
                (format stream "Standard Lisp error ~a: ~a." errno errmsg)))))
@@ -1192,25 +1204,12 @@ variables are not affected by the process."
   (setq emsg* message)
   (cl:error 'sl-error :errno number :errmsg message))
 
-(define-condition sl-error-internal (sl-error)
+(define-condition sl-error-internal (sl-error-no-message)
   ((errmsg :initarg :errmsg))
-  (:documentation "Standard Lisp internal error including an error message")
+  (:documentation "Standard Lisp internal error with an error message")
   (:report (lambda (condition stream)
              (with-slots (errmsg) condition
                (format stream "Standard Lisp error: ~a." errmsg)))))
-
-(define-condition sl-error-no-message (sl-error-internal)
-  ()
-  (:documentation "Standard Lisp error without error number or message")
-  (:report (lambda (condition stream)
-             (declare (ignore condition))
-             (format stream "Standard Lisp error without error number or message"))))
-
-(defun error1 ()
-  "This is the simplest error return, without a message printed.
-It can be defined as ERROR(99,NIL) if necessary.
-In PSL it is throw('!$error!$,99)."
-  (cl:error 'sl-error-no-message))
 
 (defvar *backtrace nil
   "When true display `errorset' backtrace or message in some REDUCE code.
@@ -3839,3 +3838,6 @@ Called by ON/OFF COMP; see 'clrend.red'."
 
 ;; Move implementation into a separate package and only export
 ;; required symbols.  This should make profiling easier!
+
+;; Implement compd (see rsupport.red) as compile, so that inlines,
+;; etc, get compiled?
