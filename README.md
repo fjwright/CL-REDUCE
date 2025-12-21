@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-12-15 10:55:23 franc>
+Time-stamp: <2025-12-21 12:06:21 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -185,6 +185,8 @@ arith    | SBCL is numerically more accurate than CSL/PSL!
 gf2      | Missing final backtrace
 numeric  | Minor numerical differences
 
+Old timing data:
+
 Lisp | Run Time (ms) | GC Time (ms)
 -----|---------------|-------------
 csl  |         77140 | 1493
@@ -192,9 +194,11 @@ sbcl |        254429 | 8813
 
 #### Ubuntu 24 (on WSL)
 
-REDUCE 7205 on SBCL 2.5.10.
+REDUCE 7220 on SBCL 2.5.11.
 
 No build errors.  Package test issues as for Windows.
+
+Old timing data:
 
 Lisp | Run Time (ms) | GC Time (ms)
 -----|---------------|-------------
@@ -218,23 +222,25 @@ numeric  | Minor numerical differences
 
 #### Ubuntu 24 (on WSL)
 
-REDUCE 7211 on CLISP 2.49
+REDUCE 7220 on CLISP 2.49
 
 No build errors.
 
 Package  | Output Issues
 ---------|--------------
 arith    | CLISP is numerically more accurate than CSL/PSL!
-conlaw   | TIMED OUT
-economise| TIMED OUT
-eds      | Lots of issues (probably from excalc)
-excalc   | Lots of issues
+conlaw   | Timed out; OK with --no-timeout
+economise| Timed out; OK with --no-timeout
+eds      | Lots of issues (probably from excalc) [1]
+excalc   | Lots of issues [1]
 gf2      | Segmentation fault
-ibalp    | Stack overflow
+ibalp    | Stack overflow. `reset() found no driver frame (core dumped)`
 numeric  | Minor numerical differences
-sstools  | TIMED OUT
-susy2    | TIMED OUT
-xideal   | Lots of issues (probably from excalc)
+sstools  | Timed out; OK with --no-timeout
+susy2    | Timed out; OK with --no-timeout
+xideal   | Lots of issues (probably from excalc) [1]
+
+1. When run interactively, the errors related to excalc do not arise; they seem to be caused by the test1.sh script.
 
 ### Clozure Common Lisp (CCL)
 
@@ -254,9 +260,9 @@ ofsf     | Hangs in interactive debugger! [EXCLUDE]
 
 #### Ubuntu 24 (on WSL)
 
-REDUCE 7211 on CCL 1.13
+REDUCE 7220 on CCL 1.13
 
-No build errors.  Package test issues as for Windows, except that ofsf was killed by the timeout.  (The gf2 test hangs on Ubuntu exactly as on Windows!)
+No build errors.  Package test issues as for Windows, except that ofsf was killed by the timeout and some strange, sometimes repeated, error messages.  (The gf2 test hangs on Ubuntu exactly as on Windows!)
 
 
 ## Known limitations

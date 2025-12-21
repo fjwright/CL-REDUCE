@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-14 17:10:23 franc>
+;; Time-stamp: <2025-12-21 11:54:35 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -923,6 +923,7 @@ the !*COMP global variable is non-NIL."
       ;;  (setf (symbol-function fname) body) ; FAILS FOR BOTH TYPES!
       ;;  (put fname '%ftype 'fexpr))
       (t (error-internal "Invalid type in PUTD"))))
+  (when *comp (compile fname))
   (the symbol fname))
 
 (defun remd (fname)
@@ -938,6 +939,12 @@ the name may be used subsequently as a variable."
            (fmakunbound fname)
            (cl:remprop fname '%ftype))
          def)))
+
+(defun compd (name type body)
+  "(compd NAME:id TYPE:ftype BODY:lambda): NAME:id expr
+This is a compiling analogue of the function putd.
+It is used in \"rsupport.red\" to compile inlines, etc."
+  (let ((*comp t)) (putd name type body)))
 
 
 ;;; Variables and Bindings
@@ -3164,11 +3171,14 @@ This may be an atom or a list."
 
 (defun resource-limit (exprn time_limit)
   "Evaluate EXPRN until TIME_LIMIT seconds have expired.
-But Lisps other than SBCL currently ignore the timeout!
+*** But Lisps other than SBCL currently ignore the timeout! ***
 Return (list (eval exprn)) or atomic if there is a timeout,
 rather like errorset."
-  ;; ***** NEEDS MORE WORK. *****
-  ;; ***** SEEMS TO IGNORE THE TIMEOUT EVEN ON SBCL! *****
+  ;; Tests from REDUCE -- same results using CSL & SBCL:
+  ;; resource!-limit("foo", 1); => ("foo")
+  ;; resource!-limit(''foo, 0.1); => (foo)
+  ;; resource!-limit('(prog () (return 'foo)), 1); => (foo)
+  ;; resource!-limit('(prog () a (go a)), 0.1); => nil
   #+SBCL (handler-case
              (sb-ext:with-timeout time_limit (list (eval exprn)))
            (t () nil))
@@ -3838,6 +3848,3 @@ Called by ON/OFF COMP; see 'clrend.red'."
 
 ;; Move implementation into a separate package and only export
 ;; required symbols.  This should make profiling easier!
-
-;; Implement compd (see rsupport.red) as compile, so that inlines,
-;; etc, get compiled?
