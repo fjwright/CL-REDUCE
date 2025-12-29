@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-21 11:54:35 franc>
+;; Time-stamp: <2025-12-28 18:06:49 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -27,7 +27,7 @@
 
 ;; Uncomment the next line for a debug build; comment it out for a
 ;; production build:
-;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
@@ -460,10 +460,7 @@ an out of range error occurs.
 (defmacro error-internal (message &rest args)
   "Report an error detected internally in sl-on-cl with message
 MESSAGE possibly followed by arguments ARGS as for `format'."
-  `(cl:error 'sl-error-internal :errmsg
-             ,(if args
-                  `(format nil ,message ,@args)
-                  message)))
+  `(cl:error ,message ,@args))
 
 (defun %id-to-char-invert-case (c)
   "As `character', but case-inverted."
@@ -1211,20 +1208,18 @@ variables are not affected by the process."
   (setq emsg* message)
   (cl:error 'sl-error :errno number :errmsg message))
 
-(define-condition sl-error-internal (sl-error-no-message)
-  ((errmsg :initarg :errmsg))
-  (:documentation "Standard Lisp internal error with an error message")
-  (:report (lambda (condition stream)
-             (with-slots (errmsg) condition
-               (format stream "Standard Lisp error: ~a." errmsg)))))
-
-(defvar *backtrace nil
-  "When true display `errorset' backtrace or message in some REDUCE code.
-Defaults to nil.")
-
 (defvar *debug nil
-  "If non-nil then `errorset' always enters the debugger on errors
+  "If non-nil then `errorset' always prints a backtrace for errors
 as if its argument `tr' were true.")
+
+(defun %print-backtrace-maybe (tr)
+  "Optionally, print backtrace to default output stream.
+Do so if TR or global *DEBUG is true."
+  (when (or tr *debug)
+    #+SBCL (sb-debug:print-backtrace)
+    #+CLISP (system::print-backtrace)   ; See clisp/src/reploop.lisp
+    #+CCL (format t "~&~{~s~%~}" (ccl:backtrace-as-list))
+    ))
 
 (defun errorset (u msgp tr)
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
@@ -1245,18 +1240,14 @@ If no error occurs during the evaluation of U, the value of
   (LIST (EVAL U)) is returned.
 If an error has been signaled and the value of TR is non-NIL a
 trace-back sequence will be initiated on the selected output
-device. The traceback will display information such as unbindings
-of FLUID variables, argument lists and so on in an implementation
+device. The trace-back will display information such as unbindings of
+FLUID variables, argument lists and so on in an implementation
 dependent format."
   ;; TO DO: output to both stdout and currently selected output
   ;; device
   (handler-case (list (eval u))         ; protected form
-    (sl-error-no-message (condition)
-      (if (or tr *debug) (invoke-debugger condition))
-      nil)
-    (sl-error-internal (condition)
-      (if msgp (format t "~&***** ~a~%" condition))
-      (if (or tr *debug) (invoke-debugger condition))
+    (sl-error-no-message ()
+      (%print-backtrace-maybe tr)
       nil)
     (sl-error (condition)
       (if msgp
@@ -1264,12 +1255,15 @@ dependent format."
             ;; If MESSAGE is a list then it is displayed without top
             ;; level parentheses:
             (format t "~&***** ~:[~a~;~{~a~^ ~}~]~%" (listp msg) msg)))
-      (if (or tr *debug) (invoke-debugger condition))
+      (%print-backtrace-maybe tr)
       (slot-value condition 'errno))
-    (cl:error (condition)
+    (cl:error (condition)               ; Should this be caught here?
       (if msgp (format t "~&***** ~a~%" condition))
-      (if (or tr *debug) (invoke-debugger condition))
+      (%print-backtrace-maybe tr)
       nil)))
+
+;; Limit length of backtrace:
+#+SBCL (setq sb-debug:*backtrace-frame-count* 20) ; default 1000
 
 
 ;;; Vectors
@@ -3684,32 +3678,53 @@ When all done, execute FASLEND;~2%" name))
 
 (defun begin ())
 
+;; From: Common Lisp the Language, 2nd Edition
+;; https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node341.html
+
+;; Implementation note: Implementors are encouraged to make sure that
+;; there is always a restart named abort around any user code so that
+;; user code can call abort at any time and expect something
+;; reasonable to happen; exactly what the reasonable thing is may vary
+;; somewhat. Typically, in an interactive program, invoking abort
+;; should return the user to top level, though in some batch or
+;; multi-processing situations killing the running process might be
+;; more appropriate.
+
+;; The initialisation code below is based on the REPL example on the
+;; web page cited above.
+
 #+SBCL
 ;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
 (defun reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
   ;; Enable the interactive debugger only if the input and output are
-  ;; both interactive: ***** DOESN'T DETECT INTERACTIVE RUN *****
-  ;; (if  (and (interactive-stream-p *standard-input*)
-  ;;           (interactive-stream-p *standard-output*))
-  ;;      (progn
-  ;;        #+DEBUG (format t "Interactive mode -- debugger enabled")
-  ;;        (sb-ext:enable-debugger))
-  ;;      (progn
-  ;;        #+DEBUG (format t "Batch mode -- debugger disabled")
-  ;;        (sb-ext:disable-debugger)))
-  (sb-ext:enable-debugger)
+  ;; both interactive, or we are running in Emacs (REDUCE IDE):
+  (if  (or (and (interactive-stream-p *standard-input*)
+                (interactive-stream-p *standard-output*))
+           (getenv "INSIDE_EMACS"))
+       (progn
+         #+DEBUG (format t "~&Interactive mode -- debugger enabled~%")
+         (sb-ext:enable-debugger))
+       (progn
+         #+DEBUG (format t "~&Batch mode -- debugger disabled~%")
+         (sb-ext:disable-debugger)))
   ;; Enable compilation only if *comp is true:
   (setq sb-ext:*evaluator-mode*
         (if *comp :compile :interpret))
   (standard-lisp)
-  (loop
-   ;; CLHS recommends that there should always be an
-   ;; ABORT restart; we have this one here, and one per
-   ;; debugger level.
-   (with-simple-restart
-       (abort "~@<Exit debugger, returning to top level.~@:>")
-     (catch 'toplevel-catcher
+  ;; (loop
+  ;;  ;; CLHS recommends that there should always be an
+  ;;  ;; ABORT restart; we have this one here, and one per
+  ;;  ;; debugger level.
+  ;;  (with-simple-restart
+  ;;      (abort "~@<Exit debugger, returning to top level.~@:>")
+  ;;    (catch 'toplevel-catcher
+  ;;      (begin))))
+  (with-simple-restart
+      (abort "Exit REDUCE.")
+    (loop
+     (with-simple-restart
+         (abort "Return to REDUCE.")
        (begin)))))
 
 #+CLISP
@@ -3733,21 +3748,6 @@ When all done, execute FASLEND;~2%" name))
   ;;        (system::driver #'(lambda () (ext:exit-on-error (begin))))))
   (ext:exit-on-error (begin))
   (ext:exit))
-
-;; From: Common Lisp the Language, 2nd Edition
-;; https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node341.html
-
-;; Implementation note: Implementors are encouraged to make sure that
-;; there is always a restart named abort around any user code so that
-;; user code can call abort at any time and expect something
-;; reasonable to happen; exactly what the reasonable thing is may vary
-;; somewhat. Typically, in an interactive program, invoking abort
-;; should return the user to top level, though in some batch or
-;; multi-processing situations killing the running process might be
-;; more appropriate.
-
-;; The initialisation code below is based on the REPL example on the
-;; web page cited above.
 
 #+(or CCL ECL)
 (defun reduce-init-function ()
