@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-28 18:06:49 franc>
+;; Time-stamp: <2025-12-29 18:24:18 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -27,7 +27,7 @@
 
 ;; Uncomment the next line for a debug build; comment it out for a
 ;; production build:
-(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
@@ -1212,15 +1212,6 @@ variables are not affected by the process."
   "If non-nil then `errorset' always prints a backtrace for errors
 as if its argument `tr' were true.")
 
-(defun %print-backtrace-maybe (tr)
-  "Optionally, print backtrace to default output stream.
-Do so if TR or global *DEBUG is true."
-  (when (or tr *debug)
-    #+SBCL (sb-debug:print-backtrace)
-    #+CLISP (system::print-backtrace)   ; See clisp/src/reploop.lisp
-    #+CCL (format t "~&~{~s~%~}" (ccl:backtrace-as-list))
-    ))
-
 (defun errorset (u msgp tr)
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
 If an error occurs during the evaluation of U, the value of
@@ -1261,6 +1252,15 @@ dependent format."
       (if msgp (format t "~&***** ~a~%" condition))
       (%print-backtrace-maybe tr)
       nil)))
+
+(defun %print-backtrace-maybe (tr)
+  "Optionally, print backtrace to default output stream.
+Do so if TR or global *DEBUG is true."
+  (when (or tr *debug)
+    #+SBCL (sb-debug:print-backtrace)
+    #+CLISP (system::print-backtrace)   ; See clisp/src/reploop.lisp
+    #+CCL (format t "~&~{~s~%~}" (ccl:backtrace-as-list))
+    ))
 
 ;; Limit length of backtrace:
 #+SBCL (setq sb-debug:*backtrace-frame-count* 20) ; default 1000
@@ -2779,7 +2779,10 @@ in the heap is made contiguous and all tagged pointers into the heap
 from active local stack frames, the binding stack and the symbol table
 are relocated. If *gc is t, prints some statistics. Increments gcknt*
 and updates gctime*."
-  #+SBCL (gc :full t))
+  #+SBCL (sb-ext:gc :full t)
+  #+CLISP (ext:gc)
+  #+CCL (ccl:gc)
+  )
 
 #+CLISP
 (defun %nth-room-value (n)
@@ -2839,6 +2842,15 @@ A function hung on the garbage collection hook."
 (push #'%run-gc-hook sb-ext:*after-gc-hooks*)
 
 )                                     ; </use sb-ext:*after-gc-hooks*>
+
+;; The code below doesn't seem to work!  Needs further investigation.
+;; #+CLISP
+;; (progn                         ; prototype to create *gc-hook*
+;;   (defconstant %old-gc% (symbol-function 'ext:gc))
+;;   (ext:without-package-lock ("EXT")
+;;     (defun gc ()
+;;       (funcall %old-gc%)
+;;       (format t "Garbage collection called."))))
 
 (defun gtheap ()
   "Size of the free dynamic space in bytes."
@@ -3553,6 +3565,7 @@ or nil, meaning no header.")
 (defvar *int)
 
 (defvar %faslout-name.lisp)
+#+CLISP (defvar %faslout-name.lib)
 (defvar %faslout-stream)
 
 (defun prettyprint (u)
@@ -3596,6 +3609,7 @@ When all done, execute FASLEND;~2%" name))
         (symbol-function 'prettyprint) (symbol-function '%faslout-prettyprint))
   (setq *defn t
         *writingfaslfile t)
+  #+CLISP (setq %faslout-name.lib (concat2 name ".lib"))
   nil)
 
 (flag '(faslout) 'opfn)
@@ -3624,6 +3638,7 @@ When all done, execute FASLEND;~2%" name))
                   #-CCL :external-format
                   #+CLISP charset:UTF-8
                   #-(or CLISP CCL) :UTF-8))
+  #+CLISP (delete-file %faslout-name.lib)
   ;;      ;; (progn
   ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
@@ -3746,8 +3761,22 @@ When all done, execute FASLEND;~2%" name))
   ;;      (progn
   ;;        #+DEBUG (setq custom:*report-error-print-backtrace* t)
   ;;        (system::driver #'(lambda () (ext:exit-on-error (begin))))))
-  (ext:exit-on-error (begin))
+  (if  (or (interactive-stream-p *standard-output*)
+           (getenv "INSIDE_EMACS"))
+       (progn
+         #+DEBUG (format t "~&Interactive mode -- debugger enabled~%")
+         (with-simple-restart
+             (abort "Exit REDUCE.")
+           (loop
+            (with-simple-restart
+                (abort "Return to REDUCE.")
+              (begin)))))
+       (progn
+         #+DEBUG (format t "~&Batch mode -- debugger disabled~%")
+         (ext:exit-on-error (begin))))
   (ext:exit))
+
+#+CLISP (setq custom:*report-error-print-backtrace* t)
 
 #+(or CCL ECL)
 (defun reduce-init-function ()
