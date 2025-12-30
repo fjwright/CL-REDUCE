@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-29 18:24:18 franc>
+;; Time-stamp: <2025-12-30 15:23:57 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -887,6 +887,7 @@ already exists a warning message will appear:
 *** FNAME redefined
 The function defined by PUTD will be compiled before definition if
 the !*COMP global variable is non-NIL."
+  ;; NB: Compilation is done by de and dm.
   (declare (symbol fname type) (type function body))
   (if (or (cl:get fname 'global)        ; only if explicitly declared
           (fluidp fname))
@@ -920,7 +921,6 @@ the !*COMP global variable is non-NIL."
       ;;  (setf (symbol-function fname) body) ; FAILS FOR BOTH TYPES!
       ;;  (put fname '%ftype 'fexpr))
       (t (error-internal "Invalid type in PUTD"))))
-  (when *comp (compile fname))
   (the symbol fname))
 
 (defun remd (fname)
@@ -1253,6 +1253,10 @@ dependent format."
       (%print-backtrace-maybe tr)
       nil)))
 
+;; The backtrace code below is mostly undocumented and dug out of the
+;; source code for the various Lisp systems.  It is therefore
+;; unreliable!
+
 (defun %print-backtrace-maybe (tr)
   "Optionally, print backtrace to default output stream.
 Do so if TR or global *DEBUG is true."
@@ -1264,6 +1268,9 @@ Do so if TR or global *DEBUG is true."
 
 ;; Limit length of backtrace:
 #+SBCL (setq sb-debug:*backtrace-frame-count* 20) ; default 1000
+#+CLISP
+(ext:without-package-lock ("SYSTEM")
+  (setq system::*debug-print-frame-limit* 20)) ; default unlimited
 
 
 ;;; Vectors

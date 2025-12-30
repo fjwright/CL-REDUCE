@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2025-12-28 16:08:46 franc>
+# Time-stamp: <2025-12-30 15:13:21 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -286,7 +286,8 @@ echo $'\n+++++ Building the REDUCE image file...'
 # compile the non-core modules.
 
 time eval $runlisp << EOF &> log.$lisp/reduce.blg
-(load "sl-on-cl") (load "trace") ; temporary -- until I can arrange autoloading!
+(load "fasl.$lisp/sl-on-cl")
+(load "fasl.$lisp/trace") ; temporary -- until I can arrange autoloading!
 (standard-lisp)
 
 (cl:defparameter !*init!-stats!* (list (time) (gtheap)))

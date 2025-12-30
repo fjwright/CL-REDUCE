@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2025-12-29 10:32:53 franc>
+Time-stamp: <2025-12-30 15:42:14 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -175,7 +175,7 @@ The test output differences for the `arith` and `numeric` package are identical 
 
 #### Windows
 
-REDUCE 7214 on native Windows SBCL 2.5.11.
+REDUCE 7220 on native Windows SBCL 2.5.11.
 
 No build errors.
 
@@ -209,14 +209,16 @@ sbcl |        192035 | 3180
 
 #### Windows
 
-REDUCE 7214 on Cygwin CLISP 2.49
+REDUCE 7220 on Cygwin CLISP 2.49
 
 No build errors.
 
 Package  | Output Issues
 ---------|--------------
 arith    | CLISP is numerically more accurate than CSL/PSL!
-gf2      | Crashes - break loop - Lisp
+economise| Incredibly slow!
+gf2      | Different backtrace - way too long!
+groebner | WARNING: _function_ is already compiled. (7) [NEW]
 ibalp    | Stack overflow. `reset() found no driver frame`
 numeric  | Minor numerical differences
 
@@ -246,23 +248,27 @@ xideal   | Lots of issues (probably from excalc) [1]
 
 #### Windows
 
-REDUCE 7214 on native Windows CCL 1.13
+REDUCE 7220 on native Windows CCL 1.13
 
 No build errors.
 
 Package  | Output Issues
 ---------|--------------
 arith    | SBCL is numerically more accurate than CSL/PSL!
-gf2      | Hangs in interactive debugger! [EXCLUDE]
-lalr     | compiled functions instead of lambdas (because CCL always compiles)
+cantens  | `***** numeric indices out of range`
+gf2      | Different backtrace
+lalr     | Compiled functions instead of lambdas (because CCL always compiles)
+laplace  | `***** Factorizer error: Term content division failed` (8)
 numeric  | Minor numerical differences
-ofsf     | Hangs in interactive debugger! [EXCLUDE]
+ofsf     | Incredibly slow!
+solve    | `***** check-solns` (3)
+taylor   | `***** Invalid substitution in Taylor kernel: dependent variables y y`
 
 #### Ubuntu 24 (on WSL)
 
 REDUCE 7220 on CCL 1.13
 
-No build errors.  Package test issues as for Windows, except that ofsf was killed by the timeout and some strange, sometimes repeated, error messages.  (The gf2 test hangs on Ubuntu exactly as on Windows!)
+No build errors.  Package test issues as for Windows, except that ofsf was killed by the timeout.
 
 
 ## Known limitations
