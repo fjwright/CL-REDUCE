@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2025 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-30 15:23:57 franc>
+;; Time-stamp: <2025-12-31 18:24:09 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -27,7 +27,7 @@
 
 ;; Uncomment the next line for a debug build; comment it out for a
 ;; production build:
-;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
@@ -155,6 +155,8 @@ If *redefmsg is not nil, the message
 is printed whenever a function is redefined by PUTD.")
 ;; Also applies to DE & DM.
 
+(declaim (ftype (cl:function (symbol) null) %redefmsg))
+
 (defun %redefmsg (fname)
   "Optionally warn about function redefinition."
   ;; Assume fname is input quoted.
@@ -201,33 +203,38 @@ documentation string for OLDNAME."
            `((setf (documentation ',newname 'cl:function) ,docstring)))
        ',newname)))
 
+(declaim (ftype (cl:function (t t) boolean) eqcar))
+
 (defun eqcar (u v)
   "Return true if U is a cons cell and its car is eq to V."
   (and (consp u) (eq (car u) v)))
 
+(declaim (ftype (cl:function (character) character) %character-invert-case))
+
 (defun %character-invert-case (c)
   "Invert the case of character C (if it is a letter)."
-  (declare (character c))
-  (the character (if (cl:both-case-p c)
-                     (if (cl:lower-case-p c)
-                         (cl:char-upcase c)
-                         (cl:char-downcase c))
-                     c)))
+  (if (cl:both-case-p c)
+      (if (cl:lower-case-p c)
+          (cl:char-upcase c)
+          (cl:char-downcase c))
+      c))
+
+(declaim (ftype (cl:function (simple-string) simple-string) %string-invert-case))
 
 (defun %string-invert-case (s)
   "Return a copy of string S with the case of each letter inverted."
   ;; The consequences are undefined if a symbol name is ever modified!
-  (declare (simple-string s))
-  (cl:map 'string #'%character-invert-case s))
+  (cl:map 'simple-string #'%character-invert-case s))
+
+(declaim (ftype (cl:function (character) symbol)
+                %intern-character-preserve-case %intern-character-invert-case))
 
 (defun %intern-character-preserve-case (c)
   "Convert character C to an interned (case-preserved) symbol."
-  (declare (character c))
   (values (cl:intern (string c))))
 
 (defun %intern-character-invert-case (c)
   "Convert character C to an interned (case-inverted) symbol."
-  (declare (character c))
   (values (cl:intern (string (%character-invert-case c)))))
 
 
@@ -239,6 +246,8 @@ documentation string for OLDNAME."
 ;; Returns T if U is not a pair.
 ;; EXPR PROCEDURE ATOM(U);
 ;;    NULL PAIRP U;
+
+(declaim (ftype (cl:function (t) boolean) codep constantp))
 
 (defalias codep cl:compiled-function-p
   "CODEP(U:any):boolean eval, spread
@@ -273,6 +282,8 @@ EXPR PROCEDURE CONSTANTP(U);
 ;;         (and uu vv (cl:eq uu vv)))
 ;;       (cl:eq u v)))
 
+(declaim (ftype (cl:function (t t) boolean) eqn equal))
+
 (defun eqn (u v)
   "EQN(U:any, V:any):boolean eval, spread
 Returns T if U and V are EQ or if U and V are numbers and have
@@ -291,6 +302,9 @@ recursively to the bottom levels of their trees. Vectors must
 have identical dimensions and EQUAL values in all
 positions. Strings must have identical characters. Function
 pointers must have EQ values. Other atoms must be EQN equal.")
+
+(declaim (ftype (cl:function (t) boolean)
+                fixp idp minusp onep pairp vectorp zerop))
 
 (defalias fixp cl:integerp
   "FIXP(U:any):boolean eval, spread
@@ -403,6 +417,7 @@ EXPR PROCEDURE ZEROP(U);
 (import '(cl:first cl:second cl:third cl:fourth cl:rest))
 
 (declaim (inline lastpair lastcar nth pnth))
+(declaim (ftype (cl:function (t) t) lastpair lastcar))
 
 (defun lastpair (l)
   "(lastpair L:pair): any expr
@@ -425,6 +440,8 @@ if L is not a pair.
   ;; The inconsistent description above is from the PSL manual!
   (if (atom l) l (car (cl:last l))))
 
+(declaim (ftype (cl:function (list fixnum) t) nth pnth))
+
 (defun nth (l n)                        ; inline
   "(nth L:pair N:integer): any expr
 Returns the Nth element of the list L. If L is atomic or contains
@@ -435,8 +452,7 @@ fewer than N elements, an out of range error occurs.
           (t (nth (rest l) (sub1 n)))))
 Note that this definition is not compatible with Common LISP. The
 Common LISP definition reverses the arguments and defines the car
-of a list to be the \"zeroth\" element."
-  (declare (list l) (fixnum n))
+of a list to be the zeroth element."
   (cl:nth (1- n) l))
 
 (defun pnth (l n)                       ; inline
@@ -450,7 +466,6 @@ an out of range error occurs.
     (cond ((onep n) l)
           ((not (pairp l)) (range-error))
           (t (pnth (rest l) (sub1 n)))))"
-  (declare (list l) (fixnum n))
   (nthcdr (1- n) l))
 
 
@@ -462,10 +477,13 @@ an out of range error occurs.
 MESSAGE possibly followed by arguments ARGS as for `format'."
   `(cl:error ,message ,@args))
 
+(declaim (ftype (cl:function (symbol) character) %id-to-char-invert-case))
+
 (defun %id-to-char-invert-case (c)
-  "As `character', but case-inverted."
-  (declare (symbol c))
-  (the character (%character-invert-case (character c))))
+  "As `cl:character', but case-inverted."
+  (%character-invert-case (character c)))
+
+(declaim (ftype (cl:function (list) t) compress))
 
 (defun compress (u)                     ; PSL spec
   "COMPRESS(U:id-list):{atom-vector} eval, spread
@@ -476,7 +494,6 @@ characters.  Identifiers are not interned.  Function pointers may not
 be compressed.  If an entity cannot be parsed out of U an error
 occurs:
 ***** Poorly formed atom in COMPRESS"
-  (declare (list u))
   (labels
       ((compress () ; This internal function recursively process lists.
          ;; Concatenate the characters into a string and then handle any !
@@ -546,6 +563,8 @@ occurs:
     ;;
     (compress)))
 
+(declaim (ftype (cl:function (t) list) explode))
+
 (defun explode (u)                      ; PSL spec
   "(explode U:any): id-list expr
 Explode returns a list of interned single-character identifiers
@@ -557,56 +576,51 @@ printing (using prin1) to a list.  E.g.
 2 lisp> (explode '(a . b))
 \(!( a !  !. !  b !))"
   ;; Add support for vectors?  Share code with print routines?
-  (the list
-       (if (consp u)
-           ;; Exploding a cons:
-           (let ((ll (list (explode (car u)) (list '|(|))))
-             (loop while (consp (setq u (cdr u)))
-                do (push (list '| |) ll)
-                do (push (explode (car u)) ll))
-             (when u
-               (push (list '| | '|.| '| |) ll)
-               (push (explode u) ll))
-             (push (list '|)|) ll)
-             (cl:apply #'nconc (nreverse ll)))
-           ;; Exploding an atom:
-           (typecase u
-             (string
-              ;; Add leading and trailing " and convert internal " to "":
-              (nconc
-               (list '\")
-               (loop for c across u
-                  collect (%intern-character-invert-case c)
-                  when (char= c #\") collect '\")
-               (list '\")))
-             (integer
-              (cl:map 'list #'%intern-character-preserve-case
-                      (princ-to-string u)))
-             (cl:float
-              (cl:map 'list #'%intern-character-invert-case
-                      (%prin-float-to-string u)))
-             (t
-              ;; Identifier, function-pointer, etc -- insert ! before
-              ;; an upper-case letter, leading digit or _, or special
-              ;; character (except _):
-              (loop with s = (princ-to-string u) and c
-                 for i below (cl:length s)
-                 do (setq c (aref s i))
-                 unless (or (upper-case-p c) ; case-inverted!
-                            (and (not (eql i 0))
-                                 (or (digit-char-p c) (char= c #\_))))
-                 collect '\!
-                 collect (%intern-character-preserve-case c)))))))
-
-;; (defalias gensym cl:gensym)
-;; GENSYM():identifier eval, spread
-;; Creates an identifier which is not interned on the OBLIST and
-;; consequently not EQ to anything else.
-;; Defined this way so that I can overwrite it in faslout.
+  (if (consp u)
+      ;; Exploding a cons:
+      (let ((ll (list (explode (car u)) (list '|(|))))
+        (loop while (consp (setq u (cdr u)))
+              do (push (list '| |) ll)
+              do (push (explode (car u)) ll))
+        (when u
+          (push (list '| | '|.| '| |) ll)
+          (push (explode u) ll))
+        (push (list '|)|) ll)
+        (cl:apply #'nconc (nreverse ll)))
+      ;; Exploding an atom:
+      (typecase u
+        (string
+         ;; Add leading and trailing " and convert internal " to "":
+         (nconc
+          (list '\")
+          (loop for c across u
+                collect (%intern-character-invert-case c)
+                when (char= c #\") collect '\")
+          (list '\")))
+        (integer
+         (cl:map 'list #'%intern-character-preserve-case
+                 (princ-to-string u)))
+        (cl:float
+         (cl:map 'list #'%intern-character-invert-case
+                 (%prin-float-to-string u)))
+        (t
+         ;; Identifier, function-pointer, etc -- insert ! before
+         ;; an upper-case letter, leading digit or _, or special
+         ;; character (except _):
+         (loop with s = (princ-to-string u) and c
+               for i below (cl:length s)
+               do (setq c (aref s i))
+               unless (or (upper-case-p c) ; case-inverted!
+                          (and (not (eql i 0))
+                               (or (digit-char-p c) (char= c #\_))))
+               collect '\!
+               collect (%intern-character-preserve-case c))))))
 
 (defvar %gensym-counter% 0
   "A non-negative integer used in constructing the name of the next
 symbol generated by the function gensym.")
+
+(declaim (ftype (cl:function () symbol) gensym))
 
 (defun gensym ()
   "GENSYM():identifier eval, spread
@@ -616,8 +630,12 @@ consequently not EQ to anything else."
       (make-symbol (format nil "G~4,'0d" %gensym-counter%))
     (incf %gensym-counter%)))
 
+(declaim (ftype (cl:function (t) boolean) gensymp))
+
 (defun gensymp (u)                      ; from pslrend
   (and (symbolp u) (not (cl:find-symbol (cl:symbol-name u)))))
+
+(declaim (ftype (cl:function ((or symbol simple-string)) symbol) intern))
 
 (defun intern (u)
   "INTERN(U:{id,string}):id eval, spread
@@ -629,18 +647,17 @@ returned. If U has more than the maximum number of characters
 permitted by the implementation (the minimum number is 24) an
 error occurs:
 ***** Too many characters to INTERN"
-  (declare (type (or symbol simple-string) u))
   (values (cl:intern (if (symbolp u)
                          (cl:symbol-name u)          ; symbol
                          (%string-invert-case u))))) ; string
+
+(declaim (ftype (cl:function (symbol) symbol) remob))
 
 (defun remob (u)
   "REMOB(U:id):id eval, spread
 If U is present on the OBLIST it is removed. This does not affect U
 having properties, flags, functions and the like. U is returned."
-  (declare (symbol u))
-  (unintern u)
-  (the symbol u))
+  (unintern u) u)
 
 
 ;;; Property List Functions
