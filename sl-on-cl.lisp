@@ -1,9 +1,9 @@
 ;;; sl-on-cl.lisp --- Standard Lisp on Common Lisp
 
-;; Copyright (C) 2018-2025 Francis J. Wright
+;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2025-12-31 18:24:09 franc>
+;; Time-stamp: <2026-01-01 17:38:07 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -697,15 +697,18 @@ having properties, flags, functions and the like. U is returned."
   "Association list of symbols and their saved property lists.
 Its value should normally be nil, except while ON DEFN.")
 
+(declaim (ftype (cl:function (symbol) null) %save-plist))
+
 (defun %save-plist (symbol)
   "Save property list of symbol SYMBOL if not already saved.
 Do not do this if Lisp file load in progress."
-  (declare (symbol symbol))
   (or *load-pathname*
       (cl:assoc symbol %saved-plist-alist :test #'eq)
       (push (cons symbol (cl:copy-tree (symbol-plist symbol)))
             %saved-plist-alist))
   nil)
+
+(declaim (ftype (cl:function () null) %reinstate-plists))
 
 (defun %reinstate-plists ()
   "Reinstate all saved property lists.
@@ -716,22 +719,27 @@ Do not do this if Lisp file load in progress."
     (setf %saved-plist-alist nil))
   nil)
 
+(declaim (ftype (cl:function (list symbol) null) flag))
+
 (defun flag (u v)
   "FLAG(U:id-list, V:id):NIL eval, spread
 U is a list of ids which are flagged with V. The effect of FLAG is
 that FLAGP will have the value T for those ids of U which were
 flagged. Both V and all the elements of U must be identifiers or the
 type mismatch error occurs."
-  (declare (list u) (symbol v))
-  (if *defn (cl:mapc #'%save-plist u))
+  (when *defn (cl:mapc #'%save-plist u))
   (cl:mapc #'(lambda (x) (put x v t)) u)
   nil)
+
+(declaim (ftype (cl:function (t t) boolean) flagp))
 
 (defun flagp (u v)
   "FLAGP(U:any, V:any):boolean eval, spread
 Returns T if U has been previously flagged with V, else NIL. Returns
 NIL if either U or V is not an id."
-  (if (and (symbolp u) (symbolp v)) (cl:get u v)))
+  (when (and (symbolp u) (symbolp v)) (cl:get u v)))
+
+(declaim (ftype (cl:function (t symbol) t) get))
 
 (defun get (u ind)
   "GET(U:any, IND:id):any eval, spread
@@ -740,8 +748,9 @@ property list of U. If U does not have indicator IND, NIL is
 returned.  GET cannot be used to access functions (use GETD
 instead)."
   ;; MUST return nil if u is not a symbol.
-  (declare (symbol ind))
-  (if (symbolp u) (cl:get u ind)))
+  (when (symbolp u) (cl:get u ind)))
+
+(declaim (ftype (cl:function (symbol symbol t) t) put))
 
 (defun put (u ind prop)
   "PUT(U:id, IND:id, PROP:any):any eval, spread
@@ -750,27 +759,27 @@ property list of the id U. If the action of PUT occurs, the value
 of PROP is returned. If either of U and IND are not ids the type
 mismatch error will occur and no property will be placed. PUT
 cannot be used to define functions (use PUTD instead)."
-  (declare (symbol u ind))
   (setf (cl:get u ind) prop))
+
+(declaim (ftype (cl:function (list symbol) null) remflag))
 
 (defun remflag (u v)
   "REMFLAG(U:any-list, V:id):NIL eval, spread
 Removes the flag V from the property list of each member of the
 list U. Both V and all the elements of U must be ids or the type
 mismatch error will occur."
-  (declare (list u) (symbol v))
-  (if *defn (cl:mapc #'%save-plist u))
+  (when *defn (cl:mapc #'%save-plist u))
   (cl:mapc #'(lambda (x) (cl:remprop x v)) u)
   nil)
+
+(declaim (ftype (cl:function (t symbol) t) remprop))
 
 (defun remprop (u ind)
   "REMPROP(U:any, IND:any):any eval, spread
 Removes the property with indicator IND from the property list of U.
 Returns the removed property or NIL if there was no such indicator."
-  (declare (symbol ind))
-  (prog1
-      (get u ind)
-    (if *defn (%save-plist u))
+  (prog1 (get u ind)
+    (when *defn (%save-plist u))
     (cl:remprop u ind)))
 
 
@@ -854,40 +863,43 @@ FEXPR PROCEDURE DM(U);
        ,fn)
      ,@(if *comp `((values (compile ',mname)))))) ; see DE
 
+(declaim (ftype (cl:function (t) list) getd))
+
 (defun getd (fname)
   "GETD(FNAME:any):{NIL, dotted-pair} eval, spread
 If FNAME is not the name of a defined function, return NIL. If
 FNAME is a defined function then return the dotted-pair
 \(TYPE:ftype . DEF:{function-pointer, lambda})."
-  (the list
-       (and (symbolp fname) (fboundp fname)
-            (cond
-              ;; MACRO if fname defined using SL dm macro:
-              ((eq (cl:get fname '%ftype) 'macro)
-               ;; Return the (uncompiled) SL macro form:
-               ;; This may need more work!
-               ;; A CL macro expansion needs an environment.
-               ;; Try the null environment (nil) initially.
-               ;; (The parameter x should perhaps be a gensym.)
-               (cons 'macro
-                     `(lambda (x)
-                        (funcall ,(macro-function fname) x nil))))
-              ;; FEXPR for CL (but not SL) macro or special operator:
-              ((or (macro-function fname) (special-operator-p fname))
-               (cons 'fexpr (symbol-function fname)))
-              ;; EXPR otherwise:
-              ((compiled-function-p (setq fname (symbol-function fname)))
-               (cons 'expr fname))
-              (t (let ((f (function-lambda-expression fname)))
-                   ;; Note that a CL lambda expression may contain
-                   ;; declarations and a documentation string, and the
-                   ;; body MAY BE wrapped in a block form, i.e.
-                   ;; (lambda params [decls] [doc] (block name body))
-                   ;; [A compiled CLISP function may not contain a block!]
-                   ;; Extract the function body:
-                   (setq fname (car (last f))) ; block or body form
-                   (when (eqcar fname 'block) (setq fname (caddr fname)))
-                   (cons 'expr `(lambda ,(cadr f) ,fname))))))))
+  (and (symbolp fname) (fboundp fname)
+       (cond
+         ;; MACRO if fname defined using SL dm macro:
+         ((eq (cl:get fname '%ftype) 'macro)
+          ;; Return the (uncompiled) SL macro form:
+          ;; This may need more work!
+          ;; A CL macro expansion needs an environment.
+          ;; Try the null environment (nil) initially.
+          ;; (The parameter x should perhaps be a gensym.)
+          (cons 'macro
+                `(lambda (x)
+                   (funcall ,(macro-function fname) x nil))))
+         ;; FEXPR for CL (but not SL) macro or special operator:
+         ((or (macro-function fname) (special-operator-p fname))
+          (cons 'fexpr (symbol-function fname)))
+         ;; EXPR otherwise:
+         ((compiled-function-p (setq fname (symbol-function fname)))
+          (cons 'expr fname))
+         (t (let ((f (function-lambda-expression fname)))
+              ;; Note that a CL lambda expression may contain
+              ;; declarations and a documentation string, and the
+              ;; body MAY BE wrapped in a block form, i.e.
+              ;; (lambda params [decls] [doc] (block name body))
+              ;; [A compiled CLISP function may not contain a block!]
+              ;; Extract the function body:
+              (setq fname (car (last f))) ; block or body form
+              (when (eqcar fname 'block) (setq fname (caddr fname)))
+              (cons 'expr `(lambda ,(cadr f) ,fname)))))))
+
+(declaim (ftype (cl:function (symbol symbol function) symbol) putd))
 
 (defun putd (fname type body)
   "PUTD(FNAME:id, TYPE:ftype, BODY:function):id eval, spread
@@ -905,7 +917,6 @@ already exists a warning message will appear:
 The function defined by PUTD will be compiled before definition if
 the !*COMP global variable is non-NIL."
   ;; NB: Compilation is done by de and dm.
-  (declare (symbol fname type) (type function body))
   (if (or (cl:get fname 'global)        ; only if explicitly declared
           (fluidp fname))
       (error-internal "~a is a non-local variable" fname))
@@ -915,7 +926,7 @@ the !*COMP global variable is non-NIL."
     (case type
       (expr                             ; normal function
        (cond ((eqcar body 'lambda)
-              (eval `(de ,fname ,(cadr body) ,@(cddr body))))
+              (cl:eval `(de ,fname ,(cadr body) ,@(cddr body))))
              ((functionp body)
               (setf (symbol-function fname) body)
               (put fname '%ftype 'expr))
@@ -928,7 +939,7 @@ the !*COMP global variable is non-NIL."
                     (setf (macro-function fname) (cadr (caddr body)))
                     (put fname '%ftype 'macro))
                   ;; This "pure source form" is used in "rlisp/block.red".
-                  (eval `(dm ,fname ,(cadr body) ,@(cddr body)))))
+                  (cl:eval `(dm ,fname ,(cadr body) ,@(cddr body)))))
              ;; ((functionp body)       ; This case should not happen!
              ;;  (setf (macro-function fname) body)
              ;;  (put fname '%ftype 'macro))
@@ -938,7 +949,9 @@ the !*COMP global variable is non-NIL."
       ;;  (setf (symbol-function fname) body) ; FAILS FOR BOTH TYPES!
       ;;  (put fname '%ftype 'fexpr))
       (t (error-internal "Invalid type in PUTD"))))
-  (the symbol fname))
+  fname)
+
+(declaim (ftype (cl:function (symbol) list) remd))
 
 (defun remd (fname)
   "REMD(FNAME:id):{NIL, dotted-pair} eval, spread
@@ -946,13 +959,13 @@ Removes the function named FNAME from the set of defined
 functions. Returns the (ftype . function) dotted-pair or NIL as
 does GETD. The global/function attribute of FNAME is removed and
 the name may be used subsequently as a variable."
-  (declare (symbol fname))
-  (the list
-       (let ((def (getd fname)))
-         (when def
-           (fmakunbound fname)
-           (cl:remprop fname '%ftype))
-         def)))
+  (let ((def (getd fname)))
+    (when def
+      (fmakunbound fname)
+      (cl:remprop fname '%ftype))
+    def))
+
+(declaim (ftype (cl:function (symbol symbol function) symbol) compd))
 
 (defun compd (name type body)
   "(compd NAME:id TYPE:ftype BODY:lambda): NAME:id expr
@@ -978,12 +991,13 @@ It is used in \"rsupport.red\" to compile inlines, etc."
 ;; first argument of a function is quoted then the function is
 ;; automatically evaluated in symbolic mode.
 
+(declaim (ftype (cl:function (list) null) %fluid))
+
 (defun %fluid (idlist)
   "Declare each identifier X in list IDLIST to be FLUID and return nil.
 If X is already FLUID then do nothing; if X is already GLOBAL then
 display a warning and do nothing else.
 This internal function is called only by FLUID."
-  (declare (list idlist))
   (cl:mapc
    #'(lambda (x)
        (unless (fluidp x)
@@ -1028,10 +1042,14 @@ from GLOBAL to FLUID is not permissible and results in the error:
       ;; in procedure switch in "rlisp/switch.red".
       `(%fluid ,idlist))))
 
+(declaim (ftype (cl:function (t) boolean) fluidp))
+
 (defun fluidp (u)
   "FLUIDP(U:any):boolean eval, spread
 If U has been declared fluid then t is returned, otherwise nil is returned."
   (get u 'fluid))
+
+(declaim (ftype (cl:function (list) null) %global))
 
 (defun %global (idlist)
   "Declare each identifier X in list IDLIST to be GLOBAL and return nil.
@@ -1080,6 +1098,8 @@ results in the error:
       ;; in procedure ps!:unknown!-crule in "tps/tpscomp.red".
       `(%global ,idlist))))
 
+(declaim (ftype (cl:function (t) boolean) globalp))
+
 (defun globalp (u)
   "GLOBALP(U:any):boolean eval, spread
 If U has been declared global then t is returned, otherwise nil is returned."
@@ -1110,13 +1130,14 @@ If U has been declared global then t is returned, otherwise nil is returned."
 ;; MACRO PROCEDURE SETQ(X);
 ;;    LIST('SET, LIST('QUOTE, CADR X), CADDR X);
 
+(declaim (ftype (cl:function (list) null) unfluid))
+
 (defun unfluid (idlist)
   "UNFLUID(IDLIST:id-list):NIL eval, spread
 The variables in IDLIST that have been declared as FLUID
 variables are no longer considered as fluid variables. Others are
 ignored. This affects only compiled functions as free variables
 in interpreted functions are automatically considered fluid."
-  (declare (list idlist))
   (cl:mapc #'(lambda (x) (if (fluidp x) (cl:remprop x 'fluid)))
            idlist)
   nil)
