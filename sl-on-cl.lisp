@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-01 17:38:07 franc>
+;; Time-stamp: <2026-01-02 17:51:44 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1221,6 +1221,8 @@ in interpreted functions are automatically considered fluid."
   (:report (lambda (condition stream)
              (declare (ignore condition stream)))))
 
+(declaim (ftype (cl:function () nil) error1))
+
 (defun error1 ()
   "This is the simplest error return, without a message printed.
 It can be defined as ERROR(99,NIL) if necessary.
@@ -1234,6 +1236,8 @@ In PSL it is throw('!$error!$,99)."
   (:report (lambda (condition stream)
              (with-slots (errno errmsg) condition
                (format stream "Standard Lisp error ~a: ~a." errno errmsg)))))
+
+(declaim (ftype (cl:function (integer t) nil) error))
 
 (defun error (number message)
   "ERROR(NUMBER:integer, MESSAGE:any) eval, spread
@@ -1249,6 +1253,8 @@ variables are not affected by the process."
 (defvar *debug nil
   "If non-nil then `errorset' always prints a backtrace for errors
 as if its argument `tr' were true.")
+
+(declaim (ftype (cl:function (t boolean boolean) t) errorset))
 
 (defun errorset (u msgp tr)
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
@@ -1295,6 +1301,9 @@ dependent format."
 ;; source code for the various Lisp systems.  It is therefore
 ;; unreliable!
 
+(declaim (inline %print-backtrace-maybe)
+         (ftype (cl:function (boolean) null) %print-backtrace-maybe))
+
 (defun %print-backtrace-maybe (tr)
   "Optionally, print backtrace to default output stream.
 Do so if TR or global *DEBUG is true."
@@ -1314,16 +1323,21 @@ Do so if TR or global *DEBUG is true."
 ;;; Vectors
 ;;; =======
 
+(declaim (inline getv igetv)
+         (ftype (cl:function (simple-vector unsigned-byte) t) getv igetv))
+
 (defun getv (v index)
   "GETV(V:vector, INDEX:integer):any eval, spread
 Returns the value stored at position INDEX of the vector V. The
 type mismatch error may occur. An error occurs if the INDEX does
 not lie within 0...UPBV(V) inclusive:
 ***** INDEX subscript is out of range"
-  (declare (simple-vector v) (fixnum index))
   (aref v index))
 
 (defalias igetv getv)
+
+(declaim (inline mkvect)
+         (ftype (cl:function (unsigned-byte) simple-vector) mkvect))
 
 (defun mkvect (uplim)                   ; PSL
   "(mkvect UPLIM:integer): vector expr
@@ -1332,8 +1346,10 @@ as 0 ... UPLIM. Each element is initialized to nil. If UPLIM is -1, an
 empty vector is returned. An error occurs if UPLIM is less than -1 or if the
 amount of available memory is insufficient for a vector of this size:
 ***** A vector of size UPLIM cannot be allocated"
-  (declare (fixnum uplim))
-  (the simple-vector (make-array (1+ uplim) :initial-element nil)))
+  (make-array (1+ uplim) :initial-element nil))
+
+(declaim (inline putv iputv)
+         (ftype (cl:function (simple-vector unsigned-byte t) t) putv iputv))
 
 (defun putv (v index value)
   "PUTV(V:vector, INDEX:integer, VALUE:any):any eval, spread
@@ -1341,48 +1357,73 @@ Stores VALUE into the vector V at position INDEX. VALUE is
 returned. The type mismatch error may occur. If INDEX does not
 lie in 0...UPBV(V) an error occurs:
 ***** INDEX subscript is out of range"
-  (declare (simple-vector v) (fixnum index))
   (setf (aref v index) value))
 
 (defalias iputv putv)
 
+(declaim (inline upbv)
+         (ftype (cl:function (t) (or null unsigned-byte)) upbv))
+
 (defun upbv (u)
   "UPBV(U:any):NIL,integer eval, spread
 Returns the upper limit of U if U is a vector, or NIL if it is not."
-  (the (or null fixnum)
-       (and (vectorp u) (1- (cl:length u)))))
+  (and (vectorp u) (1- (cl:length u))))
+
+(declaim
+ (inline getv8)
+ (ftype (cl:function ((simple-array (signed-byte 8) (*)) unsigned-byte)
+                     (signed-byte 8))
+        getv8))
 
 (defun getv8 (v index)                  ; CSL
-  (declare (type (simple-array (signed-byte 8) (*)) v) (fixnum index))
-  (the (signed-byte 8) (aref v index)))
+  (aref v index))
+
+(declaim
+ (inline mkvect8)
+ (ftype (cl:function (unsigned-byte) (simple-array (signed-byte 8) (*)))
+        mkvect8))
 
 (defun mkvect8 (uplim)                  ; CSL
   "Make a vector of 8-bit signed integers, cf. mkvect."
-  (declare (fixnum uplim))
-  (the (simple-array (signed-byte 8) (*))
-       (make-array (1+ uplim) :element-type '(signed-byte 8) :initial-element 0)))
+  (make-array (1+ uplim) :element-type '(signed-byte 8) :initial-element 0))
+
+(declaim
+ (inline putv8)
+ (ftype (cl:function
+         ((simple-array (signed-byte 8) (*)) unsigned-byte (signed-byte 8))
+         (signed-byte 8))
+        putv8))
 
 (defun putv8 (v index value)            ; CSL
-  (declare (type (simple-array (signed-byte 8) (*)) v)
-           (fixnum index)
-           (type (signed-byte 8) value))
-  (the (signed-byte 8) (setf (aref v index) value)))
+  (setf (aref v index) value))
+
+(declaim
+ (inline getv16)
+ (ftype (cl:function ((simple-array (signed-byte 16) (*)) unsigned-byte)
+                     (signed-byte 16))
+        getv16))
 
 (defun getv16 (v index)           ; CSL
-  (declare (type (simple-array (signed-byte 16) (*)) v) (fixnum index))
-  (the (signed-byte 16) (aref v index)))
+  (aref v index))
+
+(declaim
+ (inline mkvect16)
+ (ftype (cl:function (unsigned-byte) (simple-array (signed-byte 16) (*)))
+        mkvect16))
 
 (defun mkvect16 (uplim)                 ; CSL
   "Make a vector of 16-bit signed integers, cf. mkvect."
-  (declare (fixnum uplim))
-  (the (simple-array (signed-byte 16) (*))
-       (make-array (1+ uplim) :element-type '(signed-byte 16) :initial-element 0)))
+  (make-array (1+ uplim) :element-type '(signed-byte 16) :initial-element 0))
+
+(declaim
+ (inline putv16)
+ (ftype (cl:function
+         ((simple-array (signed-byte 16) (*)) unsigned-byte (signed-byte 16))
+         (signed-byte 16))
+        putv16))
 
 (defun putv16 (v index value)           ; CSL
-  (declare (type (simple-array (signed-byte 16) (*)) v)
-           (fixnum index)
-           (type (signed-byte 16) value))
-  (the (signed-byte 16) (setf (aref v index) value)))
+  (setf (aref v index) value))
 
 
 ;;; Boolean Functions and Conditionals
@@ -1446,6 +1487,8 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;; EXPR PROCEDURE ABS(U);
 ;;    IF LESSP(U, 0) THEN MINUS(U) ELSE U;
 
+(declaim (ftype (cl:function (number) number) add1 difference))
+
 (defalias add1 cl:1+
   "ADD1(U:number):number eval, spread
 Returns the value of U plus 1 of the same type as U (fixed or floating).
@@ -1472,6 +1515,9 @@ The value U - V is returned.")
 
 ;; The following definition agrees with that above:
 
+(declaim (inline divide)
+         (ftype (cl:function (number number) cons) divide))
+
 (defun divide (u v)
   "DIVIDE(U:number, V:number):dotted-pair eval, spread
 The dotted-pair (quotient . remainder) is returned. The quotient
@@ -1481,8 +1527,10 @@ attempted:
 ***** Attempt to divide by 0 in DIVIDE
 EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
-  (declare (type number u v))
-  (the cons (multiple-value-call #'cons (truncate u v))))
+  (multiple-value-call #'cons (truncate u v)))
+
+(declaim (inline expt)     ; might cause problems when expt redefined!
+         (ftype (cl:function (number integer) number) expt))
 
 (defun expt (u v)
   ;; Defined explicitly so that it can be redefined in arith/math
@@ -1490,16 +1538,20 @@ EXPR PROCEDURE DIVIDE(U, V);
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
 exponentiation."
-  (declare (type number u) (integer v))
-  (the number (cl:expt u v)))
+  (cl:expt u v))
+
+(declaim (inline fix)
+         (ftype (cl:function (number) integer) fix))
 
 (defun fix (u)
   "FIX(U:number):integer eval, spread
 Returns an integer which corresponds to the truncated value of U.
 The result of conversion must retain all significant portions of U. If
 U is an integer it is returned unchanged."
-  (declare (type number u))
-  (the integer (values (truncate u))))
+  (values (truncate u)))
+
+(declaim (inline float)
+         (ftype (cl:function (number) double-float) float))
 
 (defun float (u)
   "FLOAT(U:number):floating eval, spread
@@ -1511,8 +1563,10 @@ unchanged.  If U is too large to represent in floating point an
 error occurs:
 ***** Argument to FLOAT is too large"
   ;; Floats must be double precision:
-  (declare (type number u))
-  (the double-float (cl:float u 1d0)))
+  (cl:float u 1d0))
+
+(declaim (ftype (cl:function (number number) boolean)
+                greaterp lessp geq leq))
 
 (defalias greaterp cl:>
   "GREATERP(U:number, V:number):boolean eval, spread
@@ -1522,10 +1576,11 @@ Returns T if U is strictly greater than V, otherwise returns NIL.")
   "LESSP(U:number, V:number):boolean eval, spread
 Returns T if U is strictly less than V, otherwise returns NIL.")
 
-;; The definitions in REDUCE don't work correctly with mixed integer
-;; and float arguments, so...
+;; The definitions in REDUCE don't work correctly on CL with mixed
+;; integer and float arguments, so...
 (defalias geq cl:>=)
 (defalias leq cl:<=)
+;; Flagged lose in "clprolo.red".
 
 (import 'cl:max)
 ;; MAX([U:number]):number noeval, nospread, or macro
@@ -1533,6 +1588,8 @@ Returns T if U is strictly less than V, otherwise returns NIL.")
 ;; same the first is returned.
 ;; MACRO PROCEDURE MAX(U);
 ;;    EXPAND(CDR U, 'MAX2);
+
+(declaim (ftype (cl:function (number number) number) max2 min2))
 
 (defalias max2 cl:max
   "MAX2(U:number, V:number):number eval, spread
@@ -1555,17 +1612,24 @@ U is returned (U and V might be of different types).
 EXPR PROCEDURE MIN2(U, V);
    IF GREATERP(U, V) THEN V ELSE U;")
 
+(declaim (ftype (cl:function (number) number) minus))
+
 (defalias minus cl:-
   "MINUS(U:number):number eval, spread
 Returns -U.
 EXPR PROCEDURE MINUS(U);
    DIFFERENCE(0, U);")
 
+(declaim (ftype (cl:function (&rest number) number) plus))
+
 (defalias plus cl:+
   "PLUS([U:number]):number noeval, nospread, or macro
 Forms the sum of all its arguments.
 MACRO PROCEDURE PLUS(U);
    EXPAND(CDR U, 'PLUS2);")
+
+(declaim (ftype (cl:function (number number) number)
+                plus2 quotient remainder))
 
 (defalias plus2 cl:+
   "PLUS2(U:number, V:number):number eval, spread
@@ -1582,12 +1646,10 @@ absolute value of V. An error occurs if division by zero is attempted:
   ;; Can probably implement this better using generic functions!
   ;; In CLISP on macOS, / throws an error on underflow.
   ;; Just return 0, as do all other Common Lisps I have tried.
-  (declare (type number u v))
-  (the number
-       (if (or (floatp u) (floatp v))
-           #+CLISP (ext:without-floating-point-underflow (/ u v))
-           #-CLISP (/ u v)
-           (values (truncate u v)))))
+  (if (or (floatp u) (floatp v))
+      #+CLISP (ext:without-floating-point-underflow (/ u v))
+      #-CLISP (/ u v)
+      (values (truncate u v))))
 
 (defalias remainder cl:rem
   "REMAINDER(U:number, V:number):number eval, spread
@@ -1601,6 +1663,8 @@ zero:
 EXPR PROCEDURE REMAINDER(U, V);
    DIFFERENCE(U, TIMES2(QUOTIENT(U, V), V));")
 
+(declaim (ftype (cl:function (number) number) sub1))
+
 (defalias sub1 cl:1-
   "SUB1(U:number):number eval, spread
 Returns the value of U less 1. If U is a FLOAT type number, the
@@ -1608,11 +1672,15 @@ value returned is U less 1.0.
 EXPR PROCEDURE SUB1(U);
    DIFFERENCE(U, 1);")
 
+(declaim (ftype (cl:function (&rest number) number) times))
+
 (defalias times cl:*
   "TIMES([U:number]):number noeval, nospread, or macro
 Returns the product of all its arguments.
 MACRO PROCEDURE TIMES(U);
    EXPAND(CDR U, 'TIMES2);")
+
+(declaim (ftype (cl:function (number number) number) times2))
 
 (defalias times2 cl:*
   "TIMES2(U:number, V:number):number eval, spread
@@ -1621,49 +1689,44 @@ Returns the product of U and V.")
 ;; Small integer (fixnum) arithmetic operators defined in
 ;; alg/farith.red:
 
-(defun iplus2 (u v)
-  (declare (fixnum u v))
-  (the fixnum (+ u v)))
+(declaim (inline iplus2 itimes2)
+         (ftype (cl:function (fixnum fixnum) fixnum) iplus2 itimes2))
 
-(defun itimes2 (u v)
-  (declare (fixnum u v))
-  (the fixnum (* u v)))
+(defun iplus2 (u v) (+ u v))
 
-(defun isub1 (u)
-  (declare (fixnum u))
-  (the fixnum (1- u)))
+(defun itimes2 (u v) (* u v))
 
-(defun iadd1 (u)
-  (declare (fixnum u))
-  (the fixnum (1+ u)))
+(declaim (inline isub1 iadd1 iminus)
+         (ftype (cl:function (fixnum) fixnum) isub1 iadd1 iminus))
 
-(defun iminus (u)
-  (declare (fixnum u))
-  (the fixnum (- u)))
+(defun isub1 (u) (1- u))
 
-(defun idifference (u v)
-  (declare (fixnum u v))
-  (the fixnum (- u v)))
+(defun iadd1 (u) (1+ u))
 
-(defun iquotient (u v)
-  (declare (fixnum u v))
-  (the fixnum (values (truncate u v))))
+(defun iminus (u) (- u))
 
-(defun iremainder (u v)
-  (declare (fixnum u v))
-  (the fixnum (rem u v)))
+(declaim (inline idifference iquotient iremainder)
+         (ftype (cl:function (fixnum fixnum) fixnum)
+                idifference iquotient iremainder))
 
-(defun igreaterp (u v)
-  (declare (fixnum u v))
-  (> u v))
+(defun idifference (u v) (- u v))
 
-(defun ilessp (u v)
-  (declare (fixnum u v))
-  (< u v))
+(defun iquotient (u v) (values (truncate u v)))
 
-(defun iminusp (u)
-  (declare (fixnum u))
-  (cl:minusp u))
+(defun iremainder (u v) (rem u v))
+
+(declaim (inline igreaterp ilessp)
+         (ftype (cl:function (fixnum fixnum) boolean)
+                igreaterp ilessp))
+
+(defun igreaterp (u v) (> u v))
+
+(defun ilessp (u v) (< u v))
+
+(declaim (inline iminusp)
+         (ftype (cl:function (fixnum fixnum) boolean) iminusp))
+
+(defun iminusp (u) (cl:minusp u))
 
 ;; (defun iequal (u v)
 ;;   (declare (fixnum u v))
@@ -1678,13 +1741,15 @@ Returns the product of U and V.")
 
 ;; Small integer (fixnum) arithmetic operators required but not defined:
 
-(defun itimes (u v)       ; used as a binary operator in dipoly/torder
-  (declare (fixnum u v))
-  (the fixnum (* u v)))
+(declaim (inline itimes)
+         (ftype (cl:function (fixnum fixnum) fixnum) itimes))
 
-(defun izerop (u)                       ; used in plot/plotexp3
-  (declare (fixnum u))
-  (cl:zerop u))
+(defun itimes (u v) (* u v)) ; used as a binary operator in dipoly/torder
+
+(declaim (inline izerop)
+         (ftype (cl:function (fixnum) boolean) izerop))
+
+(defun izerop (u) (cl:zerop u))         ; used in plot/plotexp3
 
 ;; Fast built-in floating point functions:
 
