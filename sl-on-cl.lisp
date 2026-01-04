@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-02 17:51:44 franc>
+;; Time-stamp: <2026-01-04 16:26:50 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1217,9 +1217,7 @@ in interpreted functions are automatically considered fluid."
 
 (define-condition sl-error-no-message (cl:error)
   ()
-  (:documentation "Standard Lisp error without error number or message")
-  (:report (lambda (condition stream)
-             (declare (ignore condition stream)))))
+  (:documentation "Standard Lisp error without error number or message"))
 
 (declaim (ftype (cl:function () nil) error1))
 
@@ -1253,6 +1251,28 @@ variables are not affected by the process."
 (defvar *debug nil
   "If non-nil then `errorset' always prints a backtrace for errors
 as if its argument `tr' were true.")
+
+;; The backtrace code below is mostly undocumented and dug out of the
+;; source code for the various Lisp systems.  It is therefore
+;; unreliable!
+
+(declaim (inline %print-backtrace-maybe)
+         (ftype (cl:function (boolean) null) %print-backtrace-maybe))
+
+(defun %print-backtrace-maybe (tr)
+  "Optionally, print backtrace to default output stream.
+Do so if TR or global *DEBUG is true."
+  (when (or tr *debug)
+    #+SBCL (sb-debug:print-backtrace)
+    #+CLISP (system::print-backtrace)   ; See clisp/src/reploop.lisp
+    #+CCL (format t "~&~{~s~%~}" (ccl:backtrace-as-list))
+    ))
+
+;; Limit length of backtrace:
+#+SBCL (setq sb-debug:*backtrace-frame-count* 20) ; default 1000
+#+CLISP
+(ext:without-package-lock ("SYSTEM")
+  (setq system::*debug-print-frame-limit* 20)) ; default unlimited
 
 (declaim (ftype (cl:function (t boolean boolean) t) errorset))
 
@@ -1297,28 +1317,6 @@ dependent format."
       (%print-backtrace-maybe tr)
       nil)))
 
-;; The backtrace code below is mostly undocumented and dug out of the
-;; source code for the various Lisp systems.  It is therefore
-;; unreliable!
-
-(declaim (inline %print-backtrace-maybe)
-         (ftype (cl:function (boolean) null) %print-backtrace-maybe))
-
-(defun %print-backtrace-maybe (tr)
-  "Optionally, print backtrace to default output stream.
-Do so if TR or global *DEBUG is true."
-  (when (or tr *debug)
-    #+SBCL (sb-debug:print-backtrace)
-    #+CLISP (system::print-backtrace)   ; See clisp/src/reploop.lisp
-    #+CCL (format t "~&~{~s~%~}" (ccl:backtrace-as-list))
-    ))
-
-;; Limit length of backtrace:
-#+SBCL (setq sb-debug:*backtrace-frame-count* 20) ; default 1000
-#+CLISP
-(ext:without-package-lock ("SYSTEM")
-  (setq system::*debug-print-frame-limit* 20)) ; default unlimited
-
 
 ;;; Vectors
 ;;; =======
@@ -1337,7 +1335,7 @@ not lie within 0...UPBV(V) inclusive:
 (defalias igetv getv)
 
 (declaim (inline mkvect)
-         (ftype (cl:function (unsigned-byte) simple-vector) mkvect))
+         (ftype (cl:function (fixnum) simple-vector) mkvect))
 
 (defun mkvect (uplim)                   ; PSL
   "(mkvect UPLIM:integer): vector expr
@@ -1346,6 +1344,7 @@ as 0 ... UPLIM. Each element is initialized to nil. If UPLIM is -1, an
 empty vector is returned. An error occurs if UPLIM is less than -1 or if the
 amount of available memory is insufficient for a vector of this size:
 ***** A vector of size UPLIM cannot be allocated"
+  ;; uplim = -1 used in redlog/rltools/lto.red!
   (make-array (1+ uplim) :initial-element nil))
 
 (declaim (inline putv iputv)
@@ -1362,7 +1361,7 @@ lie in 0...UPBV(V) an error occurs:
 (defalias iputv putv)
 
 (declaim (inline upbv)
-         (ftype (cl:function (t) (or null unsigned-byte)) upbv))
+         (ftype (cl:function (t) (or fixnum null)) upbv))
 
 (defun upbv (u)
   "UPBV(U:any):NIL,integer eval, spread
@@ -1529,8 +1528,8 @@ EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
   (multiple-value-call #'cons (truncate u v)))
 
-(declaim (inline expt)     ; might cause problems when expt redefined!
-         (ftype (cl:function (number integer) number) expt))
+;; Type must match redefinition in arith/math (and not be inline):
+(declaim (ftype (cl:function (number number) number) expt))
 
 (defun expt (u v)
   ;; Defined explicitly so that it can be redefined in arith/math
@@ -1781,12 +1780,14 @@ Returns the product of U and V.")
 ;;; Map Composite Functions
 ;;; =======================
 
+(declaim (inline map mapc)
+         (ftype (cl:function (list function) null) map mapc))
+
 (defun map (x fn)
   "MAP(X:list, FN:function):any eval, spread
 Applies FN to successive CDR segments of X and returns NIL.
 EXPR PROCEDURE MAP(X, FN);
    WHILE X DO << FN X; X := CDR X >>;"
-  (declare (list x) (type function fn))
   (cl:mapl fn x)
   nil)
 
@@ -1795,9 +1796,12 @@ EXPR PROCEDURE MAP(X, FN);
 Applies FN to successive CAR segments of X and returns NIL.
 EXPR PROCEDURE MAPC(X, FN);
    WHILE X DO << FN CAR X; X := CDR X >>;"
-  (declare (list x) (type function fn))
   (cl:mapc fn x)
   nil)
+
+(declaim (inline mapcan mapcar mapcon maplist)
+         (ftype (cl:function (list function) list)
+                mapcan mapcar mapcon maplist))
 
 (defun mapcan (x fn)
   "MAPCAN(X:list, FN:function):any eval, spread
@@ -1805,8 +1809,7 @@ Returns a concatenated list of FN applied to successive CAR elements of X.
 EXPR PROCEDURE MAPCAN(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN CAR X, MAPCAN(CDR X, FN));"
-  (declare (list x) (type function fn))
-  (the list (cl:mapcan fn x)))
+  (cl:mapcan fn x))
 
 (defun mapcar (x fn)
   "MAPCAR(X:list, FN:function):any eval, spread
@@ -1814,8 +1817,7 @@ Returns a constructed list of FN applied to each CAR of list X.
 EXPR PROCEDURE MAPCAR(X, FN);
    IF NULL X THEN NIL
       ELSE FN CAR X . MAPCAR(CDR X, FN);"
-  (declare (list x) (type function fn))
-  (the list (cl:mapcar fn x)))
+  (cl:mapcar fn x))
 
 (defun mapcon (x fn)
   "MAPCON(X:list, FN:function):any eval, spread
@@ -1823,8 +1825,7 @@ Returns a concatenated list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPCON(X, FN);
    IF NULL X THEN NIL
       ELSE NCONC(FN X, MAPCON(CDR X, FN));"
-  (declare (list x) (type function fn))
-  (the list (cl:mapcon fn x)))
+  (cl:mapcon fn x))
 
 (defun maplist (x fn)
   "MAPLIST(X:list, FN:function):any eval, spread
@@ -1832,8 +1833,7 @@ Returns a constructed list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPLIST(X, FN);
    IF NULL X THEN NIL
       ELSE FN X . MAPLIST(CDR X, FN);"
-  (declare (list x) (type function fn))
-  (the list (cl:maplist fn x)))
+  (cl:maplist fn x))
 
 
 ;;; Composite Functions
@@ -1846,14 +1846,18 @@ EXPR PROCEDURE MAPLIST(X, FN);
 ;; therefore always be supplied to CL functions as the :test keyword
 ;; argument.
 
+(declaim (inline append)
+         (ftype (cl:function (t t) t) append))
+
 (defun append (u v)
   "(append U:any V:any):any expr
 Returns a constructed list in which the last element of U is followed by the
 first element of V. The list U is copied, but V is not."
   ;; Some REDUCE code assumes the PSL definition, which allows U to
   ;; have any type:
-  (declare (t u v))
-  (the t (if (consp u) (cl:append u v) v)))
+  (if (consp u) (cl:append u v) v))
+
+(declaim (ftype (cl:function (t t) list) assoc))
 
 (defun assoc (u v)                      ; PSL definition
   "(assoc U:any V:any): pair, nil expr
@@ -1864,12 +1868,12 @@ to test for equality.
   (cond ((not (pairp v)) nil)
         ((and (pairp (car v)) (equal u (caar v))) (car v))
         (t (assoc u (cdr v)))))"
-  (declare (t u v))
-  (the list
-       (and (consp v)
-            (loop for x in v do
-                 (if (and (consp x) (equal u (car x)))
-                     (return x))))))
+  (and (consp v)
+       (loop for x in v do
+             (if (and (consp x) (equal u (car x)))
+                 (return x)))))
+
+(declaim (ftype (cl:function (list symbol) list) deflist))
 
 (defun deflist (u ind)
   "DEFLIST(U:dlist, IND:id):list eval, spread
@@ -1882,13 +1886,14 @@ EXPR PROCEDURE DEFLIST(U, IND);
    IF NULL U THEN NIL
       ELSE << PUT(CAAR U, IND, CADAR U);
               CAAR U >> . DEFLIST(CDR U, IND);"
-  (declare (list u) (symbol ind))
-  (the list
-       (cl:mapcar #'(lambda (x)
-                      (if *defn (%save-plist (car x)))
-                      (put (car x) ind (cadr x))
-                      (car x))
-                  u)))
+  (cl:mapcar #'(lambda (x)
+                 (if *defn (%save-plist (car x)))
+                 (put (car x) ind (cadr x))
+                 (car x))
+             u))
+
+(declaim (inline delete)
+         (ftype (cl:function (t list) list) delete))
 
 (defun delete (u v)
   "DELETE(U:any, V:list):list eval, spread
@@ -1897,8 +1902,9 @@ EXPR PROCEDURE DELETE(U, V);
    IF NULL V THEN NIL
       ELSE IF CAR V = U THEN CDR V
       ELSE CAR V . DELETE(U, CDR V);"
-  (declare (list v))
-  (the list (cl:remove u v :test #'equal :count 1)))
+  (cl:remove u v :test #'equal :count 1))
+
+(declaim (ftype (cl:function (t) list) digit))
 
 (defun digit (u)
   "DIGIT(U:any):boolean eval, spread
@@ -1907,6 +1913,8 @@ EXPR PROCEDURE DIGIT(U);
    IF MEMQ(U, '(!0 !1 !2 !3 !4 !5 !6 !7 !8 !9))
       THEN T ELSE NIL;"
   (cl:member u '(\0 \1 \2 \3 \4 \5 \6 \7 \8 \9) :test #'eq))
+
+(declaim (ftype (cl:function (t) (integer 0)) length))
 
 (defun length (x)
   "LENGTH(X:any):integer eval, spread
@@ -1919,11 +1927,12 @@ EXPR PROCEDURE LENGTH(X);
   ;; atoms or dotted pairs!
   ;; This iterative implementation is based on the description of
   ;; list-length in the CLHS:
-  (the (integer 0)
-       (do ((n 0 (1+ n))                ; counter
-            (p x (cdr p)))              ; pointer
-           ;; When pointer hits an atom, return the count:
-           ((atom p) n))))
+  (do ((n 0 (1+ n))                     ; counter
+       (p x (cdr p)))                   ; pointer
+      ;; When pointer hits an atom, return the count:
+      ((atom p) n)))
+
+(declaim (ftype (cl:function (t) list) liter))
 
 (defun liter (u)
   "LITER(U:any):boolean eval, spread
@@ -1937,7 +1946,11 @@ EXPR PROCEDURE LITER(U);
   (cl:member u '(\A \B \C \D \E \F \G \H \I \J \K \L \M
                  \N \O \P \Q \R \S \T \U \V \W \X \Y \Z
                  \a \b \c \d \e \f \g \h \i \j \k \l \m
-                 \n \o \p \q \r \s \t \u \v \w \x \y \z) :test #'eq))
+                 \n \o \p \q \r \s \t \u \v \w \x \y \z)
+             :test #'eq))
+
+(declaim (inline member memq)
+         (ftype (cl:function (t t) list) member memq))
 
 (defun member (a l)
   "(member A:any L:any): extra-boolean expr
@@ -1950,10 +1963,7 @@ to A."
   ;; (cond ((atom l) nil)
   ;;       ((equal a (car l)) l)
   ;;       (t (member a (cdr l))))
-  (the list
-       (loop for tail on l do
-            (if (atom tail) (return-from member nil))
-            (if (equal a (car tail)) (return-from member tail)))))
+  (and (listp l) (cl:member a l :test #'equal)))
 
 (defun memq (a l)
   "(memq A:any L:any): extra-boolean expr
@@ -1966,10 +1976,7 @@ to A."
   ;; (cond ((atom l) nil)
   ;;       ((eq a (car l)) l)
   ;;       (t (memq a (cdr l))))
-  (the list
-       (loop for tail on l do
-            (if (atom tail) (return-from memq nil))
-            (if (eq a (car tail)) (return-from memq tail)))))
+  (and (listp l) (cl:member a l :test #'cl:eq)))
 
 (import 'cl:nconc)
 ;; NCONC(U:list, V:list):list eval, spread
@@ -1983,6 +1990,8 @@ to A."
 ;;    RPLACD(W, V);
 ;;    RETURN U
 ;; END;
+
+(declaim (ftype (cl:function (list list) list) pair))
 
 (defun pair (u v)
   ;; Could implement as pairlis, but pairlis doesn't guarantee the
@@ -1998,11 +2007,9 @@ EXPR PROCEDURE PAIR(U, V);
       ELSE IF OR(U, V) THEN ERROR(000,
          \"Different length lists in PAIR\")
       ELSE NIL;"
-  (declare (list u v))
-  (the list
-       (if (/= (cl:length u) (cl:length v))
-           (error-internal "Different length lists in PAIR")
-           (cl:map 'list #'cons u v))))
+  (if (/= (cl:length u) (cl:length v))
+      (error-internal "Different length lists in PAIR")
+      (cl:map 'list #'cons u v)))
 
 (import 'cl:reverse)
 ;; REVERSE(U:list):list eval, spread
@@ -2014,7 +2021,11 @@ EXPR PROCEDURE PAIR(U, V);
 ;;    RETURN W
 ;; END;
 
+(declaim (ftype (cl:function (list) list) reversip))
+
 (defalias reversip cl:nreverse)       ; PSL function
+
+(declaim (ftype (cl:function (t list (function ())) t) sassoc))
 
 (defun sassoc (u v fn)
   "SASSOC(U:any, V:alist, FN:function):any eval, spread
@@ -2024,8 +2035,9 @@ EXPR PROCEDURE SASSOC(U, V, FN);
    IF NULL V THEN FN()
       ELSE IF U = CAAR V THEN CAR V
       ELSE SASSOC(U, CDR V, FN);"
-  (declare (list v) (type (function ()) fn))
   (or (cl:assoc u v :test #'equal) (funcall fn)))
+
+(declaim (ftype (cl:function (list function) list) sort))
 
 ;; (import 'cl:sort)                       ; CSL function
 (defalias sort cl:sort)
@@ -2033,6 +2045,9 @@ EXPR PROCEDURE SASSOC(U, V, FN);
 ;; because this is what happens with CSL and PSL!  (The function sort
 ;; is built into CSL and for PSL it is defined as an alias for gsort
 ;; in "pslrend.red".)
+
+(declaim (inline sublis subla)
+         (ftype (cl:function (list t) t) sublis subla))
 
 (defun sublis (x y)
   "SUBLIS(X:alist, Y:any):any eval, spread
@@ -2048,13 +2063,14 @@ EXPR PROCEDURE SUBLIS(X, Y);
                         ELSE SUBLIS(X, CAR Y) .
                              SUBLIS(X, CDR Y)
                  END;"
-  (declare (list x))
   (cl:sublis x y :test #'equal))
 
 (defun subla (x y)                      ; PSL function
   "Eq version of sublis; replaces atoms only."
-  (declare (list x))
   (cl:sublis x y :test #'eq))
+
+(declaim (inline subst)
+         (ftype (cl:function (t t t) t) subst))
 
 (defun subst (u v w)
   "SUBST(U:any, V:any, W:any):any eval, spread
@@ -2070,10 +2086,12 @@ EXPR PROCEDURE SUBST(U, V, W);
 ;; This function is used in several places in REDUCE, but I can't find
 ;; a reference to it anywhere!  The documentation string below is
 ;; based on that in Emacs Lisp:
+(declaim (inline rassoc)
+         (ftype (cl:function (t list) list) rassoc))
+
 (defun rassoc (key list)
   "Return non-nil if KEY is equal to the cdr of an element of LIST.
 The value is actually the first element of LIST whose cdr equals KEY."
-  (declare (list list))
   (cl:rassoc key list :test #'equal))
 
 
