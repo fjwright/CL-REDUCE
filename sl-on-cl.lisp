@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-07 16:01:00 franc>
+;; Time-stamp: <2026-01-07 18:13:59 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3523,13 +3523,13 @@ already exists, it is removed before the new entry is added."
 ;;    (sb-ext:run-program "cmd" (cons "/c" command)
 ;;                     :search t :output t :escape-arguments nil)))
 
+(declaim (ftype (cl:function (simple-string) integer) system))
+
 #+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
 (defun system (command)    ; PSL
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
 COMMAND to the interpreter and return the process exit code."
-  (declare (simple-string command))
-  (the integer
        #+SBCL
        (sb-ext:process-exit-code
         #+win32
@@ -3559,7 +3559,9 @@ COMMAND to the interpreter and return the process exit code."
            (ccl:run-program "cmd" (cons "/c" command) :output t))
          #-WINDOWS
          (ccl:run-program "sh" (list "-c" command) :output t)))
-       ))
+       )
+
+(declaim (ftype (cl:function (simple-string) simple-string) system-to-string))
 
 #+SBCL
 (defun system-to-string (command)       ; experimental - not tested!
@@ -3571,10 +3573,16 @@ COMMAND to the interpreter and return the process exit code."
   (let ((s (ext:run-shell-command command :output :stream)))
     (get-output-stream-string s)))
 
+(declaim (ftype (cl:function () simple-string) pwd))
+
 (defun pwd ()                           ; PSL / Unix
   "(pwd):STRING expr
 Return the current working directory in system specific format."
-  (the simple-string (namestring (truename *default-pathname-defaults*))))
+  (namestring (truename *default-pathname-defaults*)))
+
+(declaim (ftype (cl:function (&optional simple-string)
+                             (or null simple-string))
+                cd chdir))
 
 #+SBCL
 (defun cd (&optional dir)               ; PSL / Unix
@@ -3583,7 +3591,6 @@ Set the current working directory to string DIR (if supplied and
 non-empty), after substituting environment variables and then
 expanding \".\" and \"..\".  If successful then return the new current
 directory; otherwise, return nil."
-  (declare (type (or null simple-string pathname) dir))
   (unless (and dir (string/= dir ""))
     (return-from cd
       (sb-ext:native-namestring *default-pathname-defaults*)))
@@ -3601,11 +3608,10 @@ directory; otherwise, return nil."
   ;;                              (nconc (or (pathname-directory dir) '(:relative))
   ;;                                     (list (pathname-name dir))))))
   (setq dir (merge-pathnames dir))
-  (the (or null pathname)
-       (and (probe-file dir)
-            ;; Return the new current working directory:
-            (sb-ext:native-namestring   ; \ instead of /
-             (setq *default-pathname-defaults* dir)))))
+  (and (probe-file dir)
+       ;; Return the new current working directory:
+       (sb-ext:native-namestring        ; \ instead of /
+        (setq *default-pathname-defaults* dir))))
 
 #+CLISP
 (defun cd (&optional dir)               ; PSL / Unix
@@ -3615,12 +3621,10 @@ non-empty), after substituting environment variables and then
 expanding \".\" and \"..\".  If successful then return the new current
 directory."
   ;; In CLISP, MAKE-PATHNAME canonicalizes the PATHNAME directory component.
-  (declare (type (or null simple-string) dir))
-  (the simple-string
-       (namestring
-        ;; cd crashes with nil or ""!
-        (cl:apply #'ext:cd (and dir (string/= dir "")
-                                (list (substitute-in-file-name dir)))))))
+  (namestring
+   ;; cd crashes with nil or ""!
+   (cl:apply #'ext:cd (and dir (string/= dir "")
+                           (list (substitute-in-file-name dir))))))
 
 #+ABCL
 (defun cd (x)
@@ -3649,30 +3653,41 @@ not sucessful, the value Nil is returned."
 #+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
 (defalias chdir cd)                   ; CSL / MS Windows
 
+(declaim (inline filep)
+         (ftype (cl:function (simple-string) (or pathname null)) filep))
+
 (defun filep (file)                     ; PSL
   "Return false if FILE does not exist, otherwise return the truename of
 FILE.  Substitutes environment variables in file name."
-  ;; should perhaps be inlined.
-  (declare (simple-string file))
   (cl:probe-file (substitute-in-file-name file)))
+
+(declaim (inline file-write-date)
+         (ftype (cl:function (simple-string) (or unsigned-byte null))
+                file-write-date))
 
 (defun file-write-date (file)           ; PSL, used in remake
   "Return the time at which FILE was last written (or created), or nil if
 such a time cannot be determined.  Substitutes environment variables
 in file name."
-  ;; Should perhaps be inlined.
-  (declare (simple-string file))
   (cl:file-write-date (substitute-in-file-name file)))
 
 #+SBCL (import 'sb-posix:getpid)
+#+CLISP (declaim (ftype (cl:function () unsigned-byte) getpid)) ; ???
 #+CLISP (defalias getpid os:process-id)
 #+CCL (import 'ccl::getpid)
+
+(declaim (inline setenv)
+         (ftype (cl:function (simple-string simple-string) unsigned-byte)
+                setenv))
 
 #+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
 (defun setenv (name value)
   "Create or update an environment variable"
   #+SBCL (sb-posix:setenv name value 1) ; non-zero => overwrite
   #+CLISP (setf (ext:getenv name) value))
+
+(declaim (inline exit)
+         (ftype (cl:function (&optional signed-byte) nil) exit))
 
 #+(or SBCL CLISP ABCL CCL ECL)  ; to avoid a warning with other Lisps!
 (defun exit (&optional code)
@@ -3731,6 +3746,8 @@ These are files referenced by symbols rather than strings.")
 #-ECLP
 (defalias %load-extensions cl:load)
 
+(declaim (ftype (cl:function (&rest t) boolean) %load-extensions))
+
 #+ECLP
 (defun %load-extensions (&rest args)
   "As cl:load but add a filename extension if missing.
@@ -3746,6 +3763,8 @@ extension (\".lisp\")."
                (merge-pathnames (car args) (make-pathname :type "lisp"))
                (cdr args)))))
 
+(declaim (ftype (cl:function ((or symbol simple-string)) boolean) load))
+
 (defun load (file)             ; currently only supports a single file
   "(load [FILE:{string, id}]): nil macro
 For each argument FILE, an attempt is made to locate a corresponding
@@ -3759,7 +3778,6 @@ from loadextensions* is used.
 Load a \".sl\" file using Standard Lisp read syntax."
   ;; filename defaults are taken from *default-pathname-defaults*,
   ;; which defaults to the directory in which SBCL was started.
-  (declare (type (or symbol simple-string) file))
   (let ((*readtable* (copy-readtable nil)) ; normal CL syntax
         (*load-verbose* *verboseload)
         (*redefmsg *verboseload) file-pathname)
@@ -3821,6 +3839,8 @@ or nil, meaning no header.")
 #+CLISP (defvar %faslout-name.lib)
 (defvar %faslout-stream)
 
+(declaim (ftype (cl:function (t) t) prettyprint %faslout-prettyprint))
+
 (defun prettyprint (u)
   "Default prettyprint function, required for bootstrapping.
 Redefined later as an autoload for the real prettyprinter."
@@ -3837,13 +3857,14 @@ It prints Common Lisp syntax to %faslout-stream."
   "The saved current global definition of the function prettyprint.
 It is replaced during faslout.")
 
+(declaim (ftype (cl:function ((or symbol simple-string)) null) faslout))
+
 (defun faslout (name)
   "Compile subsequent input into Common Lisp FASL file \"NAME.fasl\".
 NAME should be an identifier or string.  (The actual extension of fasl
 files depends on the version of Common Lisp.)"
   ;; Output subsequent code as Common Lisp to a temporary file until
   ;; FASLEND evaluated.
-  (declare (type (or symbol simple-string) name))
   (setq name (string-downcase name))
   (if *int
       (format t "FASLOUT ~a: IN files$ or type in expressions.
@@ -3872,6 +3893,8 @@ When all done, execute FASLEND;~2%" name))
 ;; have therefore temporarily commented out below.  Delete them unless
 ;; they prove useful with other versions of Common Lisp.
 
+(declaim (ftype (cl:function () null) faslend))
+
 (defun faslend ()
   "Terminate a previous FASLOUT and generate the compiled file."
   (unless *writingfaslfile
@@ -3897,11 +3920,15 @@ When all done, execute FASLEND;~2%" name))
   ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
   ;;      ;; nil)
   ;;      (error-internal "Error compiling ~a" %faslout-name.lisp))
-  )
+  nil)
 
 (defvar cursym*)
 
-(defun comm1 (&rest args) (declare (ignore args)))
+(declaim (ftype (cl:function (symbol) null) comm1))
+
+(defun comm1 (u) (declare (ignore u)))  ; redefined in rlisp/parser
+
+(declaim (ftype (cl:function () cons) faslendstat))
 
 (defun faslendstat ()
   "Terminate reading faslend and turn defn off."
@@ -3920,31 +3947,34 @@ When all done, execute FASLEND;~2%" name))
 ;;; User interface
 ;;; ==============
 
+(declaim (ftype (cl:function () package) standard-lisp))
+
 (defun standard-lisp ()
   "Switch to STANDARD LISP mode."
-  (the package
-       (prog1
-           (in-package :sl)
-         (setq *readtable* *sl-readtable*
-               ;; The REDUCE source code implies that 64-bit IEEE
-               ;; arithmetic is expected and it seems to be necessary to
-               ;; read the constant 1.0e300 in arith/paraset.red:
-               *read-default-float-format* 'double-float
-               ;; These must be re-set when Standard Lisp is started to
-               ;; work in a saved CLISP memory image:
-               +default-read-stream+ (%default-read-stream)
-               %read-stream +default-read-stream+
-               +default-write-stream+ (%default-write-stream)
-               %write-stream +default-write-stream+))))
+  (prog1
+      (in-package :sl)
+    (setq *readtable* *sl-readtable*
+          ;; The REDUCE source code implies that 64-bit IEEE
+          ;; arithmetic is expected and it seems to be necessary to
+          ;; read the constant 1.0e300 in arith/paraset.red:
+          *read-default-float-format* 'double-float
+          ;; These must be re-set when Standard Lisp is started to
+          ;; work in a saved CLISP memory image:
+          +default-read-stream+ (%default-read-stream)
+          %read-stream +default-read-stream+
+          +default-write-stream+ (%default-write-stream)
+          %write-stream +default-write-stream+)))
 
 (import '(standard-lisp) :cl-user)
+
+(declaim (ftype (cl:function () null) reset-readtable begin))
 
 (defun reset-readtable ()
   "Switch to Common Lisp read syntax."
   (setq *readtable* (copy-readtable nil))
   nil)
 
-(defun begin ())
+(defun begin ())                        ; redefined in clrend.red
 
 ;; From: Common Lisp the Language, 2nd Edition
 ;; https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node341.html
@@ -3960,6 +3990,8 @@ When all done, execute FASLEND;~2%" name))
 
 ;; The initialisation code below is based on the REPL example on the
 ;; web page cited above.
+
+(declaim (ftype (cl:function () t) reduce-init-function))
 
 #+SBCL
 ;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
@@ -4044,9 +4076,10 @@ When all done, execute FASLEND;~2%" name))
          (abort "Return to REDUCE.")
        (begin)))))
 
+(declaim (ftype (cl:function (string) null) save-reduce-image))
+
 (defun save-reduce-image (name)
   "Save a REDUCE memory image with main filename component NAME."
-  (declare (string name))
   #+SBCL
   (sb-ext:save-lisp-and-die (concat "fasl.sbcl/" name ".img")
                             :toplevel #'reduce-init-function)
@@ -4084,14 +4117,15 @@ A list of identifiers indicating system properties.")
 #+ECLP (ext:install-bytecodes-compiler)
 ;; For ECLN, use the DEFAULT native binary compiler.
 
+(declaim (ftype (cl:function (boolean) symbol) compilation))
+
 #+SBCL
 (defun compilation (on)
   "Set the SBCL evaluation mode to compile if ON is non-nil and to
 interpret otherwise.  The default is compile.
 Called by ON/OFF COMP; see 'clrend.red'."
-  (the symbol
-       (setq sb-ext:*evaluator-mode*
-             (if on :compile :interpret))))
+  (setq sb-ext:*evaluator-mode*
+        (if on :compile :interpret)))
 
 ;; In SBCL, inhibit printing of package prefixes in the debugger
 ;; (which doesn't seem to work):
