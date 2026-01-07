@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-07 10:18:01 franc>
+;; Time-stamp: <2026-01-07 16:01:00 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2903,29 +2903,31 @@ stream by this function."
   #("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
   "A vector of names of the months abbreviated to 3 letters.")
 
+(declaim (ftype (cl:function () simple-string) date-and-time date))
+
 (defun date-and-time ()                 ; CSL
   "Return a string of the form \"Fri Feb 01 18:38:36 2019\"."
-  (the simple-string
-       (multiple-value-bind
-             (second minute hour date month year day)
-           (get-decoded-time)
-         (format nil "~a ~a ~2,'0d ~2,'0d:~2,'0d:~2,'0d ~d"
-                 (aref +short-day-names+ day)
-                 (aref +short-month-names+ (1- month))
-                 date hour minute second year))))
+  (multiple-value-bind
+        (second minute hour date month year day)
+      (get-decoded-time)
+    (format nil "~a ~a ~2,'0d ~2,'0d:~2,'0d:~2,'0d ~d"
+            (aref +short-day-names+ day)
+            (aref +short-month-names+ (1- month))
+            date hour minute second year)))
 
 (defun date ()                          ; PSL
   "(date): string expr
 The date in the form \"day-month-year\"
 1 lisp> (date)
 \"21-Jan-1997\""
-  (the simple-string
-       (multiple-value-bind
-             (second minute hour date month year)
-           (get-decoded-time)
-         (declare (ignore second minute hour))
-         (format nil "~2,'0d-~a-~d"
-                 date (aref +short-month-names+ (1- month)) year))))
+  (multiple-value-bind
+        (second minute hour date month year)
+      (get-decoded-time)
+    (declare (ignore second minute hour))
+    (format nil "~2,'0d-~a-~d"
+            date (aref +short-month-names+ (1- month)) year)))
+
+(declaim (ftype (cl:function () unsigned-byte) datestamp))
 
 (defalias datestamp get-universal-time
   "The number of seconds that have elapsed since some epoch.
@@ -2939,13 +2941,16 @@ used to determine an absolute date or time!")
   (/ 1000 internal-time-units-per-second)
   "Multiplier to convert internal time units to milliseconds.")
 
+(declaim (ftype (cl:function () (integer 0)) time))
+
 (defun time ()                          ; PSL
   "(time): integer expr
 Elapsed time from some arbitrary initial point in milliseconds."
   ;; This is used for timing computations, so use run time.
-  (the (integer 0)
-       (values (round (* (get-internal-run-time)
-                         +milliseconds-per-internal-time-unit+)))))
+  (values (round (* (get-internal-run-time)
+                    +milliseconds-per-internal-time-unit+))))
+
+(declaim (ftype (cl:function () list) oblist))
 
 (defun oblist ()                        ; CSL
   "Return the Standard Lisp object list.
@@ -2954,6 +2959,8 @@ current package."
   (let (lst)
     (do-symbols (s) (push s lst))
     lst))
+
+(declaim (ftype (cl:function () null) reclaim))
 
 (defun reclaim ()
   "(reclaim): nil expr
@@ -2967,6 +2974,8 @@ and updates gctime*."
   #+CCL (ccl:gc)
   )
 
+(declaim (ftype (cl:function ((integer 0)) t) %nth-room-value)) ; ???
+
 #+CLISP
 (defun %nth-room-value (n)
   "Return the Nth multiple value provided by CLISP `room' function.
@@ -2974,13 +2983,14 @@ Suppress the printed output."
   (let ((*standard-output* (make-broadcast-stream)))
     (nth-value n (room nil))))
 
+(declaim (ftype (cl:function () (integer 0)) gctime))
+
 #-CCL
 (defun gctime ()
   "The total time (in milliseconds) spent in garbage collection."
-  (the (integer 0)
-       (values (round (* #+SBCL sb-ext:*gc-run-time*
-                         #+CLISP (%nth-room-value 5)
-                         +milliseconds-per-internal-time-unit+)))))
+  (values (round (* #+SBCL sb-ext:*gc-run-time*
+                    #+CLISP (%nth-room-value 5)
+                    +milliseconds-per-internal-time-unit+))))
 
 (defvar gcknt* 0
   "gcknt* = [Initially: 0] global
@@ -2992,6 +3002,8 @@ incrementally, as desired.")
 
 (defvar *previous-gc-run-time* 0
   "Total (internal) GC time up to previous garbage collection.")
+
+(declaim (ftype (cl:function () null) %gc-reporting %run-gc-hook))
 
 (defun %gc-reporting ()
   "Increment garbage collection count and optionally output a report.
@@ -3035,17 +3047,20 @@ A function hung on the garbage collection hook."
 ;;       (funcall %old-gc%)
 ;;       (format t "Garbage collection called."))))
 
+(declaim (ftype (cl:function () (integer 0)) gtheap))
+
 (defun gtheap ()
   "Size of the free dynamic space in bytes."
-  (the integer                          ; should be (integer 0) !!!!!
-       #+SBCL (- (sb-ext:dynamic-space-size)
-                 (let* ((s (with-output-to-string (*standard-output*)
-                             (room nil)))
-                        (p (position-if #'digit-char-p s)))
-                   (read-from-string
-                    (remove #\, (subseq s p (position #\Space s :start p))))))
-       #+CLISP (%nth-room-value 1)
-       #+(not (or SBCL CLISP)) 0))
+  #+SBCL (- (sb-ext:dynamic-space-size)
+            (let* ((s (with-output-to-string (*standard-output*)
+                        (room nil)))
+                   (p (position-if #'digit-char-p s)))
+              (read-from-string
+               (remove #\, (subseq s p (position #\Space s :start p))))))
+  #+CLISP (%nth-room-value 1)
+  #+(not (or SBCL CLISP)) 0)
+
+(declaim (ftype (cl:function (t) list) explode2 explode2uc))
 
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
@@ -3068,21 +3083,32 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
              (cl:float (%prin-float-to-string u))
              (t (princ-to-string u))))))
 
+(declaim (inline concat2)
+         (ftype (cl:function (string string) ; might not be simple!
+                             simple-string)
+                concat2))
+
 (defun concat2 (s1 s2)
   "Concatenates its two string arguments, returning the newly created string."
-  (declare (string s1 s2))              ; might not be simple!
-  (the simple-string (concatenate 'string s1 s2)))
+  (concatenate 'string s1 s2))
+
+(declaim (inline concat)
+         (ftype (cl:function (&rest string) ; might not be simple!
+                             simple-string)
+                concat))
 
 (defun concat (&rest s)
   "Concatenates all of its string arguments, returning the newly created string."
   ;; Flagged variadic in clprolo.
-  ;; (declare ((list string) s))  ; can't easily specify list of strings!
-  (the simple-string (cl:apply #'concatenate 'string s)))
+  (cl:apply #'concatenate 'string s))
 
 ;; (defalias allocate-string cl:make-string ; PSL
 ;;   "(allocate-string SIZE:integer): string expr
 ;; Constructs and returns a string with SIZE characters. The contents of
 ;; the string are not initialized.")
+
+(declaim (inline string2list)
+         (ftype (cl:function (simple-string) list) string2list))
 
 (defun string2list (s)                  ; PSL
   "(string2list S:string): inum-list expr
@@ -3090,22 +3116,24 @@ Creates a list of length (add1 (size S)), converting the ASCII
 characters into small integers.
 lisp> (string2list \"STRING\")
 \(83 84 82 73 78 71)"
-  (declare (simple-string s))
-  (cl:map 'list
-             #'(lambda (x) (cl:char-code x))
-             s))
+  (cl:map 'list #'cl:char-code s))
+
+(declaim (ftype (cl:function ((or (unsigned-byte 8) symbol)) character)
+                %character))
 
 (defun %character (x)
   "Generalize cl:character to accept also a character code."
-  (declare (type (or (unsigned-byte 8) symbol) x))
-  (the character
-       (if (integerp x)
-           (if (<= 0 x 255)             ; (and (<= 0 x) (<= x 255))
-               ;; Was 127, but then reading rlisp/tok.red fails!
-               ;; Should 128 -> nil as specified for PSL?
-               (code-char x)
-               (error-internal "~d is not a character code" x))
-           (%id-to-char-invert-case x))))
+  (if (integerp x)
+      (if (<= 0 x 255)                  ; (and (<= 0 x) (<= x 255))
+          ;; Was 127, but then reading rlisp/tok.red fails!
+          ;; Should 128 -> nil as specified for PSL?
+          (code-char x)
+          (error-internal "~d is not a character code" x))
+      (%id-to-char-invert-case x)))
+
+(declaim (inline list2string)
+         (ftype (cl:function (list) simple-string)
+                list2string list2widestring))
 
 (defun list2string (l)                  ; PSL
   "(list2string L:inum-list): string expr
@@ -3115,8 +3143,9 @@ range of 0 ... 127 will result in an error.
 lisp> (list2string '(83 84 82 73 78 71))
 \"STRING\"
 Identifiers are case-inverted."
-  (declare (list l))
   (cl:map 'string #'%character l))
+
+(declaim (ftype (cl:function (list) simple-string) list2widestring))
 
 (defun list2widestring (u)
   "Take a list U of integers (each in the range 0-0x0010ffff) and turn
@@ -3127,11 +3156,14 @@ Identifiers are case-inverted."
   ;; This is a re-implementation of the procedure in rlisp/tok.red.
   ;; It must be flagged lose in clprolo.
   ;; It should make string!-store etc. redundant.
-  (declare (list u))
-  (cl:map 'string
-          #'(lambda (x)
-              (if (integerp x) (code-char x) (%id-to-char-invert-case x)))
+  (cl:map 'string #'(lambda (x)
+                      (if (integerp x)
+                          (code-char x)
+                          (%id-to-char-invert-case x)))
           u))
+
+(declaim (inline widestring2list)
+         (ftype (cl:function (simple-string) list) widestring2list))
 
 (defun widestring2list (u)
   "Given a string U that may contain bytes that are over 127, return a
@@ -3141,7 +3173,6 @@ are not valid UTF-8 is to be considered undefined."
   ;; This is a re-implementation of the procedure in rlisp/tok.red.
   ;; It must be flagged lose in clprolo.
   ;; It should make moan!-if!-truncated etc. redundant.
-  (declare (simple-string u))
   (cl:map 'list #'cl:char-code u))
 
 ;; (defun string-store (s i x)              ; PSL
@@ -3149,27 +3180,32 @@ are not valid UTF-8 is to be considered undefined."
 ;; Stores into a PSL string. String indexes start with 0."
 ;;   (setf (aref s i) (%character x)))
 
+(declaim (ftype (cl:function (simple-string) (integer 0)) string-length))
+
 (defalias string-length cl:length     ; PSL
   "(string-length S:string): integer expr
 Returns the number of elements in a PSL string. Since indexes start with
 index 0, the size is one larger than the greatest legal index. Compare this
 function with string-upper-bound, documented below.")
 
+(declaim (inline char-downcase red-char-downcase char-upcase)
+         (ftype (cl:function (symbol) symbol)
+                char-downcase red-char-downcase char-upcase))
+
 (defun char-downcase (c)                ; CSL
   "Convert single-character identifier C to lower case."
   ;; NB: upcase because of symbol name case inversion!
-  (declare (symbol c))
-  (the symbol
-       (values (cl:intern (cl:string-upcase (cl:symbol-name c))))))
+  (values (cl:intern (cl:string-upcase (cl:symbol-name c)))))
 
 (defalias red-char-downcase char-downcase) ; PSL
 
 (defun char-upcase (c)                  ; CSL
   "Convert single-character identifier C to lower case."
   ;; NB: downcase because of symbol name case inversion!
-  (declare (symbol c))
-  (the symbol
-       (values (cl:intern (cl:string-downcase (cl:symbol-name c))))))
+  (values (cl:intern (cl:string-downcase (cl:symbol-name c)))))
+
+(declaim (inline int2id)
+         (ftype (cl:function ((unsigned-byte 8)) symbol) int2id))
 
 (defun int2id (i)                       ; PSL
   "(int2id I:integer): id expr
@@ -3181,8 +3217,10 @@ id NIL is always found by (int2id 128)."
   ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
   ;;   intern list2string list x;
   ;; (unless (= i 128) (%intern-character (code-char i)))
-  (declare (type (unsigned-byte 8) i))
-  (the symbol (%intern-character-invert-case (code-char i))))
+  (%intern-character-invert-case (code-char i)))
+
+(declaim (inline id2int char-code)
+         (ftype (cl:function (symbol) (unsigned-byte 8)) id2int char-code))
 
 (defun id2int (d)                       ; PSL
   "(id2int D:id): integer expr
@@ -3191,15 +3229,14 @@ Returns the id space position of D as a LISP integer."
   ;; inline procedure id2int x; % Gets first octet of UTF-8 form of name
   ;;   car string2list x;
   ;; (if d (cl:char-code (aref (symbol-name d) 0)) 128)
-  (declare (symbol d))
-  (the (unsigned-byte 8)
-       (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0)))))
+  (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0))))
 
 (defun char-code (c)                    ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
-  (declare (symbol c))
-  (the (unsigned-byte 8)
-       (cl:char-code (character c))))
+  (cl:char-code (character c)))
+
+(declaim (inline id2string symbol-name)
+         (ftype (cl:function (symbol) simple-string) id2string symbol-name))
 
 (defun id2string (d)                    ; PSL
   "(id2string D:id): string expr
@@ -3211,15 +3248,18 @@ which contain special characters. Any character which follows the character
 character ! does not appear in the result.
 1 lisp> (id2string 'is-!%)
 \"is-%\""
-  (declare (symbol d))
-  (the simple-string (%string-invert-case (cl:symbol-name d))))
+  (%string-invert-case (cl:symbol-name d)))
 
 (defalias symbol-name id2string)
 
+(declaim (inline string-downcase)
+         (ftype (cl:function ((or symbol simple-string)) simple-string) string-downcase))
+
 (defun string-downcase (u)
   "Convert identifier or string U to a lower-case string."
-  (declare (type (or symbol simple-string) u))
-  (the simple-string (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u))))
+  (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u)))
+
+(declaim (ftype (cl:function (integer integer) integer) land lshift))
 
 (defalias land cl:logand           ; PSL
   "(land U:integer V:integer): integer expr
@@ -3234,15 +3274,20 @@ by 2 to the K power. Negative values are acceptable for K, and cause a
 right shift (in the usual manner). Lshift is a logical shift, so right
 shifts do not resemble division by a power of 2.")
 
+(declaim (inline list2vector list-to-vector)
+ (ftype (cl:function (list) simple-vector) list2vector list-to-vector))
+
 (defun list2vector (l)                  ; PSL
   "(list2vector L:list): vector expr
 Copy the elements of the list into a vector of the same size.
 1 lisp> (list2vector '(V E C T O R))
 [V E C T O R]"
-  (declare (list l))
-  (the simple-vector (cl:apply #'cl:vector l)))
+  (cl:apply #'cl:vector l))
 
 (defalias list-to-vector list2vector)
+
+(declaim (inline vector2list)
+         (ftype (cl:function (simple-vector) list) vector2list))
 
 (defun vector2list (v)                  ; PSL (should be flagged lose!)
   "(vector2list V:vector): list expr
@@ -3250,8 +3295,9 @@ Create a list of the same size as V, the elements are copied in a left to right
 order.
 1 lisp> (vector2list [L I S T])
 \(L I S T)"
-  (declare (simple-vector v))
-  (the list (cl:map 'list #'cl:identity v)))
+  (cl:map 'list #'cl:identity v))
+
+(declaim (ftype (cl:function (t) t) copy))
 
 (defalias copy cl:copy-tree        ; PSL
   "(copy X:any): any expr
@@ -3260,6 +3306,8 @@ elements (for example ids, strings, and vectors) are not.")
 
 ;; REDUCE needs complexp in various places but also needs to be able
 ;; to overwrite it, as in rlisp88.tst:
+(declaim (ftype (cl:function (t) boolean) complexp))
+
 (defalias complexp cl:complexp)
 
 ;; The next three PSL definitions are based on those at the end of
@@ -3279,13 +3327,17 @@ elements (for example ids, strings, and vectors) are not.")
   "Evaluate the expression U at load time only."
   `(eval-when (:load-toplevel :execute) ,u))
 
+(declaim (ftype (cl:function (symbol) list) prop plist))
+
 (defalias prop cl:symbol-plist)    ; PSL
 (defalias plist cl:symbol-plist)   ; CSL
+
+(declaim (inline setprop)
+         (ftype (cl:function (symbol list) list) setprop))
 
 (defun setprop (u l)                    ; PSL
   "(setprop U:id L:any): L:any expr
 Store item L as the property list of U."
-  (declare (symbol u))
   (setf (symbol-plist u) l))
 
 ;; CL union and intersection return different orderings that those in
@@ -3295,21 +3347,28 @@ Store item L as the property list of U."
 ;; define an initial version here, which will be replaced when
 ;; building rlisp:
 
+(declaim (ftype (cl:function (list list) list) union))
+
 (defun union (x y)                      ; PSL
   "(union X:list Y:list): list expr
 Returns the union of sets X and Y."
-  (declare (list x y))
-  (the list (cl:union x y :test #'equal)))
+  (cl:union x y :test #'equal))
+
+(declaim (ftype (cl:function (number number) number) mod))
 
 (defalias mod cl:mod) ; not just imported because cali redefines mod
+
+(declaim (ftype (cl:function (integer integer) unsigned-byte) gcdn lcmn))
+
 (defalias gcdn cl:gcd)
 (defalias lcmn cl:lcm)
+
+(declaim (ftype (cl:function (symbol symbol) boolean) orderp))
 
 (defun orderp (u v)
   "Return true if U = V or U sorts before V, where U and V are identifiers.
 Ordering is lexicographic with upper-case letters sorting before
 lower-case letters (i.e. ASCII code U <= ASCII code V)."
-  (declare (symbol u v))
   ;; (string<=
   ;;  (%string-invert-case (cl:symbol-name u))
   ;;  (%string-invert-case (cl:symbol-name v)))
@@ -3334,10 +3393,13 @@ lower-case letters (i.e. ASCII code U <= ASCII code V)."
 
 (defvar bfz*)
 
+(declaim (ftype (cl:function (double-float) cons) fl2bf))
+
 (defun fl2bf (x)
   "Convert float x to REDUCE binary bigfloat format."
   ;; Replace default version defined in "arith/smlbflot.red".
-  (if (cl:zerop x) bfz*
+  (if (cl:zerop x)
+      bfz*
       (multiple-value-bind (signif expon sign)
           (integer-decode-float x)
         (cons '\:rd\: (cons (* sign signif) expon)))))
@@ -3347,16 +3409,20 @@ lower-case letters (i.e. ASCII code U <= ASCII code V)."
 (defvar cursym*)
 (defvar curescaped*)
 
+(declaim (ftype (cl:function (t) boolean) yesp))
+
 (defun yesp (u)
   "Ask the user the question that is the value of U.
 This may be an atom or a list."
-  ;; Redefine yesp and yesp1 defined in "rlisp/inter.red".
+  ;; Redefines yesp and yesp1 defined in "rlisp/inter.red".
   (let ((*print-case* :downcase))
     (if (atom u)
         (y-or-n-p "~a" u)
         (y-or-n-p "~a~{ ~a~}" (car u) (cdr u)))))
 
 (flag '(yesp yesp1) 'lose)
+
+(declaim (ftype (cl:function (t (integer 0)) t) resource-limit))
 
 (defun resource-limit (exprn time_limit)
   "Evaluate EXPRN until TIME_LIMIT seconds have expired.
@@ -3409,6 +3475,8 @@ rather like errorset."
 ;; the associated value.  If there is no such entry, gethash returns
 ;; default, which is nil if not specified.
 
+(declaim (ftype (cl:function (t t t) t) puthash))
+
 (defun puthash (key table val)
   "Make a new entry with the specified key KEY in hash
 table TABLE with value VAL.  If an entry with the specified key
@@ -3419,6 +3487,8 @@ already exists, it is removed before the new entry is added."
 ;; remhash removes any entry for key in hash-table. This is a
 ;; predicate that is true if there was an entry or false if there was
 ;; not.
+
+(declaim (ftype (cl:function (hash-table) list) hashcontents))
 
 (defun hashcontents (table)
   ;; Not defined in Common Lisp but used in REDUCE.
