@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-06 16:07:05 franc>
+;; Time-stamp: <2026-01-07 10:18:01 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2217,10 +2217,10 @@ EXPR PROCEDURE EXPAND(L,FN);
       ELSE LIST(FN, CAR L, EXPAND(CDR L, FN));"
   ;; But above definition does not always return a list, since CAR L
   ;; may be anything!  The following definition should be OK.
-  ;; **** BUT BETTER TO REWRITE USING LOOP. *****
-  (if (null (cddr l))
-      (list fn (car l) (cadr l))
-      (list fn (car l) (expand (cdr l) fn))))
+  ;; BETTER TO REWRITE USING LOOP?
+  (list fn (car l) (if (null (cddr l))
+                       (cadr l)
+                       (expand (cdr l) fn))))
 
 (defmacro function (fn)
   "FUNCTION(FN:function):function noeval, nospread
@@ -2338,7 +2338,7 @@ non-alphanumeric character by its value.  Called by `open', etc."
   ;; A simplified version of the Elisp function
   ;; `substitute-in-file-name'.
   ;; Replace environment variables with their values:
-  #+SBCL (setq filename (namestring (sb-ext:native-pathname filename)))
+  ;; #+SBCL (setq filename (namestring (sb-ext:parse-native-namestring filename)))
   (loop
      with beg and end = 0 and l
      while
