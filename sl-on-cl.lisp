@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-08 12:12:42 franc>
+;; Time-stamp: <2026-01-08 16:36:46 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3659,7 +3659,10 @@ not sucessful, the value Nil is returned."
 (defun filep (file)                     ; PSL
   "Return false if FILE does not exist, otherwise return the truename of
 FILE.  Substitutes environment variables in file name."
-  (cl:probe-file (substitute-in-file-name file)))
+  (probe-file
+   #+SBCL (sb-ext:native-pathname (substitute-in-file-name file))
+   #-SBCL (substitute-in-file-name file)
+   ))
 
 (declaim (inline file-write-date)
          (ftype (cl:function (simple-string) (or unsigned-byte null))
