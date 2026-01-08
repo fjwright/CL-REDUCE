@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-08 11:41:55 franc>
+;; Time-stamp: <2026-01-08 12:12:42 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2315,7 +2315,7 @@ error occurs if the requested line length is too large for the currently
 selected output file or LEN is negative or zero.
 ***** LEN is an invalid line length"
   (if len
-      (if (or (not (integerp len)) (<= len 0))
+      (if #|(or (not (integerp len))|# (<= len 0);)
           (error-internal "~a is an invalid line length" len)
           (prog1 %linelength (setq %linelength len)))
       %linelength))
@@ -3124,11 +3124,11 @@ lisp> (string2list \"STRING\")
 (defun %character (x)
   "Generalize cl:character to accept also a character code."
   (if (integerp x)
-      (if (<= 0 x 255)                  ; (and (<= 0 x) (<= x 255))
+      ;; (if (<= 0 x 255)                  ; (and (<= 0 x) (<= x 255))
           ;; Was 127, but then reading rlisp/tok.red fails!
           ;; Should 128 -> nil as specified for PSL?
           (code-char x)
-          (error-internal "~d is not a character code" x))
+          ;; (error-internal "~d is not a character code" x))
       (%id-to-char-invert-case x)))
 
 (declaim (inline list2string)
@@ -3869,14 +3869,14 @@ files depends on the version of Common Lisp.)"
   (if *int
       (format t "FASLOUT ~a: IN files$ or type in expressions.
 When all done, execute FASLEND;~2%" name))
-  (unless
+  ;; (unless
       (setq %faslout-stream
             (cl:open (setq %faslout-name.lisp (concat2 name ".lisp"))
                      :direction :output :if-exists :supersede
                      #-CCL :external-format
                      #+CLISP charset:UTF-8
                      #-(or CLISP CCL) :UTF-8))
-    (error-internal "FASLOUT cannot open ~a" %faslout-name.lisp))
+    ;; (error-internal "FASLOUT cannot open ~a" %faslout-name.lisp))
   (if %faslout-header
       (cl:princ %faslout-header %faslout-stream))
   (setf %faslout-saved-prettyprint (symbol-function 'prettyprint)
