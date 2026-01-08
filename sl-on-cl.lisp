@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-07 18:13:59 franc>
+;; Time-stamp: <2026-01-08 11:41:55 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2155,6 +2155,17 @@ Otherwise revert to the Common Lisp apply."
 ;;       | returned is EVAL CADDR FN.
 ;; END;
 
+(declaim (inline evlis)
+         (ftype (cl:function (list) list) evlis))
+
+(defun evlis (u)
+  "EVLIS(U:any-list):any-list eval, spread
+EVLIS returns a list of the evaluation of each element of U.
+EXPR PROCEDURE EVLIS(U);
+   IF NULL U THEN NIL
+      ELSE EVAL CAR U . EVLIS CDR U;"
+  (cl:mapcar #'eval u))
+
 (declaim (ftype (cl:function (t) t) eval))
 
 (defun eval (u)
@@ -2192,17 +2203,6 @@ Otherwise revert to the Common Lisp eval."
 ;;    ELSE IF CAR FN EQ 'MACRO THEN
 ;;       RETURN EVAL APPLY(CDR FN, LIST U)
 ;; END;
-
-(declaim ; (inline evlis)                 ; need to be earlier!
-         (ftype (cl:function (list) list) evlis))
-
-(defun evlis (u)
-  "EVLIS(U:any-list):any-list eval, spread
-EVLIS returns a list of the evaluation of each element of U.
-EXPR PROCEDURE EVLIS(U);
-   IF NULL U THEN NIL
-      ELSE EVAL CAR U . EVLIS CDR U;"
-  (cl:mapcar #'eval u))
 
 (declaim (ftype (cl:function (cons function) list) expand))
 
@@ -2489,6 +2489,14 @@ This is the only function that actually produces graphical output."
 ;; symbolic procedure princ u; prin2 u;
 ;; so define it that way below and then flag it lose in clprolo.red.
 
+(declaim (inline terpri)
+         (ftype (cl:function () null) terpri))
+
+(defun terpri ()
+  "TERPRI():NIL
+The current print line is terminated."
+  (setf %posn 0) (cl:terpri) nil)
+
 (declaim (inline print)
          (ftype (cl:function (t) t) print))
 
@@ -2520,6 +2528,14 @@ of U is returned."
     (t (%prin-cons u #'prin1)))
   u)
 
+(declaim (inline %princ-id-to-string)
+         (ftype (cl:function (symbol) simple-string)
+                %princ-id-to-string %prin1-id-to-string))
+
+(defun %princ-id-to-string (u)
+  "Convert identifier U to a string without any escapes."
+  (%string-invert-case (cl:symbol-name u)))
+
 (defun prin2 (u)
   "PRIN2(U:any):any eval, spread
 U is displayed upon the currently selected print device but output is
@@ -2540,14 +2556,6 @@ in vector-notation.  The value of U is returned."
   u)
 
 (defalias princ prin2)
-
-(declaim ; (inline %princ-id-to-string)   ; needs to be earlier!
-         (ftype (cl:function (symbol) simple-string)
-                %princ-id-to-string %prin1-id-to-string))
-
-(defun %princ-id-to-string (u)
-  "Convert identifier U to a string without any escapes."
-  (%string-invert-case (cl:symbol-name u)))
 
 (defun %prin1-id-to-string (u)
   "Convert identifier U to a string including appropriate `!' escapes."
@@ -2789,14 +2797,6 @@ Comments delimited by % and end-of-line are not transparent to READCH."
               (%intern-character-preserve-case (cl:char-upcase c))
               ;; preserve case
               (%intern-character-invert-case c))))))
-
-(declaim ; (inline terpri)                ; needs to be earlier!
-         (ftype (cl:function () null) terpri))
-
-(defun terpri ()
-  "TERPRI():NIL
-The current print line is terminated."
-  (setf %posn 0) (cl:terpri) nil)
 
 (declaim (inline %default-write-stream)
          (ftype (cl:function () filehandle) %default-write-stream))
