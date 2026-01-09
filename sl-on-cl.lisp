@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-08 16:36:46 franc>
+;; Time-stamp: <2026-01-09 16:09:10 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2388,12 +2388,45 @@ parent.  Called by `open' and `cd' on SBCL."
   #+CCL (uiop/filesystem:truenamize filename) ; requires asdf, so remove later?
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(declaim (ftype (cl:function (simple-string) pathname) %tidy-pathname))
+
+(defun %tidy-pathname (file-namestring)
+  "Return the full pathname of FILE-NAMESTRING (which need not exist).
+If the first component of FILE-NAMESTRING is an environment variable
+of the form `$name' then replace it by its value.
+Called by `open', `cd', `filep', `file-write-date'."
+  (let* ((file-pathname
+          #+SBCL (sb-ext:native-pathname file-namestring)
+          #-SBCL (pathname file-namestring) ; FIX ME
+          )
+         (dir (pathname-directory file-pathname))
+         root)
+    (when (and (consp dir)
+               (eq (car dir) :relative)         ; relative filename
+               (stringp (setq root (cadr dir))) ; root := root component
+               (char= (schar root 0) #\$)       ; root start with $
+               (setq root (getenv (subseq root 1)))) ; root := new root
+      (setq root                        ; root as pathname
+            #+SBCL (sb-ext:parse-native-namestring
+                    root nil *default-pathname-defaults* :as-directory t)
+            #-SBCL (pathname root)      ; FIX ME
+            dir                         ; new full directory
+            (append (pathname-directory root) (cddr dir))
+            file-pathname               ; new full pathname
+            (make-pathname
+             :device (pathname-device root)
+             :directory dir :defaults file-pathname)))
+    file-pathname))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; CLISP user variable CUSTOM:*DEVICE-PREFIX* controls translation
 ;; between Cygwin pathnames (e.g., #P"/cygdrive/c/gnu/clisp/") and
 ;; native Win32 pathnames (e.g., #P"C:\\gnu\\clisp\\").
 
-(declaim (ftype (cl:function ((or simple-string pathname) symbol) filehandle)
-                open))
+(declaim (ftype (cl:function (simple-string symbol) filehandle) open))
 
 (defun open (file how)
   "OPEN(FILE:any, HOW:id):any eval, spread
@@ -2405,19 +2438,19 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
-  (setq file (substitute-in-file-name file)) ; substitute environment variables
-  #-CLISP (setq file (expand-file-name file)) ; and then expand . and ..
-  ;; #+cygwin (setq file (win-to-cyg file))
-  #+cygwin (setq file (parse-namestring file)) ; convert Windows filename to Cygwin format
+  ;; (setq file (substitute-in-file-name file)) ; substitute environment variables
+  ;; #-CLISP (setq file (expand-file-name file)) ; and then expand . and ..
+  ;; ;; #+cygwin (setq file (win-to-cyg file))
+  ;; #+cygwin (setq file (parse-namestring file)) ; convert Windows filename to Cygwin format
   (case how
     (input
-     (let ((fh (cl:open file :direction :input)))
+     (let ((fh (cl:open (%tidy-pathname file) :direction :input)))
        ;; An input filehandle is a pair of the form
        ;; (input-stream . echo-stream):
        (cons fh (make-echo-stream fh *standard-output*))))
     (output
      (list 'file
-           (cl:open file :direction :output
+           (cl:open (%tidy-pathname file) :direction :output
                     :if-exists :supersede :if-does-not-exist :create)))
     (t (error-internal "~a is not option for OPEN" how))))
 
@@ -3659,10 +3692,7 @@ not sucessful, the value Nil is returned."
 (defun filep (file)                     ; PSL
   "Return false if FILE does not exist, otherwise return the truename of
 FILE.  Substitutes environment variables in file name."
-  (probe-file
-   #+SBCL (sb-ext:native-pathname (substitute-in-file-name file))
-   #-SBCL (substitute-in-file-name file)
-   ))
+  (probe-file (%tidy-pathname file)))
 
 (declaim (inline file-write-date)
          (ftype (cl:function (simple-string) (or unsigned-byte null))
@@ -3672,7 +3702,7 @@ FILE.  Substitutes environment variables in file name."
   "Return the time at which FILE was last written (or created), or nil if
 such a time cannot be determined.  Substitutes environment variables
 in file name."
-  (cl:file-write-date (substitute-in-file-name file)))
+  (cl:file-write-date (%tidy-pathname file)))
 
 #+SBCL (import 'sb-posix:getpid)
 #+CLISP (declaim (ftype (cl:function () unsigned-byte) getpid)) ; ???
