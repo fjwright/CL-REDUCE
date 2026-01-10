@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-10 15:07:42 franc>
+;; Time-stamp: <2026-01-10 16:30:36 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -27,7 +27,7 @@
 
 ;; Uncomment the next line for a debug build; comment it out for a
 ;; production build:
-(eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
+;; (eval-when (:compile-toplevel :load-toplevel :execute) (push :debug *features*))
 
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
@@ -1924,7 +1924,7 @@ EXPR PROCEDURE LENGTH(X);
       ELSE PLUS(1, LENGTH CDR X);"
   ;; The above recursive definition uses too much stack.
   ;; The CL length function cannot be used because it does not accept
-  ;; atoms or dotted pairs!
+  ;; atoms or improper lists (with a non-nil final cdr)!
   ;; This iterative implementation is based on the description of
   ;; list-length in the CLHS:
   (do ((n 0 (1+ n))                     ; counter
