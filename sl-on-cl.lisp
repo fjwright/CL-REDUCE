@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-09 16:09:10 franc>
+;; Time-stamp: <2026-01-10 15:07:42 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2395,11 +2395,14 @@ parent.  Called by `open' and `cd' on SBCL."
 (defun %tidy-pathname (file-namestring)
   "Return the full pathname of FILE-NAMESTRING (which need not exist).
 If the first component of FILE-NAMESTRING is an environment variable
-of the form `$name' then replace it by its value.
-Called by `open', `cd', `filep', `file-write-date'."
+of the form `$name' then replace it by its value, which need not end
+with a directory separator.  On MS Windows, directory separators can
+be either \ or /.  Called by `open', `cd', `filep', `file-write-date'."
+  #+(or WIN32 CYGWIN) ;; convert \ to /:
+  (setq file-namestring (substitute #\/ #\\ file-namestring))
   (let* ((file-pathname
           #+SBCL (sb-ext:native-pathname file-namestring)
-          #-SBCL (pathname file-namestring) ; FIX ME
+          #-SBCL (pathname file-namestring)
           )
          (dir (pathname-directory file-pathname))
          root)
@@ -2408,12 +2411,16 @@ Called by `open', `cd', `filep', `file-write-date'."
                (stringp (setq root (cadr dir))) ; root := root component
                (char= (schar root 0) #\$)       ; root start with $
                (setq root (getenv (subseq root 1)))) ; root := new root
+      #+(or WIN32 CYGWIN) ;; convert \ to /:
+      (setq root (substitute #\/ #\\ root))
+      ;; Ensure trailing /:
+      (when (char/= (schar root (1- (cl:length root))) #\/)
+        (setq root (concatenate 'string root "/")))
       (setq root                        ; root as pathname
-            #+SBCL (sb-ext:parse-native-namestring
-                    root nil *default-pathname-defaults* :as-directory t)
-            #-SBCL (pathname root)      ; FIX ME
+            #+SBCL (sb-ext:native-namestring root)
+            #-SBCL (pathname root)
             dir                         ; new full directory
-            (append (pathname-directory root) (cddr dir))
+            (cl:append (pathname-directory root) (cddr dir))
             file-pathname               ; new full pathname
             (make-pathname
              :device (pathname-device root)
