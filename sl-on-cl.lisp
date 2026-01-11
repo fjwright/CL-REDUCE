@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-10 16:30:36 franc>
+;; Time-stamp: <2026-01-11 12:36:17 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2204,7 +2204,7 @@ Otherwise revert to the Common Lisp eval."
 ;;       RETURN EVAL APPLY(CDR FN, LIST U)
 ;; END;
 
-(declaim (ftype (cl:function (cons function) list) expand))
+(declaim (ftype (cl:function (cons function) t) expand))
 
 (defun expand (l fn)
   "EXPAND(L:list, FN:function):list eval, spread
@@ -2215,12 +2215,11 @@ where n is the number of elements in L, Li is the ith element of L.
 EXPR PROCEDURE EXPAND(L,FN);
    IF NULL CDR L THEN CAR L
       ELSE LIST(FN, CAR L, EXPAND(CDR L, FN));"
-  ;; But above definition does not always return a list, since CAR L
-  ;; may be anything!  The following definition should be OK.
-  ;; BETTER TO REWRITE USING LOOP?
-  (list fn (car l) (if (null (cddr l))
-                       (cadr l)
-                       (expand (cdr l) fn))))
+  ;; NB: This function need not return a list, since CAR L may be
+  ;; anything!
+  (if (null (cdr l))
+      (car l)
+      (list fn (car l) (expand (cdr l) fn))))
 
 (defmacro function (fn)
   "FUNCTION(FN:function):function noeval, nospread
@@ -3380,22 +3379,23 @@ elements (for example ids, strings, and vectors) are not.")
 Store item L as the property list of U."
   (setf (symbol-plist u) l))
 
-;; CL union and intersection return different orderings that those in
-;; the REDUCE source, which leads to different (although probably not
+;; CL union and intersection return different orderings than those in
+;; rlisp/rsupport.red, which leads to different (although probably not
 ;; incorrect) results, so don't use them.  However, union is needed in
-;; the build process before it is defined in the rlisp package, so
+;; the build process before it is defined in rlisp/rsupport.red, so
 ;; define an initial version here, which will be replaced when
 ;; building rlisp:
 
-(declaim (ftype (cl:function (list list) list) union))
-
+;; (declaim (ftype (cl:function (list list) list) union))
+;; Declaiming this type breaks crack, which can call union with an
+;; atomic argument.  (This is probably a bug in crack!)
 (defun union (x y)                      ; PSL
   "(union X:list Y:list): list expr
 Returns the union of sets X and Y."
   (cl:union x y :test #'equal))
 
-(declaim (ftype (cl:function (number number) number) mod))
-
+;; (declaim (ftype (cl:function (number number) number) mod))
+;; Declaiming this type breaks cali, which redefines mod!
 (defalias mod cl:mod) ; not just imported because cali redefines mod
 
 (declaim (ftype (cl:function (integer integer) unsigned-byte) gcdn lcmn))
@@ -3479,6 +3479,9 @@ rather like errorset."
            (t () nil))
   #-SBCL (declare (ignore time_limit))
   #-SBCL (list (eval exprn)))
+
+(import 'cl:boundp)            ; avoid the definition in alg/simp.red!
+(flag '(boundp) 'lose)
 
 
 ;;; Hash Tables
