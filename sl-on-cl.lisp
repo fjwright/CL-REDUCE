@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-11 12:36:17 franc>
+;; Time-stamp: <2026-01-12 16:13:45 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1949,8 +1949,7 @@ EXPR PROCEDURE LITER(U);
                  \n \o \p \q \r \s \t \u \v \w \x \y \z)
              :test #'eq))
 
-(declaim (inline member memq)
-         (ftype (cl:function (t t) list) member memq))
+(declaim (ftype (cl:function (t t) list) member memq))
 
 (defun member (a l)
   "(member A:any L:any): extra-boolean expr
@@ -1963,7 +1962,11 @@ to A."
   ;; (cond ((atom l) nil)
   ;;       ((equal a (car l)) l)
   ;;       (t (member a (cdr l))))
-  (and (listp l) (cl:member a l :test #'equal)))
+  (loop for tail on l do
+        (when (atom tail) (return))
+        (when (equal a (car tail)) (return tail))))
+
+(declaim (inline memq))
 
 (defun memq (a l)
   "(memq A:any L:any): extra-boolean expr
@@ -4176,8 +4179,13 @@ Called by ON/OFF COMP; see 'clrend.red'."
 
 #+ABCL (setq *autoload-verbose* t)
 
-(setf (macro-function 'cltrace) (macro-function 'trace)) ; for debugging
-(setf (macro-function 'cluntrace) (macro-function 'untrace))
+(setf (macro-function 'cltrace) (macro-function 'cl:trace)) ; for debugging
+(setf (macro-function 'cluntrace) (macro-function 'cl:untrace))
+
+#+SBCL
+(defmacro cltracebr (&rest fns)
+  "Break on entry to the specified functions and enter the debugger."
+  `(cl:trace :break t ,@fns))
 
 ;; Common Lisp symbols used in REDUCE source code:
 (import
