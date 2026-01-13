@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-11 18:27:45 franc>
+Time-stamp: <2026-01-13 16:09:18 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -20,7 +20,7 @@ From the introductory chapter of [*Common Lisp the Language, 2nd edition*, by Gu
 
 The files in this directory are intended to build and run recent versions of REDUCE on ANSI Common Lisp.  Some details depend on the implementation of Common Lisp but I try to keep these to a minimum.  At present, I support [Steel Bank Common Lisp](http://www.sbcl.org/) (SBCL), [CLISP](https://clisp.sourceforge.io/) and [Clozure Common Lisp](https://ccl.clozure.com/) (CCL) on MS Windows 11 and Ubuntu 24.  I understand that REDUCE builds and runs on SBCL, CLISP and CCL on macOS, although I don't run macOS myself.  The support for CCL is based on code provided by Marco Ferraris.  See [Status](#status) below for build and test details.
 
-I recommend SBCL because in my experience it is the fastest, it is easy to install and set up, binary distributions are readily available, and it is frequently updated.  CLISP is slow, and I find CCL tricky to install and set up.
+I recommend SBCL because in my experience it is the fastest, it is easy to install and set up, binary distributions are readily available, and it is well maintained and frequently updated.  CLISP is slow, and I find CCL tricky to install and set up.
 
 
 ## Building REDUCE
@@ -175,7 +175,7 @@ The test output differences for the `arith` and `numeric` package are identical 
 
 #### Windows
 
-REDUCE 7220 on native Windows SBCL 2.5.11.
+REDUCE 7254 on native Windows SBCL 2.6.0.
 
 No build errors.
 
