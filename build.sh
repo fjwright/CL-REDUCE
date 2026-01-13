@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-01-13 16:05:44 franc>
+# Time-stamp: <2026-01-13 17:46:01 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -109,25 +109,42 @@ fi
 
 [ -v debug ] && echo '+++++ Debug build'
 
-if [ -z "$reduce" ]; then
+if [ ! -v reduce ]
+then
     if [ -e './packages' ]; then export reduce=.
     elif [ -e '../packages' ]; then export reduce=..
     else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
     fi
 fi
 
-if [ -z "$revision" ] && type svnversion > /dev/null; then
-    packages="$reduce/packages"
-    # If $packages is a symlink then follow it (if possible):
-    if [ -L $packages ] && type readlink > /dev/null; then
-        packages=$(readlink -n "$packages")
+if [ ! -v revision ]
+then
+    if type svnversion > /dev/null
+    then
+        # Try to use Subversion in the packages directory:
+        packages="$reduce/packages"
+        # If $packages is a symlink then follow it (if possible):
+        if [ -L $packages ] && type readlink > /dev/null
+        then
+            packages=$(readlink -n "$packages")
+        fi
+        revision=$(svnversion -n "$packages")
+        # Value may be (e.g.) 4123:4168MSP so extract the second number:
+        revision=${revision/#*:}     # delete first number and ":"
+        revision=${revision/%[A-Z]*} # delete trailing letters
     fi
-    revision=$(svnversion -n "$packages")
-    # Value may be (e.g.) 4123:4168MSP so extract the second number:
-    revision=${revision/#*:}     # delete first number and ":"
-    revision=${revision/%[A-Z]*} # delete trailing letters
+    if [[ ! "$revision" =~ ^[[:digit:]]+$ ]]
+    then
+        # Try to parse the parent directory name:
+        revision=$(basename $(realpath ..))
+        shopt -s extglob
+        revision=${revision/#+([^[:digit:]])} # delete leading non-digits
+        revision=${revision/%+([^[:digit:]])} # delete trailing non-digits
+        shopt -u extglob
+    fi
 fi
-if [[ "$revision" =~ ^[[:digit:]]+$ ]]; then
+if [[ "$revision" =~ ^[[:digit:]]+$ ]]
+then
     echo '+++++ REDUCE revision number set to' $revision
 else
     echo '*** The REDUCE revision number cannot be set automatically.'
@@ -180,7 +197,7 @@ fi
 
 if [ -v bootstraponly ]
 then
-    echo 'Bootstrap only build requested.'
+    echo $'\nBootstrap only build requested.'
     exit
 fi
 
@@ -269,7 +286,7 @@ done
 
 if [ -v coreonly ]
 then
-    echo 'Core packages only build requested.'
+    echo $'\nCore packages only build requested.'
     exit
 fi
 
