@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-01-13 17:46:01 franc>
+# Time-stamp: <2026-01-14 11:39:30 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -33,7 +33,7 @@
 
 function help {
     echo 'Build REDUCE on Common Lisp'
-    echo 'Usage: ./build.sh [-h] -l <lisp> [-r revision] [-c/f] [-d] [-b/o]'
+    echo 'Usage: ./build.sh [-h] [-r revision] [-c/f] [-d] [-b/o] <lisp>'
     echo '<lisp> = sbcl/clisp/ccl'
     echo 'Option -r sets the REDUCE revision number (overriding the default).'
     echo 'Option -c ensures a clean build by deleting any previous build.'
@@ -48,7 +48,7 @@ function help {
 while getopts l:r:cfdboh option
 do
     case $option in
-        l) lisp=$OPTARG;;
+        l) lisp=$OPTARG;;       # obsolete
         r) revision=$OPTARG;;
         c) clean=true;;
         d) debug='(push :debug *features*)';;
@@ -59,6 +59,8 @@ do
         ?) exit 1;;
     esac
 done
+
+[ -v lisp ] || lisp=${!OPTIND}
 
 # The following commands to run Lisp all suppress the user
 # initialisation file.
