@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-13 18:20:31 franc>
+;; Time-stamp: <2026-01-14 14:56:51 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1486,13 +1486,15 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;; EXPR PROCEDURE ABS(U);
 ;;    IF LESSP(U, 0) THEN MINUS(U) ELSE U;
 
-(declaim (ftype (cl:function (number) number) add1 difference))
+(declaim (ftype (cl:function (number) number) add1))
 
 (defalias add1 cl:1+
   "ADD1(U:number):number eval, spread
 Returns the value of U plus 1 of the same type as U (fixed or floating).
 EXPR PROCEDURE ADD1(U);
    PLUS2(U, 1);")
+
+(declaim (ftype (cl:function (number number) number) difference))
 
 (defalias difference cl:-
   "DIFFERENCE(U:number, V:number):number eval, spread

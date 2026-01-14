@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-01-14 11:39:30 franc>
+# Time-stamp: <2026-01-14 15:17:22 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -61,6 +61,7 @@ do
 done
 
 [ -v lisp ] || lisp=${!OPTIND}
+lisp=${lisp,,}                  # ensure lower case
 
 # The following commands to run Lisp all suppress the user
 # initialisation file.
@@ -99,7 +100,7 @@ case $lisp in
         esac
         ;;
     *)
-        echo 'Error: option "-l <lisp>" is required'
+        echo $'Error: <lisp> argument is required\n'
         help
         ;;
 esac
