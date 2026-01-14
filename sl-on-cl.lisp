@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-13 16:12:07 franc>
+;; Time-stamp: <2026-01-13 18:20:31 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4116,7 +4116,7 @@ When all done, execute FASLEND;~2%" name))
 #+CCL
 (defun reduce-init-function ()
   (standard-lisp)
-  (if  (or (not (getenv "batch"))
+  (if  (or (getenv "interactive")
            (getenv "INSIDE_EMACS"))
        (progn
          #+DEBUG (format t "~&Interactive mode -- debugger enabled~%")
