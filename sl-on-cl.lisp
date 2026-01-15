@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-15 15:14:18 franc>
+;; Time-stamp: <2026-01-15 16:21:23 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4042,7 +4042,8 @@ When all done, execute FASLEND;~2%" name))
 (declaim (ftype (cl:function () t) reduce-init-function))
 
 #+SBCL
-;; See function `toplevel-repl' in "sbcl-2.2.3/src/code/toplevel.lisp".
+;; See function `toplevel-repl' in
+;; "sbcl-2.6.0/src/code/toplevel.lisp".
 (defun reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
   ;; Enable the interactive debugger only if the input and output are
@@ -4063,20 +4064,13 @@ When all done, execute FASLEND;~2%" name))
   (setq sb-ext:*evaluator-mode*
         (if *comp :compile :interpret))
   (standard-lisp)
-  ;; (loop
-  ;;  ;; CLHS recommends that there should always be an
-  ;;  ;; ABORT restart; we have this one here, and one per
-  ;;  ;; debugger level.
-  ;;  (with-simple-restart
-  ;;      (abort "~@<Exit debugger, returning to top level.~@:>")
-  ;;    (catch 'toplevel-catcher
-  ;;      (begin))))
   (with-simple-restart
       (abort "Exit REDUCE.")
     (loop
      (with-simple-restart
          (abort "Return to REDUCE.")
-       (begin)))))
+       (catch 'toplevel-catcher         ; thrown internally by SBCL
+         (begin))))))
 
 #+CLISP
 ;; See function `main-loop' in
