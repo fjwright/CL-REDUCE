@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-14 14:56:51 franc>
+;; Time-stamp: <2026-01-15 15:14:18 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1215,7 +1215,7 @@ in interpreted functions are automatically considered fluid."
 ;;; Error Handling
 ;;; ==============
 
-(define-condition sl-error-no-message (cl:error)
+(define-condition sl-error1 (cl:error)
   ()
   (:documentation "Standard Lisp error without error number or message"))
 
@@ -1225,10 +1225,10 @@ in interpreted functions are automatically considered fluid."
   "This is the simplest error return, without a message printed.
 It can be defined as ERROR(99,NIL) if necessary.
 In PSL it is throw('!$error!$,99)."
-  ;; This error is called by rederr.
-  (cl:error 'sl-error-no-message))
+  ;; This error function is called by rederr.
+  (cl:error 'sl-error1))
 
-(define-condition sl-error (sl-error-no-message)
+(define-condition sl-error (cl:error)
   ((errno :initarg :errno) (errmsg :initarg :errmsg))
   (:documentation "Standard Lisp error with an error number and message")
   (:report (lambda (condition stream)
@@ -1301,7 +1301,7 @@ dependent format."
   ;; TO DO: output to both stdout and currently selected output
   ;; device
   (handler-case (list (eval u))         ; protected form
-    (sl-error-no-message ()
+    (sl-error1 ()
       (%print-backtrace-maybe tr)
       nil)
     (sl-error (condition)
