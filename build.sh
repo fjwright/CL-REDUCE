@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-01-17 16:08:00 franc>
+# Time-stamp: <2026-01-17 16:36:21 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -80,9 +80,9 @@ case $lisp in
         ;;
     'clisp')
         runlisp='clisp -ansi -norc -E utf-8'
-        runlispfile='clisp -ansi -norc'
-        runbootstrap='clisp -q -ansi -norc -M fasl.clisp/bootstrap.mem'
-        runreduce='clisp -q -ansi -norc -M fasl.clisp/reduce.mem'
+        runlispfile="$runlisp"
+        runbootstrap="$runlisp -q -M fasl.clisp/bootstrap.mem"
+        runreduce="$runlisp -q -M fasl.clisp/reduce.mem"
         saveext='mem'
         faslext='fas'
         ;;
