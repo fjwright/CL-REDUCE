@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-22 15:45:15 franc>
+;; Time-stamp: <2026-01-22 16:00:45 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3653,9 +3653,8 @@ as a string; otherwise, return nil."
   (let ((dir-pathname (%tidy-pathname dir-namestring)))
     ;; Ensure the directory exists, and return the new simplified
     ;; current working directory as a string:
-    (when (probe-file dir-pathname)
-      (namestring
-       (setq *default-pathname-defaults* (truename dir-pathname))))))
+    (when (setq dir-pathname (probe-file dir-pathname)) ; returns truename
+      (namestring (setq *default-pathname-defaults* dir-pathname)))))
 
 #+CLISP
 (defun cd (&optional dir)               ; PSL / Unix
