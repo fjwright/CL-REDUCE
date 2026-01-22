@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-15 16:21:23 franc>
+;; Time-stamp: <2026-01-22 15:45:15 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3628,38 +3628,34 @@ COMMAND to the interpreter and return the process exit code."
 Return the current working directory in system specific format."
   (namestring (truename *default-pathname-defaults*)))
 
-(declaim (ftype (cl:function (&optional simple-string)
+(declaim (ftype (cl:function (&optional (or null simple-string))
                              (or null simple-string))
                 cd chdir))
 
 #+SBCL
-(defun cd (&optional dir)               ; PSL / Unix
-  "(cd DIR:{null,string}):{nil,string} expr
-Set the current working directory to string DIR (if supplied and
-non-empty), after substituting environment variables and then
-expanding \".\" and \"..\".  If successful then return the new current
-directory; otherwise, return nil."
-  (unless (and dir (string/= dir ""))
+(defun cd (&optional dir-namestring)    ; PSL / Unix
+  "(cd DIR-NAMESTRING:{null,string}):{nil,string} expr
+Set the current working directory to string DIR-NAMESTRING (if
+supplied, non-nil and a non-empty string), which need not end with a
+directory separator.  If the first component of DIR-NAMESTRING is an
+environment variable of the form `$name' then replace it by its value,
+which need not end with a directory separator.  On MS Windows,
+directory separators can be either \ or /.  DIR-NAMESTRING may contain
+\".\" and \"..\".  If successful then return the new current directory
+as a string; otherwise, return nil."
+  (unless (and dir-namestring (> (cl:length dir-namestring) 0))
     (return-from cd
-      (sb-ext:native-namestring *default-pathname-defaults*)))
-  ;; SBCL seems to mis-parse ".." to be the same as "." hence this
-  ;; inelegant hack.  Allow dir not to end with a separator:
-  (if (pathname-name dir)
-      (setq dir (concatenate 'string dir "/")))
-  ;; Substitute environment variables and then expand . and ..:
-  (setq dir (substitute-in-file-name dir))
-  (setq dir (expand-file-name dir))
-  (setq dir (pathname dir))
-  ;; ;; Allow dir not to end with a separator:
-  ;; (if (pathname-name dir)
-  ;;     (setq dir (make-pathname :directory
-  ;;                              (nconc (or (pathname-directory dir) '(:relative))
-  ;;                                     (list (pathname-name dir))))))
-  (setq dir (merge-pathnames dir))
-  (and (probe-file dir)
-       ;; Return the new current working directory:
-       (sb-ext:native-namestring        ; \ instead of /
-        (setq *default-pathname-defaults* dir))))
+      (namestring *default-pathname-defaults*)))
+  ;; Ensure directory by ensuring trailing /:
+  (when (char/= (schar dir-namestring (1- (cl:length dir-namestring))) #\/)
+    (setq dir-namestring (concatenate 'string dir-namestring "/")))
+  ;; Substitute any environment variable:
+  (let ((dir-pathname (%tidy-pathname dir-namestring)))
+    ;; Ensure the directory exists, and return the new simplified
+    ;; current working directory as a string:
+    (when (probe-file dir-pathname)
+      (namestring
+       (setq *default-pathname-defaults* (truename dir-pathname))))))
 
 #+CLISP
 (defun cd (&optional dir)               ; PSL / Unix
