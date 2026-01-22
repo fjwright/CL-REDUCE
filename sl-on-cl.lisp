@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-22 16:00:45 franc>
+;; Time-stamp: <2026-01-22 17:49:00 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2332,83 +2332,28 @@ Returns the number of lines printed on the current page. At the top
 of a page, 0 is returned."
   0)
 
-(declaim (ftype (cl:function (simple-string) simple-string)
-                substitute-in-file-name))
+(declaim (ftype (cl:function (simple-string &optional boolean) pathname)
+                %tidy-pathname))
 
-(defun substitute-in-file-name (filename) ; ***** TO BE REVISED! *****
-  "Return a copy of FILENAME with all environment variables substituted.
-Replace every substring of the form `$name' terminated by a
-non-alphanumeric character by its value.  Called by `open', etc."
-  ;; A simplified version of the Elisp function
-  ;; `substitute-in-file-name'.
-  ;; Replace environment variables with their values:
-  ;; #+SBCL (setq filename (namestring (sb-ext:parse-native-namestring filename)))
-  (loop
-     with beg and end = 0 and l
-     while
-       (and end (setq beg (position #\$ filename :start end)))
-     do
-       (push (subseq filename end beg) l)
-       (setq end (position-if-not #'alphanumericp filename :start (1+ beg)))
-       (push (getenv (subseq filename (1+ beg) end)) l)
-     finally
-       (if l (setq filename
-                   (cl:apply #'concatenate 'string
-                             (nreverse
-                              (if end
-                                  (push (subseq filename end) l)
-                                  l))))))
-  filename)
-
-(declaim (ftype (cl:function ((or simple-string pathname)) pathname)
-                expand-file-name))
-
-(defun expand-file-name (filename) ; ***** TO BE REVISED! *****
-  "Return a copy of FILENAME with a leading `.' replaced by the
-current working directory and each leading `..' replaced by its
-parent.  Called by `open' and `cd' on SBCL."
-  ;; A simplified version of the Elisp function `expand-file-name'.
-  ;; sb-ext:native-pathname seems necessary to preserve odd characters
-  ;; such as ^ in a filename:
-  #+SBCL (setq filename (sb-ext:native-pathname filename))
-  #-CCL
-  (let ((d (copy-list (pathname-directory filename))))
-    (when (eq (car d) :relative)
-      ;; Replace a leading "." with the current working directory:
-      (when (cl:equal (cadr d) ".")
-        (setf (cdr d) (cddr d))         ; remove "." component
-        (setq filename (merge-pathnames
-                        (make-pathname :directory d :defaults filename))))
-      ;; Replace each leading ".." with the parent directory:
-      (loop with cwd = (pathname-directory *default-pathname-defaults*)
-         while (cl:member (cadr d) '(".." :up :back))
-         do
-           (setf (cdr d) (cddr d))      ; remove ".." component
-           (setq cwd (butlast cwd))
-         finally (setq filename (merge-pathnames
-                                 (make-pathname :directory d :defaults filename)
-                                 (make-pathname :directory cwd)))))
-    filename)
-  #+CCL (uiop/filesystem:truenamize filename) ; requires asdf, so remove later?
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(declaim (ftype (cl:function (simple-string) pathname) %tidy-pathname))
-
-(defun %tidy-pathname (file-namestring)
-  "Return the full pathname of FILE-NAMESTRING (which need not exist).
-If the first component of FILE-NAMESTRING is an environment variable
-of the form `$name' then replace it by its value, which need not end
-with a directory separator.  On MS Windows, directory separators can
-be either \ or /.  Called by `open', `cd', `filep', `file-write-date'."
+(defun %tidy-pathname (path-string &optional ensure-dir)
+  "Return the full pathname of PATH-STRING (which need not exist).
+If the first component of PATH-STRING is an environment variable of
+the form `$name' then replace it by its value, which need not end with
+a directory separator.  On MS Windows, directory separators can be
+either \ or /.  If ENSURE-DIR is non-nil then ensure that PATH-STRING
+represents a directory (by appending a directory separator if
+necessary).  Called by `open', `cd', `filep', `file-write-date'."
   #+(or WIN32 CYGWIN) ;; convert \ to /:
-  (setq file-namestring (substitute #\/ #\\ file-namestring))
-  (let* ((file-pathname
-          #+SBCL (sb-ext:native-pathname file-namestring)
-          #-SBCL (pathname file-namestring)
+  (setq path-string (substitute #\/ #\\ path-string))
+  (when ensure-dir
+    ;; Ensure directory by ensuring trailing /:
+    (when (char/= (schar path-string (1- (cl:length path-string))) #\/)
+      (setq path-string (concatenate 'string path-string "/"))))
+  (let* ((path-pathname
+          #+SBCL (sb-ext:native-pathname path-string)
+          #-SBCL (pathname path-string)
           )
-         (dir (pathname-directory file-pathname))
+         (dir (pathname-directory path-pathname))
          root)
     (when (and (consp dir)
                (eq (car dir) :relative)         ; relative filename
@@ -2425,13 +2370,11 @@ be either \ or /.  Called by `open', `cd', `filep', `file-write-date'."
             #-SBCL (pathname root)
             dir                         ; new full directory
             (cl:append (pathname-directory root) (cddr dir))
-            file-pathname               ; new full pathname
+            path-pathname               ; new full pathname
             (make-pathname
              :device (pathname-device root)
-             :directory dir :defaults file-pathname)))
-    file-pathname))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+             :directory dir :defaults path-pathname)))
+    path-pathname))
 
 ;; CLISP user variable CUSTOM:*DEVICE-PREFIX* controls translation
 ;; between Cygwin pathnames (e.g., #P"/cygdrive/c/gnu/clisp/") and
@@ -2449,10 +2392,6 @@ WRS. An error occurs if HOW is something other than INPUT or
 OUTPUT or the file can't be opened.
 ***** HOW is not option for OPEN
 ***** FILE could not be opened"
-  ;; (setq file (substitute-in-file-name file)) ; substitute environment variables
-  ;; #-CLISP (setq file (expand-file-name file)) ; and then expand . and ..
-  ;; ;; #+cygwin (setq file (win-to-cyg file))
-  ;; #+cygwin (setq file (parse-namestring file)) ; convert Windows filename to Cygwin format
   (case how
     (input
      (let ((fh (cl:open (%tidy-pathname file) :direction :input)))
@@ -3632,69 +3571,34 @@ Return the current working directory in system specific format."
                              (or null simple-string))
                 cd chdir))
 
-#+SBCL
-(defun cd (&optional dir-namestring)    ; PSL / Unix
-  "(cd DIR-NAMESTRING:{null,string}):{nil,string} expr
-Set the current working directory to string DIR-NAMESTRING (if
-supplied, non-nil and a non-empty string), which need not end with a
-directory separator.  If the first component of DIR-NAMESTRING is an
-environment variable of the form `$name' then replace it by its value,
-which need not end with a directory separator.  On MS Windows,
-directory separators can be either \ or /.  DIR-NAMESTRING may contain
-\".\" and \"..\".  If successful then return the new current directory
-as a string; otherwise, return nil."
-  (unless (and dir-namestring (> (cl:length dir-namestring) 0))
-    (return-from cd
-      (namestring *default-pathname-defaults*)))
-  ;; Ensure directory by ensuring trailing /:
-  (when (char/= (schar dir-namestring (1- (cl:length dir-namestring))) #\/)
-    (setq dir-namestring (concatenate 'string dir-namestring "/")))
-  ;; Substitute any environment variable:
-  (let ((dir-pathname (%tidy-pathname dir-namestring)))
-    ;; Ensure the directory exists, and return the new simplified
-    ;; current working directory as a string:
-    (when (setq dir-pathname (probe-file dir-pathname)) ; returns truename
-      (namestring (setq *default-pathname-defaults* dir-pathname)))))
-
-#+CLISP
 (defun cd (&optional dir)               ; PSL / Unix
   "(cd DIR:{null,string}):{nil,string} expr
-Set the current working directory to string DIR (if supplied and
-non-empty), after substituting environment variables and then
-expanding \".\" and \"..\".  If successful then return the new current
-directory."
-  ;; In CLISP, MAKE-PATHNAME canonicalizes the PATHNAME directory component.
-  (namestring
-   ;; cd crashes with nil or ""!
-   (cl:apply #'ext:cd (and dir (string/= dir "")
-                           (list (substitute-in-file-name dir))))))
+Set the current working directory to string DIR (if supplied, non-nil
+and a non-empty string), which need not end with a directory
+separator.  If the first component of DIR is an environment variable
+of the form `$name' then replace it by its value, which need not end
+with a directory separator.  On MS Windows, directory separators can
+be either \ or /.  DIR may contain \".\" and \"..\".  If successful,
+return the new current directory as a string; otherwise, return nil."
+  #-CLISP
+  (if (not (and dir (> (cl:length dir) 0)))
+      (namestring *default-pathname-defaults*)
+      ;; Substitute any environment variable and ensure directory:
+      (let ((dir-pathname (%tidy-pathname dir t)))
+        ;; Ensure the directory exists, and return the new simplified
+        ;; current working directory as a string:
+        (when (setq dir-pathname (probe-file dir-pathname)) ; returns truename
+          (namestring (setq *default-pathname-defaults* dir-pathname)))))
+  #+CLISP
+  ;; CLISP probe-file doesn't accept a directory (with no filename)
+  (values
+   (ignore-errors                  ; avoid error if dir does not exist
+     (namestring
+      ;; ext:cd crashes with arg nil or ""!
+      (cl:apply #'ext:cd (and dir (> (cl:length dir) 0)
+                              (list (%tidy-pathname dir t))))))))
 
-#+ABCL
-(defun cd (x)
-    "Change current directory, as per POSIX chdir(2), to a given pathname object"
-    (if-let (x (pathname x))
-      (setf *default-pathname-defaults* (truename x)) ;; d-p-d is canonical!
-      ))
-
-#+CCL
-(defun cd (dir)							; PSL
-  "(cd DIR:string):BOOLEAN expr
-Set the current working directory to DIR after expanding the filename
-according to the rules of the operating system.  If this operation is
-not sucessful, the value Nil is returned."
-  (setq dir (pathname dir))
-  ;; Allow dir not to end with a separator:
-  (if (string/= (file-namestring dir) "")
-      (setq dir (make-pathname :directory
-                               (append (or (pathname-directory dir) '(:relative))
-                                       (list (file-namestring dir))))))
-  ;; Expand environment variables, "." and "..":
-  (setq dir (substitute-in-file-name (namestring dir)))
-  (setq dir (merge-pathnames dir))
-  (and (probe-file dir) (namestring (ccl::cd dir))))
-
-#+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
-(defalias chdir cd)                   ; CSL / MS Windows
+(defalias chdir cd)                     ; CSL / MS Windows
 
 (declaim (inline filep)
          (ftype (cl:function (simple-string) (or pathname null)) filep))
@@ -4216,8 +4120,9 @@ Called by ON/OFF COMP; see 'clrend.red'."
 ;;; sl-on-cl.lisp ends here
 
 ;; To do:
-;; Use pathnames more consistently.
-;; Revise documentation strings and function order to follow PSL manual more closely.
+
+;; Revise documentation strings and function order to follow PSL
+;; manual more closely.
 
 ;; Move implementation into a separate package and only export
 ;; required symbols.  This should make profiling easier!
