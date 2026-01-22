@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-01-17 16:36:21 franc>
+# Time-stamp: <2026-01-19 16:45:26 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -108,7 +108,8 @@ case $lisp in
         ;;
 esac
 
-if [ -n "$clean" ]; then
+if [ -n "$clean" ]
+then
     echo '+++++ Clean build'
     rm -rf fasl.$lisp log.$lisp
 fi
@@ -211,7 +212,7 @@ fi
 # Build REDUCE #
 ################
 
-echo $'\n+++++ Building REDUCE...'
+echo -n $'\n+++++ Collecting package data...'
 
 eval $runbootstrap << EOF &> log.$lisp/build.blg
 symbolic; $force
@@ -257,8 +258,14 @@ bye;
 EOF
 
 if [ ! -e fasl.$lisp/core-packages.dat -o ! -e fasl.$lisp/noncore-packages.dat ]
-then echo '***** Running bootstrap REDUCE failed'; exit 1
+then
+    echo 'failed'; exit 1
+else
+    echo 'done.  Possible errors:'
+    grep_errors build
 fi
+
+echo $'\n+++++ Building REDUCE...'
 
 # Compile the "core" packages, each in a separate invocation of
 # bootstrap REDUCE to avoid adverse interactions:

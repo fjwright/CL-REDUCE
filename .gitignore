@@ -12,3 +12,6 @@ log*
 packages
 testlog*
 abcl-bin*
+TAGS
+packages-to-test.sh
+redtest

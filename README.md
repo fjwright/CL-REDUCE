@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-19 11:16:59 franc>
+Time-stamp: <2026-01-22 15:34:03 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -183,7 +183,7 @@ The test output differences for the `arith` and `numeric` package are identical 
 
 #### Windows
 
-REDUCE 7254 on native Windows SBCL 2.6.0.
+REDUCE 7270 on (native Windows) SBCL 2.6.0.
 
 No build errors.
 
@@ -195,21 +195,21 @@ numeric  | Minor numerical differences
 
 Lisp | Run Time (ms) | GC Time (ms)
 -----|---------------|-------------
-csl  |         78820 | 1599
-sbcl |        219443 | 7749
+csl  |         91811 | 1849
+psl  |        149198 |  901
+sbcl |        272830 | 8426
 
 #### Ubuntu 24 (on WSL)
 
-REDUCE 7220 on SBCL 2.5.11.
+REDUCE 7264 on SBCL 2.6.0.
 
 No build errors.  Package test issues as for Windows.
 
-Old timing data:
-
 Lisp | Run Time (ms) | GC Time (ms)
 -----|---------------|-------------
-csl  |        102508 | 1156
-sbcl |        192035 | 3180
+csl  |        108676 | 1199
+psl  |        110740 |  610
+sbcl |        194182 | 3113
 
 
 ### GNU CLISP
