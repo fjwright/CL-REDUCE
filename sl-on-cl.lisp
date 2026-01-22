@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-22 17:49:00 franc>
+;; Time-stamp: <2026-01-22 18:05:08 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3582,7 +3582,9 @@ be either \ or /.  DIR may contain \".\" and \"..\".  If successful,
 return the new current directory as a string; otherwise, return nil."
   #-CLISP
   (if (not (and dir (> (cl:length dir) 0)))
-      (namestring *default-pathname-defaults*)
+      ;; CCL requires truename below because
+      ;; *default-pathname-defaults* is initially #P"":
+      (namestring (truename *default-pathname-defaults*))
       ;; Substitute any environment variable and ensure directory:
       (let ((dir-pathname (%tidy-pathname dir t)))
         ;; Ensure the directory exists, and return the new simplified
@@ -3590,7 +3592,8 @@ return the new current directory as a string; otherwise, return nil."
         (when (setq dir-pathname (probe-file dir-pathname)) ; returns truename
           (namestring (setq *default-pathname-defaults* dir-pathname)))))
   #+CLISP
-  ;; CLISP probe-file doesn't accept a directory (with no filename)
+  ;; CLISP probe-file doesn't accept a directory (with no filename),
+  ;; hence this bespoke code:
   (values
    (ignore-errors                  ; avoid error if dir does not exist
      (namestring
