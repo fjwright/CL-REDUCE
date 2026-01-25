@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-22 18:05:08 franc>
+;; Time-stamp: <2026-01-25 17:09:09 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2417,9 +2417,16 @@ previous page length is returned. If LEN is 0, no automatic page
 ejects will occur."
   nil)
 
+(defconstant %tab-width 8
+  "Outputting a Tab character increments `%posn' to the next integer
+multiple of `%tab-width'.")
+
 (defvar %posn 0
   "Number of characters in the current line output by Standard LISP.
-Accessed (read-only) via the function `POSN'.
+Except that Tab increments `%posn' the next integer multiple of
+`%tab-width', and Newline resets `%posn' to 0.
+Set by the functions `%prin-string', `terpri' and `readch'.
+Accessed (read-only) via the function `posn'.
 It's value should be between 0 and `%linelength' inclusive.")
 
 (declaim (inline posn)
@@ -2446,17 +2453,39 @@ beginning of a line."
 (declaim (ftype (cl:function (simple-string) null) %prin-string))
 
 (defun %prin-string (s)
-  "Print string S preceded by a space or newline if necessary.
+  "Print string S preceded by a newline or space if necessary.
 Check and update `%posn' to keep it <= `%linelength'.
-This is the only function that actually produces graphical output."
-  (let ((len (cl:length s)))
+This is the only function that actually produces graphical output.
+(S already contains any ! escape characters required.)"
+  ;; This code is designed to reproduce the output in
+  ;; "regressions/2011-08-31-linelength.rlg", but without visibly
+  ;; overflowing!
+  (let ((len (cl:length s)) overflowed)
     (when %prin-space-maybe (incf %posn))
-    (incf %posn len)                    ; posn after printing s
-    (if (> %posn %linelength)
+    ;; Compute %posn AFTER printing S here to determine whether to
+    ;; break the line:
+    (do ((i 0 (1+ i)))
+        ((= i len))
+      (case (schar s i)
+        (#\Tab           ; invisible, so no overflow (same for Space?)
+         (setq %posn (* (1+ (floor %posn %tab-width)) %tab-width)))
+        (#\Newline
+         (when (> (1+ %posn) %linelength) (setq overflowed t))
+         (setq %posn 0))
+        (otherwise
+         (when (> (incf %posn) %linelength) (setq overflowed t)))))
+    (if overflowed
         (progn
-          (cl:terpri)
-          (setq %posn len))             ; posn after printing s
-        (if %prin-space-maybe (cl:princ #\Space)))
+          (cl:terpri) (setq %posn 0)
+          ;; Re-compute %posn AFTER printing S here because the effect
+          ;; of Tabs will have changed:
+          (do ((i 0 (1+ i)))
+              ((= i len))
+            (case (schar s i)
+              (#\Tab (setq %posn (* (1+ (floor %posn %tab-width)) %tab-width)))
+              (#\Newline (setq %posn 0))
+              (otherwise (incf %posn)))))
+        (when %prin-space-maybe (cl:princ #\Space)))
     (setq %prin-space-maybe nil)
     (cl:princ s))
   nil)
@@ -2478,7 +2507,7 @@ This is the only function that actually produces graphical output."
 (defun terpri ()
   "TERPRI():NIL
 The current print line is terminated."
-  (setf %posn 0) (cl:terpri) nil)
+  (setq %posn 0) (cl:terpri) nil)
 
 (declaim (inline print)
          (ftype (cl:function (t) t) print))
@@ -2773,8 +2802,8 @@ Comments delimited by % and end-of-line are not transparent to READCH."
     (if (eq c $eof$)
         $eof$                           ; not a char!
         (progn
-          (when *echo                   ; track output position
-            (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
+          ;; (when *echo                   ; track output position
+          ;;   (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
           (if *raise
               ;; down-case (because REDUCE is now LC, not UC!)
               (%intern-character-preserve-case (cl:char-upcase c))
