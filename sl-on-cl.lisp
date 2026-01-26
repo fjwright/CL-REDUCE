@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-25 17:09:09 franc>
+;; Time-stamp: <2026-01-26 11:40:27 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2802,8 +2802,9 @@ Comments delimited by % and end-of-line are not transparent to READCH."
     (if (eq c $eof$)
         $eof$                           ; not a char!
         (progn
-          ;; (when *echo                   ; track output position
-          ;;   (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
+          (when *echo                   ; track output position
+            ;; Revise as for %prin-string?
+            (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
           (if *raise
               ;; down-case (because REDUCE is now LC, not UC!)
               (%intern-character-preserve-case (cl:char-upcase c))
@@ -3094,6 +3095,15 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
              (string u)
              (cl:float (%prin-float-to-string u))
              (t (princ-to-string u))))))
+
+(declaim (ftype (cl:function (unsigned-byte) list) explodehex))
+
+(defun explodehex (u)
+  "Explode an unsigned integer to a list of hexadecimal digits.
+Hex digits are represented as identifiers using lower case letters."
+  (cl:map 'list #'%intern-character-preserve-case
+          (with-output-to-string (s)
+            (write u :base 16 :stream s))))
 
 (declaim (inline concat2)
          (ftype (cl:function (string string) ; might not be simple!

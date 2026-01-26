@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-22 15:34:03 franc>
+Time-stamp: <2026-01-26 11:51:21 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -264,6 +264,37 @@ ofsf     | Incredibly slow!
 REDUCE 7263 on CCL 1.13
 
 No build errors.  Package test issues probably similar to those for Windows, except that slow tests time out, but not yet retested.
+
+
+### Regression testing using SBCL on Cygwin
+
+Results of running the test
+
+```sh
+../scripts/testall.sh --regressions --sbcl
+```
+
+Regression Test                             | Comment
+--------------------------------------------|--------
+2011-08-31-linelength                       | FIXED: OK but CSL overflows visibly
+2013-06-30-rounding                         | FIXED: Some differences, but only in the lowest-order bit
+2013-08-01-syntax-error-msg                 | CL shows full file path
+2014-03-17-utf8-in-list                     |
+2014-06-23-prefix-operator-precendence      |
+2014-11-09-accuracy-elementary-fns          |
+2015-12-24-list-and-fancy-switches          |
+2018-12-19-excalc-fancy-printing-assignment |
+2019-01-11-fancy-printing-with-pri-off      |
+2019-04-22-global-vars-in-spde              |
+2019-07-30-sub-with-df                      |
+2019-10-02-fancy-printing-matrix-assignment |
+2020-07-30-prod-problems                    |
+2020-10-25-safe-fp                          |
+2022-10-13-outputhandler-mode-prin2         |
+2022-10-13-solve-msg-internal-vars          |
+2023-05-27-lambda-expressions               |
+2024-02-23-error-in-matrix-svd-computation  |
+2025-04-04-issue-with-num_min               |
 
 
 ## Known limitations
