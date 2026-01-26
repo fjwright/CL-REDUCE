@@ -2,7 +2,7 @@ module clrend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2025-10-07 17:19:55 franc>
+% Time-stamp: <2026-01-26 12:26:51 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -285,8 +285,6 @@ symbolic inline procedure printc x; << prin2 x; terpri(); x >>;
 flag('(printc), 'lose);
 
 symbolic procedure ttab n;  while posn() < n do prin2 " ";
-
-symbolic inline procedure explodec x; explode2 x;
 
 
 #if (memq 'sbcl lispsystem!*)

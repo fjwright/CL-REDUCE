@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-26 11:40:27 franc>
+;; Time-stamp: <2026-01-26 14:37:51 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3073,7 +3073,8 @@ A function hung on the garbage collection hook."
   #+CLISP (%nth-room-value 1)
   #+(not (or SBCL CLISP)) 0)
 
-(declaim (ftype (cl:function (t) list) explode2 explode2uc))
+(declaim (ftype (cl:function (t) list)
+                explode2 explodec explode2uc explode2lc))
 
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
@@ -3086,11 +3087,23 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
     (t (cl:map 'list #'%intern-character-preserve-case
                (princ-to-string u)))))
 
-(defun explode2uc (u)                   ; defined in "pslrend.red"
+(defalias explodec explode2)            ; see "pslrend.red"
+
+(defun explode2uc (u)                   ; see "pslrend.red"
   "Upper-case version of explode2."
   ;; NB: downcase because of symbol name case inversion!
   (cl:map 'list #'%intern-character-preserve-case
           (cl:string-downcase
+           (typecase u
+             (string u)
+             (cl:float (%prin-float-to-string u))
+             (t (princ-to-string u))))))
+
+(defun explode2lc (u)                   ; defined in "pslrend.red"
+  "Lower-case version of explode2."
+  ;; NB: upcase because of symbol name case inversion!
+  (cl:map 'list #'%intern-character-preserve-case
+          (cl:string-upcase
            (typecase u
              (string u)
              (cl:float (%prin-float-to-string u))
@@ -3104,6 +3117,20 @@ Hex digits are represented as identifiers using lower case letters."
   (cl:map 'list #'%intern-character-preserve-case
           (with-output-to-string (s)
             (write u :base 16 :stream s))))
+
+(declaim (ftype (cl:function (t) list) explodecn exploden))
+
+(defun explodecn (u)
+  "Like explodec but returns a list of the numeric codes of the
+characters involved, e.g. explodecn \"#alpha;\" => (945)."
+  (cl:mapcar #'(lambda (x) (cl:char-code (character x)))
+             (explodec u)))
+
+(defun exploden (u)
+  "Like explode but returns a list of integer codes.
+Note some codes can be bigger than 0xff."
+  (cl:mapcar #'(lambda (x) (cl:char-code (character x)))
+             (explode u)))
 
 (declaim (inline concat2)
          (ftype (cl:function (string string) ; might not be simple!

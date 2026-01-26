@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-26 11:51:21 franc>
+Time-stamp: <2026-01-26 14:54:22 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -276,10 +276,10 @@ Results of running the test
 
 Regression Test                             | Comment
 --------------------------------------------|--------
-2011-08-31-linelength                       | FIXED: OK but CSL overflows visibly
-2013-06-30-rounding                         | FIXED: Some differences, but only in the lowest-order bit
+2011-08-31-linelength                       | FIXED: OK but CSL overflows visibly.
+2013-06-30-rounding                         | FIXED: Some differences, but only in the lowest-order bit.
 2013-08-01-syntax-error-msg                 | CL shows full file path
-2014-03-17-utf8-in-list                     |
+2014-03-17-utf8-in-list                     | BETTER: No longer crashes, but needs more work!
 2014-06-23-prefix-operator-precendence      |
 2014-11-09-accuracy-elementary-fns          |
 2015-12-24-list-and-fancy-switches          |
