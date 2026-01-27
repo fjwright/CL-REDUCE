@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-26 14:54:22 franc>
+Time-stamp: <2026-01-27 18:06:41 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -274,15 +274,15 @@ Results of running the test
 ../scripts/testall.sh --regressions --sbcl
 ```
 
-Regression Test                             | Comment
---------------------------------------------|--------
-2011-08-31-linelength                       | FIXED: OK but CSL overflows visibly.
-2013-06-30-rounding                         | FIXED: Some differences, but only in the lowest-order bit.
-2013-08-01-syntax-error-msg                 | CL shows full file path
-2014-03-17-utf8-in-list                     | BETTER: No longer crashes, but needs more work!
-2014-06-23-prefix-operator-precendence      |
-2014-11-09-accuracy-elementary-fns          |
-2015-12-24-list-and-fancy-switches          |
+Regression Test                             | Comment / To Do
+--------------------------------------------|----------------
+2011-08-31-linelength                       | **FIXED** OK but CSL overflows visibly.
+2013-06-30-rounding                         | **FIXED** Some differences, but only in the lowest-order bit.
+2013-08-01-syntax-error-msg                 | [1] CL symerr prints whatever file path is provided to IN; should be only filename?
+2014-03-17-utf8-in-list                     | *BETTER* No longer crashes, but needs more work!
+2014-06-23-prefix-operator-precendence      | Probably same issue as [1]
+2014-11-09-accuracy-elementary-fns          | Maybe fixed?
+2015-12-24-list-and-fancy-switches          | Error loading tmprint package.  Needs Lisp customization updating.
 2018-12-19-excalc-fancy-printing-assignment |
 2019-01-11-fancy-printing-with-pri-off      |
 2019-04-22-global-vars-in-spde              |
@@ -291,10 +291,10 @@ Regression Test                             | Comment
 2020-07-30-prod-problems                    |
 2020-10-25-safe-fp                          |
 2022-10-13-outputhandler-mode-prin2         |
-2022-10-13-solve-msg-internal-vars          |
-2023-05-27-lambda-expressions               |
-2024-02-23-error-in-matrix-svd-computation  |
-2025-04-04-issue-with-num_min               |
+2022-10-13-solve-msg-internal-vars          | **FIXED**
+2023-05-27-lambda-expressions               | Algebraic lambda mostly works but freestanding lambda expression not handled correctly.
+2024-02-23-error-in-matrix-svd-computation  | **OK** Unavoidable numerical approximation differences.
+2025-04-04-issue-with-num_min               | Error fatal in batch mode; OK interactively.  Why no backtrace in CSL?
 
 
 ## Known limitations

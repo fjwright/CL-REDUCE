@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-26 14:37:51 franc>
+;; Time-stamp: <2026-01-27 17:57:54 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -62,7 +62,7 @@
            :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
            :delete :length :member :sort :sublis :subla :subst :rassoc
            :apply :eval :function :close :open :princ :print :prin1
-           :read :terpri :complexp :union :load :time
+           :reverse :read :terpri :complexp :union :load :time
            :char-downcase :char-upcase :string-downcase :mod
            :file-write-date :char-code :symbol-name :number)
 
@@ -2016,17 +2016,24 @@ EXPR PROCEDURE PAIR(U, V);
       (error-internal "Different length lists in PAIR")
       (cl:map 'list #'cons u v)))
 
-(import 'cl:reverse)
-;; REVERSE(U:list):list eval, spread
-;; Returns a copy of the top level of U in reverse order.
-;; EXPR PROCEDURE REVERSE(U);
-;; BEGIN SCALAR W;
-;;    WHILE U DO << W := CAR U . W;
-;;                  U := CDR U >>;
-;;    RETURN W
-;; END;
+(declaim (ftype (cl:function (list) list) reverse))
 
-(declaim (ftype (cl:function (list) list) reversip))
+(defun reverse (u)
+  "REVERSE(U:list):list eval, spread
+Returns a copy of the top level of U in reverse order.
+EXPR PROCEDURE REVERSE(U);
+BEGIN SCALAR W;
+   WHILE U DO << W := CAR U . W;
+                 U := CDR U >>;
+   RETURN W
+END;"
+  ;; Must accept an improper (i.e. dotted) list or an atom!
+  (do (w) ((atom u) w)
+    (setq w (cons (car u) w)
+          u (cdr u))))
+
+(declaim (inline reversip)
+         (ftype (cl:function (list) list) reversip))
 
 (defalias reversip cl:nreverse)       ; PSL function
 
