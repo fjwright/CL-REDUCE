@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-28 09:12:46 franc>
+Time-stamp: <2026-01-28 16:23:40 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -276,22 +276,12 @@ Results of running the test
 
 Regression Test                             | Comment / To Do
 --------------------------------------------|----------------
-2011-08-31-linelength                       | **FIXED** OK but CSL overflows visibly.
-2013-06-30-rounding                         | **FIXED** Some differences, but only in the lowest-order bit.
-2013-08-01-syntax-error-msg                 | [1] CL symerr prints whatever file path is provided to IN; should be only filename?
-2014-03-17-utf8-in-list                     | *BETTER* No longer crashes, but needs more work!
-2014-06-23-prefix-operator-precendence      | Probably same issue as [1]
-2014-11-09-accuracy-elementary-fns          | Maybe fixed?
-2015-12-24-list-and-fancy-switches          | Error loading tmprint package.  Needs Lisp customization updating.
-2018-12-19-excalc-fancy-printing-assignment |
-2019-01-11-fancy-printing-with-pri-off      |
-2019-04-22-global-vars-in-spde              |
-2019-07-30-sub-with-df                      |
-2019-10-02-fancy-printing-matrix-assignment |
-2020-07-30-prod-problems                    |
-2020-10-25-safe-fp                          | **FIXED**
-2022-10-13-outputhandler-mode-prin2         | Error loading tmprint package.
-2022-10-13-solve-msg-internal-vars          | **FIXED**
+2011-08-31-linelength                       | **OK** CSL and PSL printing overflows visibly; CL doesn't!
+2013-06-30-rounding                         | **OK** Some differences, but only in the lowest-order bit.
+2014-03-17-utf8-in-list                     | *BETTER* No longer crashes, but needs more work! (PSL also differs.)
+2014-11-09-accuracy-elementary-fns          | Needs further investigation!
+2019-07-30-sub-with-df                      | Not obviously a Lisp issue; cf. PSL
+2020-07-30-prod-problems                    | `***** Zero divisor` causes undesired backtrace on SBCL.
 2023-05-27-lambda-expressions               | Algebraic lambda mostly works but freestanding lambda expression not handled correctly.
 2024-02-23-error-in-matrix-svd-computation  | **OK** Unavoidable numerical approximation differences.
 2025-04-04-issue-with-num_min               | Error fatal in batch mode; OK interactively.  Why no backtrace in CSL?
