@@ -2,7 +2,7 @@ module clrend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2026-01-26 12:26:51 franc>
+% Time-stamp: <2026-01-28 08:58:52 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -52,7 +52,7 @@ global '(tab!* !$eol!$ ff!* cr!*
      version!*
      symchar!*);
 
-switch break, gc, printlower, redefmsg, debug, verboseload;
+switch break, gc, printlower, redefmsg, debug, verboseload, pwrds;
 
 % This procedure definition taken from "pslrend.red" is required for
 % the factor module:

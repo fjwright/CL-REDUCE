@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-27 17:57:54 franc>
+;; Time-stamp: <2026-01-28 09:03:55 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2032,8 +2032,7 @@ END;"
     (setq w (cons (car u) w)
           u (cdr u))))
 
-(declaim (inline reversip)
-         (ftype (cl:function (list) list) reversip))
+(declaim (ftype (cl:function (list) list) reversip))
 
 (defalias reversip cl:nreverse)       ; PSL function
 
@@ -3798,7 +3797,8 @@ loadextensions*.  The strings from each list are used in a left to
 right order, for a given string from loaddirectories* each extension
 from loadextensions* is used.
 
-Load a \".sl\" file using Standard Lisp read syntax."
+Load a \".sl\" file using Standard Lisp read syntax.
+(load 'compiler) is a compatibility no-op."
   ;; filename defaults are taken from *default-pathname-defaults*,
   ;; which defaults to the directory in which SBCL was started.
   (let ((*readtable* (copy-readtable nil)) ; normal CL syntax
@@ -3806,7 +3806,9 @@ Load a \".sl\" file using Standard Lisp read syntax."
         (*redefmsg *verboseload) file-pathname)
     (if (symbolp file)
         (progn
-          (if (cl:member file options*) (return-from load)) ; already loaded
+          (when (or (cl:member file options*) ; already loaded
+                    (cl:eq file 'compiler))   ; compatibility no-op
+            (return-from load))
           (push file options*)
           (setq file-pathname
                 (pathname (cl:string-downcase (cl:symbol-name file)))))

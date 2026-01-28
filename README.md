@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-27 18:06:41 franc>
+Time-stamp: <2026-01-28 09:12:46 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -289,8 +289,8 @@ Regression Test                             | Comment / To Do
 2019-07-30-sub-with-df                      |
 2019-10-02-fancy-printing-matrix-assignment |
 2020-07-30-prod-problems                    |
-2020-10-25-safe-fp                          |
-2022-10-13-outputhandler-mode-prin2         |
+2020-10-25-safe-fp                          | **FIXED**
+2022-10-13-outputhandler-mode-prin2         | Error loading tmprint package.
 2022-10-13-solve-msg-internal-vars          | **FIXED**
 2023-05-27-lambda-expressions               | Algebraic lambda mostly works but freestanding lambda expression not handled correctly.
 2024-02-23-error-in-matrix-svd-computation  | **OK** Unavoidable numerical approximation differences.
