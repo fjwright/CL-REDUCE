@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-28 16:23:40 franc>
+Time-stamp: <2026-01-29 15:47:16 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -271,20 +271,18 @@ No build errors.  Package test issues probably similar to those for Windows, exc
 Results of running the test
 
 ```sh
-../scripts/testall.sh --regressions --sbcl
+../scripts/testall.sh --nopackages --sbcl
 ```
 
-Regression Test                             | Comment / To Do
---------------------------------------------|----------------
-2011-08-31-linelength                       | **OK** CSL and PSL printing overflows visibly; CL doesn't!
-2013-06-30-rounding                         | **OK** Some differences, but only in the lowest-order bit.
-2014-03-17-utf8-in-list                     | *BETTER* No longer crashes, but needs more work! (PSL also differs.)
-2014-11-09-accuracy-elementary-fns          | Needs further investigation!
-2019-07-30-sub-with-df                      | Not obviously a Lisp issue; cf. PSL
-2020-07-30-prod-problems                    | `***** Zero divisor` causes undesired backtrace on SBCL.
-2023-05-27-lambda-expressions               | Algebraic lambda mostly works but freestanding lambda expression not handled correctly.
-2024-02-23-error-in-matrix-svd-computation  | **OK** Unavoidable numerical approximation differences.
-2025-04-04-issue-with-num_min               | Error fatal in batch mode; OK interactively.  Why no backtrace in CSL?
+Test                                       | Comment / To Do
+-------------------------------------------|----------------
+2011-08-31-linelength                      | CSL and PSL printing overflows visibly; CL doesn't!
+2013-06-30-rounding                        | Expected numerical discrepancies, but only in the lowest-order bit.
+2014-03-17-utf8-in-list                    | No longer crashes, but needs more work! (PSL also differs.)
+2014-11-09-accuracy-elementary-fns         | Expected small numerical discrepancies & errors for very large trig args.  (Try using Lisp math lib.)
+2019-07-30-sub-with-df                     | Generic REDUCE issue.
+2023-05-27-lambda-expressions              | Algebraic lambda mostly works but freestanding lambda expressions not handled correctly.
+2024-02-23-error-in-matrix-svd-computation | Expected small numerical discrepancies.
 
 
 ## Known limitations

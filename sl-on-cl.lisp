@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-28 09:03:55 franc>
+;; Time-stamp: <2026-01-29 15:49:23 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1256,17 +1256,15 @@ as if its argument `tr' were true.")
 ;; source code for the various Lisp systems.  It is therefore
 ;; unreliable!
 
-(declaim (inline %print-backtrace-maybe)
-         (ftype (cl:function (boolean) null) %print-backtrace-maybe))
+(declaim (inline %print-backtrace)
+         (ftype (cl:function () null) %print-backtrace))
 
-(defun %print-backtrace-maybe (tr)
-  "Optionally, print backtrace to default output stream.
-Do so if TR or global *DEBUG is true."
-  (when (or tr *debug)
+(defun %print-backtrace ()
+  "Print backtrace to default output stream."
     #+SBCL (sb-debug:print-backtrace)
     #+CLISP (system::print-backtrace)   ; See clisp/src/reploop.lisp
     #+CCL (format t "~&~{~s~%~}" (ccl:backtrace-as-list))
-    ))
+    )
 
 ;; Limit length of backtrace:
 #+SBCL (setq sb-debug:*backtrace-frame-count* 20) ; default 1000
@@ -1302,19 +1300,23 @@ dependent format."
   ;; device
   (handler-case (list (eval u))         ; protected form
     (sl-error1 ()
-      (%print-backtrace-maybe tr)
+      ;; Handle calls of SL error1 function. (???)
+      ;; Used like throw-catch; no message and normally no backtrace.
+      (when *debug (%print-backtrace))
       nil)
     (sl-error (condition)
+      ;; Handle calls of SL error function.
       (if msgp
           (let ((msg (slot-value condition 'errmsg)))
             ;; If MESSAGE is a list then it is displayed without top
             ;; level parentheses:
             (format t "~&***** ~:[~a~;~{~a~^ ~}~]~%" (listp msg) msg)))
-      (%print-backtrace-maybe tr)
+      (when (or tr *debug) (%print-backtrace))
       (slot-value condition 'errno))
-    (cl:error (condition)               ; Should this be caught here?
+    (cl:error (condition)
+      ;; Handle CL and SL internal errors. (???)
       (if msgp (format t "~&***** ~a~%" condition))
-      (%print-backtrace-maybe tr)
+      (when (or tr *debug) (%print-backtrace))
       nil)))
 
 
@@ -1752,7 +1754,9 @@ Returns the product of U and V.")
 
 (defun izerop (u) (cl:zerop u))         ; used in plot/plotexp3
 
-;; Fast built-in floating point functions:
+
+;;; Fast Built-in Floating Point Functions
+;;; ======================================
 
 ;; (defalias ACOS acos)
 ;; (defalias ASIN asin)
