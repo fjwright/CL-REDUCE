@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-29 15:49:23 franc>
+;; Time-stamp: <2026-01-31 14:36:52 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1755,32 +1755,50 @@ Returns the product of U and V.")
 (defun izerop (u) (cl:zerop u))         ; used in plot/plotexp3
 
 
-;;; Fast Built-in Floating Point Functions
-;;; ======================================
+;;; Floating Point Math Functions
+;;; =============================
 
-;; (defalias ACOS acos)
-;; (defalias ASIN asin)
-;; (defalias ATAN atan)
-;; (defalias ATAN2 atan)
-;; (defalias COS cos)
-;; (defalias EXP exp)
-;; (defalias LN log)
-;; (defalias LOG log)
-;; (defalias LOGB log)
-;; (defsubst LOG10 (x) (log x 10))
-;; (defalias SIN sin)
-;; (defalias SQRT sqrt)
-;; (defalias TAN tan)
-;; ;; The following will fail for floats with very large magnitudes since
-;; ;; they return fixnums rather than big integers.  If that is a problem
-;; ;; then remove these aliases and in particular remove the lose flags
-;; ;; in "eslrend.red".
-;; (defalias CEILING ceiling)
-;; (defalias FLOOR floor)
-;; (defalias ROUND round)
+;; Transcendental functions may be called with integer arguments,
+;; which are automatically coerced to the lowest precision float type
+;; available.  This would lead to loss of precision and also to type
+;; errors.  So explicitly convert the arguments to a double-float.
 
-;; The above cause errors in the arith test file when trig results or
-;; arguments are complex so all commented out for now.
+#+LISPMATH
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (shadow '(sin cos tan asin acos atan
+            sinh cosh tanh asinh acosh atanh
+            sqrt exp log)))            ; cannot be in the progn below!
+
+#+LISPMATH
+(progn
+  (defun sin (x) (cl:sin (cl:float x 1d0)))
+  (defun cos (x) (cl:cos (cl:float x 1d0)))
+  (defun tan (x) (cl:tan (cl:float x 1d0)))
+  (defun asin (x) (cl:asin (cl:float x 1d0)))
+  (defun acos (x) (cl:acos (cl:float x 1d0)))
+  (defun atan (x) (cl:atan (cl:float x 1d0)))
+  (defun atan2 (x y) (cl:atan (cl:float x 1d0) (cl:float y 1d0)))
+  (defun sinh (x) (cl:sinh (cl:float x 1d0)))
+  (defun cosh (x) (cl:cosh (cl:float x 1d0)))
+  (defun tanh (x) (cl:tanh (cl:float x 1d0)))
+  (defun asinh (x) (cl:asinh (cl:float x 1d0)))
+  (defun acosh (x) (cl:acosh (cl:float x 1d0)))
+  (defun atanh (x) (cl:atanh (cl:float x 1d0)))
+  (defun sqrt (x) (cl:sqrt (cl:float x 1d0)))
+  (defun exp (x) (cl:exp (cl:float x 1d0)))
+  (defun log (x) (cl:log (cl:float x 1d0)))
+  (defun logb (x y) (cl:log (cl:float x 1d0) (cl:float y 1d0)))
+  (defalias ln log)
+
+  (import '(floor ceiling round))
+
+  ;; Prevent use of the versions of these functions defined in
+  ;; "arith/math.red":
+  (flag '(sin cos tan asin acos atan atan2
+          sinh cosh tanh asinh acosh atanh
+          sqrt exp log logb ln
+          floor ceiling round)
+        'lose))
 
 
 ;;; Map Composite Functions
@@ -2619,7 +2637,7 @@ in vector-notation.  The value of U is returned."
   ;; "arith/rounded.red"!
   (if (zerop u) "0.0"
       (let* ((absu (abs u))
-             (e (floor (log absu 10d0)))) ; decimal exponent
+             (e (floor (cl:log absu 10d0)))) ; decimal exponent
         ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
         ;; integer part of u contains e+1 digits.  To make u
         ;; contain d significant digits, multiply by a scale

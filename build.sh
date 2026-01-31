@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-01-19 16:45:26 franc>
+# Time-stamp: <2026-01-29 17:40:48 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -42,20 +42,22 @@ function help {
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
     echo 'Option -d configures the build for debugging.'
+    echo 'Option -m use Common Lisp floating-point math functions.'
     echo 'Option -b builds only the bootstrap REDUCE image.'
     echo 'Option -o builds only the core REDUCE packages.'
     echo 'Option -h displays this help message and exits.'
     exit 1
 }
 
-while getopts l:r:cfdboh option
+while getopts l:r:cfdmboh option
 do
     case $option in
         l) lisp=$OPTARG;;       # obsolete
         r) revision=$OPTARG;;
         c) clean=true;;
-        d) debug='(push :debug *features*)';;
         f) force='!*forcecompile := t;';;
+        d) debug='(push :DEBUG *features*)';;
+        m) lispmath='(push :LISPMATH *features*)';;
         b) bootstraponly=true;;
         o) coreonly=true;;
         h) help;;
@@ -114,7 +116,8 @@ then
     rm -rf fasl.$lisp log.$lisp
 fi
 
-[ -n "$debug" ] && echo '+++++ Debug build'
+[ -n "$debug" ] && echo '+++++ Building for debugging'
+[ -n "$lispmath" ] && echo '+++++ Using Common Lisp floating-point math functions'
 
 if [ -z "$reduce" ]
 then
@@ -171,6 +174,7 @@ then
     echo $'\n+++++ Compiling sl-on-cl'
     time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg &&
 $debug
+$lispmath
 (or (compile-file "sl-on-cl.lisp")
     #+CCL (quit 1)
     #-CCL (exit #+SBCL :code 1))
@@ -355,10 +359,6 @@ time eval $runlisp << EOF &> log.$lisp/reduce.blg
 (load!-package 'rtools)
 (load!-package 'mathpr)
 (load!-package 'entry)
-
-% cf. support/fastmath.red:
-(flag '(sin cos tan sind cosd tand cotd secd cscd asin acos atan
-   asecd acscd atan2d atan2 sqrt exp log hypot cosh sinh tanh) 'lose)
 
 (cl:fmakunbound 'prettyprint)   % otherwise defautoload has no effect!
 (defautoload prettyprint pretty)  % since only in entry file for PSL!

@@ -1,4 +1,0 @@
-#!/bin/bash
-# Start the Mac OS X CCL REDUCE image
-cl=$(realpath $(dirname $0)) # common-lisp directory
-ccl64 -I $cl/fasl.ccl64/reduce.image
