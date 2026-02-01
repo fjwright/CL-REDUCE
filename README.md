@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-01-29 15:47:16 franc>
+Time-stamp: <2026-02-01 12:37:48 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -183,13 +183,12 @@ The test output differences for the `arith` and `numeric` package are identical 
 
 #### Windows
 
-REDUCE 7270 on (native Windows) SBCL 2.6.0.
+REDUCE 7284 on (native Windows) SBCL 2.6.1 using LispMath (-m) build option.
 
 No build errors.
 
 Package  | Output Issues
 ---------|--------------
-arith    | SBCL is numerically more accurate than CSL/PSL!
 gf2      | Missing final backtrace
 numeric  | Minor numerical differences
 
@@ -274,16 +273,14 @@ Results of running the test
 ../scripts/testall.sh --nopackages --sbcl
 ```
 
-Test                                       | Comment / To Do
--------------------------------------------|----------------
-2011-08-31-linelength                      | CSL and PSL printing overflows visibly; CL doesn't!
-2013-06-30-rounding                        | Expected numerical discrepancies, but only in the lowest-order bit.
-2014-03-17-utf8-in-list                    | No longer crashes, but needs more work! (PSL also differs.)
-2014-11-09-accuracy-elementary-fns         | Expected small numerical discrepancies & errors for very large trig args.  (Try using Lisp math lib.)
-2019-07-30-sub-with-df                     | Generic REDUCE issue.
-2023-05-27-lambda-expressions              | Algebraic lambda mostly works but freestanding lambda expressions not handled correctly.
-2024-02-23-error-in-matrix-svd-computation | Expected small numerical discrepancies.
-
+Test                               | Comment / To Do
+-----------------------------------|----------------
+2011-08-31-linelength              | CSL and PSL printing overflows visibly; CL doesn't!
+2013-06-30-rounding                | Expected numerical discrepancies, but only in the lowest-order bit.
+2014-03-17-utf8-in-list            | No longer crashes, but needs more work! (PSL also differs.)
+2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies, but only in the lowest-order bit.
+2019-07-30-sub-with-df             | Generic REDUCE issue?
+2023-05-27-lambda-expressions      | Algebraic lambda mostly works but freestanding lambda expressions not handled correctly.
 
 ## Known limitations
 

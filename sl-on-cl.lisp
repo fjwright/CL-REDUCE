@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-31 14:36:52 franc>
+;; Time-stamp: <2026-01-31 15:25:23 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1771,6 +1771,16 @@ Returns the product of U and V.")
 
 #+LISPMATH
 (progn
+  (declaim (inline sin cos tan asin acos atan atan2
+                   sinh cosh tanh asinh acosh atanh
+                   sqrt exp log ln logb)
+           (ftype (cl:function (number) double-float)
+                  sin cos tan asin acos atan
+                  sinh cosh tanh asinh acosh atanh
+                  sqrt exp log ln)
+           (ftype (cl:function (number number) double-float)
+                  atan2 logb))
+
   (defun sin (x) (cl:sin (cl:float x 1d0)))
   (defun cos (x) (cl:cos (cl:float x 1d0)))
   (defun tan (x) (cl:tan (cl:float x 1d0)))
@@ -1787,8 +1797,8 @@ Returns the product of U and V.")
   (defun sqrt (x) (cl:sqrt (cl:float x 1d0)))
   (defun exp (x) (cl:exp (cl:float x 1d0)))
   (defun log (x) (cl:log (cl:float x 1d0)))
+  (defun ln (x) (cl:log (cl:float x 1d0)))
   (defun logb (x y) (cl:log (cl:float x 1d0) (cl:float y 1d0)))
-  (defalias ln log)
 
   (import '(floor ceiling round))
 
@@ -1796,7 +1806,7 @@ Returns the product of U and V.")
   ;; "arith/math.red":
   (flag '(sin cos tan asin acos atan atan2
           sinh cosh tanh asinh acosh atanh
-          sqrt exp log logb ln
+          sqrt exp log ln logb
           floor ceiling round)
         'lose))
 
