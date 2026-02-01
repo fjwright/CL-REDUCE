@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-31 15:25:23 franc>
+;; Time-stamp: <2026-02-01 15:37:20 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -416,8 +416,8 @@ EXPR PROCEDURE ZEROP(U);
 
 (import '(cl:first cl:second cl:third cl:fourth cl:rest))
 
-(declaim (inline lastpair lastcar nth pnth))
-(declaim (ftype (cl:function (t) t) lastpair lastcar))
+(declaim (inline lastpair lastcar nth pnth)
+         (ftype (cl:function (t) t) lastpair lastcar))
 
 (defun lastpair (l)
   "(lastpair L:pair): any expr
@@ -1532,16 +1532,22 @@ EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
   (multiple-value-call #'cons (truncate u v)))
 
-;; Type must match redefinition in arith/math (and not be inline):
-(declaim (ftype (cl:function (number number) number) expt))
+(declaim (inline expt)
+         (ftype (cl:function (number number) number) expt))
 
 (defun expt (u v)
-  ;; Defined explicitly so that it can be redefined in arith/math
   "EXPT(U:number, V:integer):number eval, spread
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
 exponentiation."
-  (cl:expt u v))
+  ;; The definition needed for REDUCE is more general!
+  (cl:expt (if (integerp u) u (cl:float u 1d0))
+           (if (integerp v) v (cl:float v 1d0))))
+
+;; Prevent use of the definition of expt in "arith/math.red":
+(flag '(expt) 'lose)
+
+;; Should fexpt be an alias for expt (see "arith/math.red")?
 
 (declaim (inline fix)
          (ftype (cl:function (number) integer) fix))
@@ -1758,6 +1764,8 @@ Returns the product of U and V.")
 ;;; Floating Point Math Functions
 ;;; =============================
 
+;; Cf. "support/fastmath.red".
+
 ;; Transcendental functions may be called with integer arguments,
 ;; which are automatically coerced to the lowest precision float type
 ;; available.  This would lead to loss of precision and also to type
@@ -1802,8 +1810,7 @@ Returns the product of U and V.")
 
   (import '(floor ceiling round))
 
-  ;; Prevent use of the versions of these functions defined in
-  ;; "arith/math.red":
+  ;; Prevent use of the definitions in "arith/math.red":
   (flag '(sin cos tan asin acos atan atan2
           sinh cosh tanh asinh acosh atanh
           sqrt exp log ln logb
