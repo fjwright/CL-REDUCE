@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-02-01 12:37:48 franc>
+Time-stamp: <2026-02-02 16:28:44 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -166,24 +166,16 @@ For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to r
 I performed all testing on the same computer using Windows 11, a recent version of Cygwin and Ubuntu 24.04.3 LTS (GNU/Linux 6.6.87.2-microsoft-standard-WSL2 x86_64).  I tested production (i.e. non-debugging) builds using the standard REDUCE test framework by running commands of the form
 
 ```sh
-../scripts/testall.sh --noregressions --csl --<lisp>
-```
-from the directory
-
-```sh
-reduce-algebra-code/testing
+../scripts/testall.sh --<lisp>
 ```
 
-NB: Testing on Cygwin cannot time out (it may hang), whereas on Linux it can time out (and does, especially for CLISP).
-
-The test output differences for the `arith` and `numeric` package are identical for SBCL, CLISP and CCL on both Windows and Ubuntu, so this appears to be a generic numerical difference between Common Lisp and CSL/PSL!
-
+"LispMath" below means the expt function and the floating-point math (elementary transcendental) functions provided by Common Lisp, which I use if they appear to work well.  This is the case for SBCL and CCL, but not CLISP.
 
 ### Steel Bank Common Lisp (SBCL)
 
 #### Windows
 
-REDUCE 7284 on (native Windows) SBCL 2.6.1 using LispMath (-m) build option.
+REDUCE 7284 on (native Windows) SBCL 2.6.1 (using LispMath)
 
 No build errors.
 
@@ -197,6 +189,15 @@ Lisp | Run Time (ms) | GC Time (ms)
 csl  |         91811 | 1849
 psl  |        149198 |  901
 sbcl |        272830 | 8426
+
+Regression Test                    | Comment / To Do
+-----------------------------------|----------------
+2011-08-31-linelength              | CSL and PSL printing overflows visibly; CL doesn't!
+2013-06-30-rounding                | Expected numerical discrepancies, but only in the lowest-order bit.
+2014-03-17-utf8-in-list            | No longer crashes, but needs more work! (PSL also differs.)
+2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies, but only in the lowest-order bit.
+2019-07-30-sub-with-df             | Generic REDUCE issue?
+2023-05-27-lambda-expressions      | Algebraic lambda mostly works but freestanding lambda expressions not handled correctly.
 
 #### Ubuntu 24 (on WSL)
 
@@ -215,16 +216,26 @@ sbcl |        194182 | 3113
 
 #### Windows
 
-REDUCE 7220 on Cygwin CLISP 2.49
+REDUCE 7284 on Cygwin CLISP 2.49
 
 No build errors.
 
-Package  | Output Issues
----------|--------------
-arith    | CLISP is numerically more accurate than CSL/PSL!
-gf2      | Different backtrace
-ibalp    | Stack overflow. `reset() found no driver frame`
-numeric  | Minor numerical differences
+Package   | Output Issues
+----------|--------------
+arith     | Expected numerical discrepancies
+economise | Crash?  CHECK!
+gf2       | Crash?  CHECK!
+ibalp     | Stack overflow. `reset() found no driver frame`
+
+Regression Test                    | Comment / To Do
+-----------------------------------|----------------
+2011-08-31-linelength              | As for SBCL, but also a CLISP bug: printing any object containing a newline also prints a newline before the object.
+2013-06-30-rounding                | Discrepancy for sin(pi) (only).
+2014-03-17-utf8-in-list            | As for SBCL.
+2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies;  COMMON-LISP:TAN: division by zero.
+2019-07-30-sub-with-df             | As for SBCL.
+2020-10-25-safe-fp.rlg.diff        | COMMON-LISP:EXPT: floating point underflow.
+2023-05-27-lambda-expressions      | As for SBCL.
 
 #### Ubuntu 24 (on WSL)
 
@@ -245,18 +256,18 @@ numeric  | Minor numerical differences
 
 #### Windows
 
-REDUCE 7263 on native Windows CCL 1.13
+REDUCE 7284 on native Windows CCL 1.13 (using LispMath)
 
 No build errors.
 
 Package  | Output Issues
 ---------|--------------
-arith    | CCL is numerically more accurate than CSL/PSL!
-economise| Very slow!
-gf2      | Different backtrace
+gf2      | Missing final backtrace
 lalr     | Compiled functions instead of lambdas (because CCL always compiles)
 numeric  | Minor numerical differences
-ofsf     | Incredibly slow!
+ofsf     | Final output missing; probably timed out!
+
+Regression test results as for SBCL.
 
 #### Ubuntu 24 (on WSL)
 
@@ -264,23 +275,6 @@ REDUCE 7263 on CCL 1.13
 
 No build errors.  Package test issues probably similar to those for Windows, except that slow tests time out, but not yet retested.
 
-
-### Regression testing using SBCL on Cygwin
-
-Results of running the test
-
-```sh
-../scripts/testall.sh --nopackages --sbcl
-```
-
-Test                               | Comment / To Do
------------------------------------|----------------
-2011-08-31-linelength              | CSL and PSL printing overflows visibly; CL doesn't!
-2013-06-30-rounding                | Expected numerical discrepancies, but only in the lowest-order bit.
-2014-03-17-utf8-in-list            | No longer crashes, but needs more work! (PSL also differs.)
-2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies, but only in the lowest-order bit.
-2019-07-30-sub-with-df             | Generic REDUCE issue?
-2023-05-27-lambda-expressions      | Algebraic lambda mostly works but freestanding lambda expressions not handled correctly.
 
 ## Known limitations
 

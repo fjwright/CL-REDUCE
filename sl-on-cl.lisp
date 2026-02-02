@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-01 15:37:20 franc>
+;; Time-stamp: <2026-02-02 16:17:20 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -32,6 +32,13 @@
 (declaim (optimize #-DEBUG speed #+DEBUG debug #+DEBUG safety))
 #+(and SBCL (not DEBUG))
 (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
+
+;; Use Common Lisp expt and math functions if possible, cf.
+;; "support/fastmath.red".  OK for SBCL and CCL, but CLISP expt causes
+;; floating point underflow, trigonometric function accuracy can be
+;; poor for very large arguments, and tan can lead to division by
+;; zero, so use "arith/math.red" for safety:
+#+(and (or SBCL CCl) (not NOLISPMATH)) (push :LISPMATH *features*)
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
@@ -1532,7 +1539,7 @@ EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
   (multiple-value-call #'cons (truncate u v)))
 
-(declaim (inline expt)
+(declaim #+LISPMATH (inline expt)
          (ftype (cl:function (number number) number) expt))
 
 (defun expt (u v)
@@ -1545,7 +1552,7 @@ exponentiation."
            (if (integerp v) v (cl:float v 1d0))))
 
 ;; Prevent use of the definition of expt in "arith/math.red":
-(flag '(expt) 'lose)
+#+LISPMATH (flag '(expt) 'lose)
 
 ;; Should fexpt be an alias for expt (see "arith/math.red")?
 
@@ -1764,12 +1771,15 @@ Returns the product of U and V.")
 ;;; Floating Point Math Functions
 ;;; =============================
 
-;; Cf. "support/fastmath.red".
+(import '(floor ceiling round))
 
-;; Transcendental functions may be called with integer arguments,
-;; which are automatically coerced to the lowest precision float type
-;; available.  This would lead to loss of precision and also to type
-;; errors.  So explicitly convert the arguments to a double-float.
+;; Prevent use of the definitions in "arith/math.red":
+(flag '(floor ceiling round) 'lose)
+
+;; Elementary transcendental functions may be called with integer
+;; arguments, which are automatically coerced to the lowest precision
+;; float type available.  This would lead to loss of precision and
+;; type errors.  So explicitly convert the arguments to double-float.
 
 #+LISPMATH
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -1808,13 +1818,10 @@ Returns the product of U and V.")
   (defun ln (x) (cl:log (cl:float x 1d0)))
   (defun logb (x y) (cl:log (cl:float x 1d0) (cl:float y 1d0)))
 
-  (import '(floor ceiling round))
-
   ;; Prevent use of the definitions in "arith/math.red":
   (flag '(sin cos tan asin acos atan atan2
           sinh cosh tanh asinh acosh atanh
-          sqrt exp log ln logb
-          floor ceiling round)
+          sqrt exp log ln logb)
         'lose))
 
 

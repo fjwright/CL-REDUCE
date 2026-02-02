@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-01-29 17:40:48 franc>
+# Time-stamp: <2026-02-02 15:53:51 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL),
 # namely SBCL, CLISP and CCL.
@@ -42,14 +42,14 @@ function help {
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
     echo 'Option -d configures the build for debugging.'
-    echo 'Option -m use Common Lisp floating-point math functions.'
+    echo 'Option -n do NOT use Common Lisp floating-point math functions.'
     echo 'Option -b builds only the bootstrap REDUCE image.'
     echo 'Option -o builds only the core REDUCE packages.'
     echo 'Option -h displays this help message and exits.'
     exit 1
 }
 
-while getopts l:r:cfdmboh option
+while getopts l:r:cfdnboh option
 do
     case $option in
         l) lisp=$OPTARG;;       # obsolete
@@ -57,7 +57,7 @@ do
         c) clean=true;;
         f) force='!*forcecompile := t;';;
         d) debug='(push :DEBUG *features*)';;
-        m) lispmath='(push :LISPMATH *features*)';;
+        n) nolispmath='(push :NOLISPMATH *features*)';;
         b) bootstraponly=true;;
         o) coreonly=true;;
         h) help;;
@@ -117,7 +117,7 @@ then
 fi
 
 [ -n "$debug" ] && echo '+++++ Building for debugging'
-[ -n "$lispmath" ] && echo '+++++ Using Common Lisp floating-point math functions'
+[ -n "$nolispmath" ] && echo '+++++ NOT using Common Lisp floating-point math functions'
 
 if [ -z "$reduce" ]
 then
@@ -174,7 +174,7 @@ then
     echo $'\n+++++ Compiling sl-on-cl'
     time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg &&
 $debug
-$lispmath
+$nolispmath
 (or (compile-file "sl-on-cl.lisp")
     #+CCL (quit 1)
     #-CCL (exit #+SBCL :code 1))
