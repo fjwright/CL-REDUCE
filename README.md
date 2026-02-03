@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-02-02 16:28:44 franc>
+Time-stamp: <2026-02-03 17:21:30 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -163,117 +163,108 @@ For Cygwin CLISP REDUCE (on MS Windows), the REDUCE `gnuplot` package tries to r
 
 ## Status
 
+There are no build errors (unless specifically indicated to the contrary below).
+
 I performed all testing on the same computer using Windows 11, a recent version of Cygwin and Ubuntu 24.04.3 LTS (GNU/Linux 6.6.87.2-microsoft-standard-WSL2 x86_64).  I tested production (i.e. non-debugging) builds using the standard REDUCE test framework by running commands of the form
 
 ```sh
-../scripts/testall.sh --<lisp>
+../scripts/testall.sh --csl --psl --sbcl --clisp --ccl
 ```
 
-"LispMath" below means the expt function and the floating-point math (elementary transcendental) functions provided by Common Lisp, which I use if they appear to work well.  This is the case for SBCL and CCL, but not CLISP.
+"LispMath" below means the expt function and the floating-point math (elementary transcendental) functions provided by Common Lisp, which I use if they appear to work well.  This is the case for SBCL and CCL, but not for CLISP.
 
-### Steel Bank Common Lisp (SBCL)
+### Windows
 
-#### Windows
+Lisp  | Total CPU Time (s) | Total GC Time (s)
+------|--------------------|------------------
+csl   | 85                 | 2
+psl   | 196                | 1
+sbcl  | 214                | 8
+clisp | 1982               | 812 (needs checking!)
+ccl   | 1127               | 34573 (needs checking!)
 
-REDUCE 7284 on (native Windows) SBCL 2.6.1 (using LispMath)
+#### Steel Bank Common Lisp (SBCL)
 
-No build errors.
+REDUCE 7290 on (native Windows) SBCL 2.6.1 (using LispMath)
 
-Package  | Output Issues
----------|--------------
-gf2      | Missing final backtrace
-numeric  | Minor numerical differences
-
-Lisp | Run Time (ms) | GC Time (ms)
------|---------------|-------------
-csl  |         91811 | 1849
-psl  |        149198 |  901
-sbcl |        272830 | 8426
+Package Test | Comment / To Do
+-------------|----------------
+gf2          | Missing final backtrace
+numeric      | Expected numerical discrepancies
 
 Regression Test                    | Comment / To Do
 -----------------------------------|----------------
 2011-08-31-linelength              | CSL and PSL printing overflows visibly; CL doesn't!
-2013-06-30-rounding                | Expected numerical discrepancies, but only in the lowest-order bit.
-2014-03-17-utf8-in-list            | No longer crashes, but needs more work! (PSL also differs.)
+2013-06-30-rounding                | Expected numerical discrepancies, but only for sin and in the lowest-order bit.
+2014-03-17-utf8-in-list            | Needs more work.  (PSL also differs.)
 2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies, but only in the lowest-order bit.
-2019-07-30-sub-with-df             | Generic REDUCE issue?
+2019-07-30-sub-with-df             | Generic REDUCE issue.
 2023-05-27-lambda-expressions      | Algebraic lambda mostly works but freestanding lambda expressions not handled correctly.
 
-#### Ubuntu 24 (on WSL)
+#### GNU CLISP
 
-REDUCE 7264 on SBCL 2.6.0.
+REDUCE 7290 on Cygwin CLISP 2.49 (**not** using LispMath)
 
-No build errors.  Package test issues as for Windows.
-
-Lisp | Run Time (ms) | GC Time (ms)
------|---------------|-------------
-csl  |        108676 | 1199
-psl  |        110740 |  610
-sbcl |        194182 | 3113
-
-
-### GNU CLISP
-
-#### Windows
-
-REDUCE 7284 on Cygwin CLISP 2.49
-
-No build errors.
-
-Package   | Output Issues
-----------|--------------
-arith     | Expected numerical discrepancies
-economise | Crash?  CHECK!
-gf2       | Crash?  CHECK!
-ibalp     | Stack overflow. `reset() found no driver frame`
+Package Test | Comment / To Do
+-------------|----------------
+arith        | Expected numerical discrepancies
+assist       | `*** tan is protected/unprotected`
+economise    | Output truncated; probably timed out.
+gf2          | `+++ Error in call to gf2_groeb`
+ibalp        | Stack overflow. `reset() found no driver frame`
+numeric      | Expected numerical discrepancies
 
 Regression Test                    | Comment / To Do
 -----------------------------------|----------------
 2011-08-31-linelength              | As for SBCL, but also a CLISP bug: printing any object containing a newline also prints a newline before the object.
-2013-06-30-rounding                | Discrepancy for sin(pi) (only).
+2013-06-30-rounding                | Expected numerical discrepancies for pi and sin.
 2014-03-17-utf8-in-list            | As for SBCL.
-2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies;  COMMON-LISP:TAN: division by zero.
+2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies;  `***** 7.591469770011592E7  invalid for  SIN`
 2019-07-30-sub-with-df             | As for SBCL.
 2020-10-25-safe-fp.rlg.diff        | COMMON-LISP:EXPT: floating point underflow.
 2023-05-27-lambda-expressions      | As for SBCL.
+2024-02-23-error-in-matrix-svd-computation | Expected numerical discrepancies.
 
-#### Ubuntu 24 (on WSL)
+#### Clozure Common Lisp (CCL)
 
-REDUCE 7259 on CLISP 2.49
+REDUCE 7290 on native Windows CCL 1.13 (using LispMath)
 
-No build errors.
-
-Package  | Output Issues
----------|--------------
-arith    | CLISP is numerically more accurate than CSL/PSL!
-economise| Timed out; OK with --no-timeout
-gf2      | Different backtrace
-ibalp    | Stack overflow. `reset() found no driver frame (core dumped)`
-numeric  | Minor numerical differences
-
-
-### Clozure Common Lisp (CCL)
-
-#### Windows
-
-REDUCE 7284 on native Windows CCL 1.13 (using LispMath)
-
-No build errors.
-
-Package  | Output Issues
----------|--------------
-gf2      | Missing final backtrace
-lalr     | Compiled functions instead of lambdas (because CCL always compiles)
-numeric  | Minor numerical differences
-ofsf     | Final output missing; probably timed out!
+Package Test | Comment / To Do
+-------------|----------------
+gf2          | `+++ Error in call to gf2_groeb`
+lalr         | Compiled functions instead of lambdas (because CCL always compiles)
+numeric      | Expected numerical discrepancies
+ofsf         | Output truncated; probably timed out!
 
 Regression test results as for SBCL.
 
-#### Ubuntu 24 (on WSL)
+### Ubuntu 24 (on WSL)
 
-REDUCE 7263 on CCL 1.13
+Lisp  | Total CPU Time (s) | Total GC Time (s)
+------|--------------------|------------------
+csl   | 121                | 2
+psl   | 116                | 1
+sbcl  | 192                | 3
+clisp | 1542               | 394 (needs checking!)
+ccl   | 1218               | 32933 (needs checking!)
 
-No build errors.  Package test issues probably similar to those for Windows, except that slow tests time out, but not yet retested.
+#### Steel Bank Common Lisp (SBCL)
+
+REDUCE 7290 on SBCL 2.6.0.
+
+All test results very similar to those for Windows, except no differences for numeric package or 2013-06-30-rounding regression test.
+
+### GNU CLISP
+
+REDUCE 7290 on CLISP 2.49
+
+All test results very similar to those for Windows.
+
+#### Clozure Common Lisp (CCL)
+
+REDUCE 7290 on CCL 1.13
+
+All test results very similar to those for Windows, except no differences for numeric package or 2013-06-30-rounding regression test.
 
 
 ## Known limitations
