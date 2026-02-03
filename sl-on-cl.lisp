@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-02 16:17:20 franc>
+;; Time-stamp: <2026-02-03 12:47:30 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -38,7 +38,9 @@
 ;; floating point underflow, trigonometric function accuracy can be
 ;; poor for very large arguments, and tan can lead to division by
 ;; zero, so use "arith/math.red" for safety:
-#+(and (or SBCL CCl) (not NOLISPMATH)) (push :LISPMATH *features*)
+#+(and (or SBCL CCl LISPMATH) (not NOLISPMATH))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (push :LISPMATH *features*))
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
          (require :sb-posix))
