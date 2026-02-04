@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-04 17:21:59 franc>
+;; Time-stamp: <2026-02-04 17:59:00 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -82,7 +82,7 @@
 
   #+ABCL (:import-from :ext :getenv)
 
-  #+CCL (:import-from :ccl :quit :getenv :setenv :gc :gctime)
+  #+CCL (:import-from :ccl :quit :getenv :setenv :gc)
 
   #+ECL (:import-from :ext :quit :getenv :setenv)
   )
@@ -2539,9 +2539,9 @@ This is the only function that actually produces graphical output.
               (#\Tab (setq %posn (* (1+ (floor %posn %tab-width)) %tab-width)))
               (#\Newline (setq %posn 0))
               (otherwise (incf %posn)))))
-        (when %prin-space-maybe (cl:princ #\Space)))
+        (when %prin-space-maybe (write-char #\Space)))
     (setq %prin-space-maybe nil)
-    (cl:princ s))
+    (write-string s))
   nil)
 
 ;; PRINC(U:id):id eval, spread
@@ -3040,7 +3040,7 @@ Counting starts at 0.  Suppress the printed output."
   ;; For CCL, only documented in "ccl/lib/time.lisp".
   (values (round (* #+SBCL sb-ext:*gc-run-time*
                     #+CLISP (%nth-room-value 5)
-                    #+CCL (gctime)
+                    #+CCL (ccl:gctime)
                     +milliseconds-per-internal-time-unit+))))
 
 (declaim (ftype (cl:function () list) oblist))
