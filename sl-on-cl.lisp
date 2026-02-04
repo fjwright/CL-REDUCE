@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-03 12:47:30 franc>
+;; Time-stamp: <2026-02-04 17:06:33 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3004,7 +3004,13 @@ beginning of the year 1970.  The difference of 70 years is
 70*31,536,000 = 2,207,520,000 seconds.  This function should not be
 used to determine an absolute date or time!")
 
+(declaim ((rational 0) +milliseconds-per-internal-time-unit+))
+
 (defconstant +milliseconds-per-internal-time-unit+
+  ;; `internal-time-units-per-second' is a positive integer
+  ;; representing the number of internal time units in one second.  In
+  ;; SBCL, CLISP and 64-bit CCL, it's value is 1000000, so an internal
+  ;; time unit is one microsecond.
   (/ 1000 internal-time-units-per-second)
   "Multiplier to convert internal time units to milliseconds.")
 
@@ -3015,6 +3021,26 @@ used to determine an absolute date or time!")
 Elapsed time from some arbitrary initial point in milliseconds."
   ;; This is used for timing computations, so use run time.
   (values (round (* (get-internal-run-time)
+                    +milliseconds-per-internal-time-unit+))))
+
+(declaim (ftype (cl:function ((integer 0)) (integer 0)) %nth-room-value))
+
+#+CLISP
+(defun %nth-room-value (n)
+  "Return the Nth multiple value provided by CLISP `room' function.
+Counting starts at 0.  Suppress the printed output."
+  (with-open-stream (*standard-output* (make-broadcast-stream))
+    (nth-value n (room nil))))
+
+(declaim (ftype (cl:function () (integer 0)) gctime))
+
+(defun gctime ()
+  "The total time (in milliseconds) spent in garbage collection."
+  ;; cf. time () defined above.
+  ;; For CCL, only documented in "ccl/lib/time.lisp".
+  (values (round (* #+SBCL sb-ext:*gc-run-time*
+                    #+CLISP (%nth-room-value 5)
+                    #+CCL (gctime)
                     +milliseconds-per-internal-time-unit+))))
 
 (declaim (ftype (cl:function () list) oblist))
@@ -3040,24 +3066,6 @@ and updates gctime*."
   #+CLISP (ext:gc)
   #+CCL (ccl:gc)
   )
-
-(declaim (ftype (cl:function ((integer 0)) t) %nth-room-value)) ; ???
-
-#+CLISP
-(defun %nth-room-value (n)
-  "Return the Nth multiple value provided by CLISP `room' function.
-Suppress the printed output."
-  (let ((*standard-output* (make-broadcast-stream)))
-    (nth-value n (room nil))))
-
-(declaim (ftype (cl:function () (integer 0)) gctime))
-
-#-CCL
-(defun gctime ()
-  "The total time (in milliseconds) spent in garbage collection."
-  (values (round (* #+SBCL sb-ext:*gc-run-time*
-                    #+CLISP (%nth-room-value 5)
-                    +milliseconds-per-internal-time-unit+))))
 
 (defvar gcknt* 0
   "gcknt* = [Initially: 0] global

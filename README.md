@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-02-03 17:21:30 franc>
+Time-stamp: <2026-02-04 16:37:03 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -180,8 +180,8 @@ Lisp  | Total CPU Time (s) | Total GC Time (s)
 csl   | 85                 | 2
 psl   | 196                | 1
 sbcl  | 214                | 8
-clisp | 1982               | 812 (needs checking!)
-ccl   | 1127               | 34573 (needs checking!)
+clisp | 1982               | 812
+ccl   | 1127               | 35
 
 #### Steel Bank Common Lisp (SBCL)
 
@@ -245,8 +245,8 @@ Lisp  | Total CPU Time (s) | Total GC Time (s)
 csl   | 121                | 2
 psl   | 116                | 1
 sbcl  | 192                | 3
-clisp | 1542               | 394 (needs checking!)
-ccl   | 1218               | 32933 (needs checking!)
+clisp | 1542               | 394
+ccl   | 1218               | 33
 
 #### Steel Bank Common Lisp (SBCL)
 
