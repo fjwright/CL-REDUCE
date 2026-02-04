@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-04 17:06:33 franc>
+;; Time-stamp: <2026-02-04 17:21:59 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4111,36 +4111,25 @@ When all done, execute FASLEND;~2%" name))
 (defun reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
   (standard-lisp)
-  ;; (if  (and (interactive-stream-p *standard-input*)
-  ;;           (interactive-stream-p *standard-output*))
-  ;;      (system::driver       ; build driver-frame; do #'lambda "infinitely"
-  ;;       #'(lambda ()
-  ;;           (system::with-abort-restart (:report (system::text "Abort main loop"))
-  ;;             ;; ANSI CL wants an ABORT restart to be available.
-  ;;             (begin))))
-  ;;      ;; Non-interactively, when an ERROR occurs, or when a
-  ;;      ;; Control+C interrupt occurs, the error message is
-  ;;      ;; printed and CLISP terminates with an error status.
-  ;;      (progn
-  ;;        #+DEBUG (setq custom:*report-error-print-backtrace* t)
-  ;;        (system::driver #'(lambda () (ext:exit-on-error (begin))))))
   (if  (or (interactive-stream-p *standard-output*)
            (getenv "INSIDE_EMACS"))
        (progn
          #+DEBUG (format t "~&Interactive mode -- debugger enabled~%")
          #+DEBUG (setq *break-on-signals* 'cl:error)
-         (with-simple-restart
-             (abort "Exit REDUCE.")
-           (loop
-            (with-simple-restart
-                (abort "Return to REDUCE.")
-              (begin)))))
+         (system::driver ; build driver-frame; do #'lambda "infinitely"
+          #'(lambda ()
+              (system::with-abort-restart (:report (system::text "Abort main loop"))
+                ;; ANSI CL wants an ABORT restart to be available.
+                (begin)))))
+       ;; Non-interactively, when an ERROR occurs, or when a
+       ;; Control+C interrupt occurs, the error message is
+       ;; printed and CLISP terminates with an error status.
        (progn
          #+DEBUG (format t "~&Batch mode -- debugger disabled~%")
-         (ext:exit-on-error (begin))))
-  (ext:exit))
+         #+DEBUG (setq custom:*report-error-print-backtrace* t)
+         (system::driver #'(lambda () (ext:exit-on-error (begin)))))))
 
-#+CLISP (setq custom:*report-error-print-backtrace* t)
+;; #+CLISP (setq custom:*report-error-print-backtrace* t)
 
 #+CCL
 (defun reduce-init-function ()
