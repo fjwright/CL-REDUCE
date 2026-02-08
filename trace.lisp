@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019, 2025, 2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-01-03 10:00:55 franc>
+;; Time-stamp: <2026-02-08 16:24:56 franc>
 ;; Created: 20 February 2019
 
 ;; Based on, and hopefully consistent with, the portable REDUCE
@@ -29,7 +29,7 @@
   (:nicknames :sl-trace)
   (:documentation "Lower-case Standard Lisp on Common Lisp trace facilities")
   (:use :common-lisp)
-  (:import-from :sl :eqcar :put)
+  (:import-from :sl :eqcar :put $eof$)
   (:export :tr :untr :trst :untrst))
 
 (in-package :standard-lisp-trace)
@@ -69,7 +69,7 @@ List all traced functions if no functions or nil are specified."
 (defparameter %fasl.lisp-pathname-template%
   (merge-pathnames
    (make-pathname :type "lisp")
-   sl::%fasl-directory-pathname) ; defined in sl-on-cl.lisp
+   slim::%fasl-directory-pathname)
   "Absolute pathname of the form \"/.../fasl.<lisp>/???.lisp\".")
 
 (defun get-fasl-source (name)
@@ -78,7 +78,7 @@ List all traced functions if no functions or nil are specified."
         file stream form)
     (when (setq file (get name 'sl::defined-in-file)) ; e.g. |PGK/MOD.RED|
       (setq file (pathname-name
-                  (sl::%string-invert-case (symbol-name file)))) ; e.g. "mod"
+                  (slim::%string-invert-case (symbol-name file)))) ; e.g. "mod"
       (setq file (merge-pathnames file %fasl.lisp-pathname-template%))
       ;; e.g. "/.../fasl.which/mod.lisp"
       (when (setq stream (open file
@@ -88,12 +88,12 @@ List all traced functions if no functions or nil are specified."
                                :if-does-not-exist nil))
         (loop
            do
-             (setq form (read stream nil sl::$eof$))
+             (setq form (read stream nil $eof$))
            until
              (or (and (eqcar form 'sl::de) (eq (cadr form) name))
-                 (eq form sl::$eof$)))
+                 (eq form $eof$)))
         (close stream)
-        (unless (eq form sl::$eof$) form)))))
+        (unless (eq form $eof$) form)))))
 
 (defun re-trace1 (name trace-setq)
   "Toggle trace/traceset for function NAME.
