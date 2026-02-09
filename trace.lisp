@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019, 2025, 2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-08 16:24:56 franc>
+;; Time-stamp: <2026-02-09 12:20:33 franc>
 ;; Created: 20 February 2019
 
 ;; Based on, and hopefully consistent with, the portable REDUCE
@@ -72,6 +72,8 @@ List all traced functions if no functions or nil are specified."
    slim::%fasl-directory-pathname)
   "Absolute pathname of the form \"/.../fasl.<lisp>/???.lisp\".")
 
+(declaim (ftype (cl:function (symbol) cons) get-fasl-source))
+
 (defun get-fasl-source (name)
   "Get DE form for function NAME from file \"/.../fasl.<lisp>/modulename.lisp\"."
   (let ((*readtable* (copy-readtable nil)) ; read CL syntax
@@ -94,6 +96,8 @@ List all traced functions if no functions or nil are specified."
                  (eq form $eof$)))
         (close stream)
         (unless (eq form $eof$) form)))))
+
+(declaim (ftype (cl:function (symbol boolean) symbol) re-trace1))
 
 (defun re-trace1 (name trace-setq)
   "Toggle trace/traceset for function NAME.
@@ -124,21 +128,22 @@ NAME must be quoted when called!"
     (format *trace-output*
             "~&***** ~a must be a symbol.~%" name)
     (return-from trace1))
-  (let (defn olddefn params)
+  (let (defn newname olddefn params)
+    (declare (symbol newname) (list params))
     ;; Check how NAME is implemented; get definition and update NAME
     ;; if necessary:
     (cond ((fboundp name)
            (setq defn (symbol-function name)))
-          ((setq defn (get name 'sl::psopfn))
+          ((setq newname (get name 'sl::psopfn))
            (format *trace-output*
-                   "~&*** ~a implemented as psopfn ~a.~%" name defn)
-           (setq name defn
-                 defn (and (fboundp defn) (symbol-function defn))))
-          ((setq defn (get name 'sl::simpfn))
+                   "~&*** ~a implemented as psopfn ~a.~%" name newname)
+           (setq name newname
+                 defn (and (fboundp newname) (symbol-function newname))))
+          ((setq newname (get name 'sl::simpfn))
            (format *trace-output*
-                   "~&*** ~a implemented as simpfn ~a.~%" name defn)
-           (setq name defn
-                 defn (and (fboundp defn) (symbol-function defn)))))
+                   "~&*** ~a implemented as simpfn ~a.~%" name newname)
+           (setq name newname
+                 defn (and (fboundp newname) (symbol-function newname)))))
     ;; Check function to be traced is defined:
     (unless defn
       (format *trace-output*
@@ -182,14 +187,13 @@ NAME must be quoted when called!"
               (setq params (list (cadr defn)))))
         (progn
           (setq defn olddefn)           ; defn = compiled form
-          (if trace-setq
-              (progn
-                (format *trace-output*
-                        "~&*** ~a ~
+          (when trace-setq
+            (format *trace-output*
+                    "~&*** ~a ~
 must be interpreted for assignment tracing.
     Tracing arguments and return value only."
-                        name)
-                (setq trace-setq nil)))))
+                    name)
+            (setq trace-setq nil))))
     ;;
     (if params
         (setq params (car params))      ; unwrap params
@@ -246,11 +250,15 @@ NAME must be quoted when called!"
         (format *trace-output*
                 "~&***** ~a was not traced.~%" name))))
 
+(declaim (fixnum trace-depth))
+
 (defvar trace-depth 0)
 
 (defvar *trpause nil
   "If non-nil then ask whether to continue before each traced execution.
 Abort with an error if the answer is no.")
+
+(declaim (ftype (cl:function (symbol list list) function) run-traced-function))
 
 (defun run-traced-function (name params args)
   (let ((trace-depth (1+ trace-depth))
@@ -259,7 +267,7 @@ Abort with an error if the answer is no.")
     (if params
         (loop for param in params for arg in args do
               (format *trace-output* "   ~a:  ~s~%" param arg))
-        (loop for i from 1 for arg in args do
+        (loop for i fixnum from 1 for arg in args do
               (format *trace-output* "   Arg~d:  ~s~%" i arg)))
     (if (and *trpause (not (y-or-n-p "Continue?")))
         (error "Tracing aborted!"))
