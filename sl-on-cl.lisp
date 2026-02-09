@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-08 17:35:54 franc>
+;; Time-stamp: <2026-02-09 16:30:40 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1630,16 +1630,13 @@ EXPR PROCEDURE DIVIDE(U, V);
 
 (export 'expt)
 (defun expt (u v)
+  ;; Defined explicitly so that it can be redefined in arith/math
   "EXPT(U:number, V:integer):number eval, spread
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
 exponentiation."
-  ;; The REDUCE definition is more general; see above declamation!
-  (cl:expt (if (integerp u) u (cl:float u 1d0))
-           (if (integerp v) v (cl:float v 1d0))))
-
-;; ***** ABOVE COERCION TO DOUBLE-FLOAT IS UNNECESSARY; REVERT TO
-;; ***** PREVIOUS HANDLING OF EXPT!
+  ;; The REDUCE definition is more general; see above type declamation!
+  (cl:expt u v))
 
 ;; Prevent use of the definition of expt in "arith/math.red":
 #+LISPMATH (flag '(expt) 'sl::lose)
@@ -1743,6 +1740,8 @@ MACRO PROCEDURE PLUS(U);
   "PLUS2(U:number, V:number):number eval, spread
 Returns the sum of U and V.")
 
+(declaim (inline quotient))
+
 (export 'quotient)
 (defun quotient (u v)
   "QUOTIENT(U:number, V:number):number eval, spread
@@ -1752,9 +1751,7 @@ integers and exactly one of them is negative the value returned is
 the negative truncation of the absolute value of U divided by the
 absolute value of V. An error occurs if division by zero is attempted:
 ***** Attempt to divide by 0 in QUOTIENT"
-  ;; Can probably implement this better using generic functions!
-  ;; In CLISP on macOS, / throws an error on underflow.
-  ;; Just return 0, as do all other Common Lisps I have tried.
+  ;; Could perhaps implement this better using generic functions!
   (if (or (floatp u) (floatp v))
       #+CLISP (ext:without-floating-point-underflow (/ u v))
       #-CLISP (/ u v)
@@ -1783,6 +1780,18 @@ EXPR PROCEDURE SUB1(U);
 
 (declaim (ftype (cl:function (&rest number) number) times))
 
+#+CLISP
+(progn
+  (declaim (inline times))
+  (export 'times)
+  (defun times (&rest args)
+    "TIMES([U:number]):number noeval, nospread, or macro
+Returns the product of all its arguments.
+MACRO PROCEDURE TIMES(U);
+   EXPAND(CDR U, 'TIMES2);"
+    (ext:without-floating-point-underflow (cl:apply #'* args))))
+
+#-CLISP
 (defalias times cl:*
   "TIMES([U:number]):number noeval, nospread, or macro
 Returns the product of all its arguments.
@@ -4400,7 +4409,7 @@ When all done, execute FASLEND;~2%" name))
   #+ECL (reduce-init-function)
   #+ABCL (asdf-jar:package name :verbose t))
 
-(pushnew :standard-lisp *features*)
+;; (pushnew :standard-lisp *features*)
 
 (defparameter lispsystem* '(sl::common-lisp sl::sl-on-cl)
   "Information about the Lisp system supporting REDUCE.
@@ -4428,13 +4437,14 @@ A list of identifiers indicating system properties.")
 (declaim (ftype (cl:function (boolean) symbol) compilation))
 
 #+SBCL
-(export 'compilation)
-(defun compilation (on)
-  "Set the SBCL evaluation mode to compile if ON is non-nil and to
+(progn
+  (export 'compilation)
+  (defun compilation (on)
+    "Set the SBCL evaluation mode to compile if ON is non-nil and to
 interpret otherwise.  The default is compile.
 Called by ON/OFF COMP; see 'clrend.red'."
-  (setq sb-ext:*evaluator-mode*
-        (if on :compile :interpret)))
+    (setq sb-ext:*evaluator-mode*
+          (if on :compile :interpret))))
 
 ;; In SBCL, inhibit printing of package prefixes in the debugger
 ;; (which doesn't seem to work):
