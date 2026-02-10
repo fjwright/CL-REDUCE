@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-02-05 12:17:48 franc>
+Time-stamp: <2026-02-10 18:09:17 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -171,7 +171,7 @@ I performed all testing on the same computer using Windows 11, a recent version 
 ../scripts/testall.sh --csl --psl --sbcl --clisp --ccl
 ```
 
-"LispMath" below means the expt function and the floating-point math (elementary transcendental) functions provided by Common Lisp, which I use if they appear to work well.  This is the case for SBCL and CCL, but not for CLISP.
+"LispMath" below means the floating-point math (elementary transcendental) functions provided by Common Lisp, which I use if they appear to work well.  This is the case for SBCL and CCL, but not for CLISP.
 
 ### Windows
 
@@ -222,7 +222,7 @@ Regression Test                    | Comment / To Do
 -----------------------------------|----------------
 2013-06-30-rounding                | Expected numerical discrepancies for pi, sin and sqrt(2).
 2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies; 2 large arguments invalid for sin.
-2020-10-25-safe-fp                 | expt and * show floating point underflow.
+2020-10-25-safe-fp                 | ?.?????e+308 -> 0.0e+308; fixable printing issue?
 2024-02-23-error-in-matrix-svd-computation | Expected numerical discrepancies.
 
 #### Clozure Common Lisp (CCL)

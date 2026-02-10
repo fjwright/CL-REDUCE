@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-09 16:30:40 franc>
+;; Time-stamp: <2026-02-10 16:53:43 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1625,23 +1625,23 @@ EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
   (multiple-value-call #'cons (truncate u v)))
 
-(declaim #+LISPMATH (inline expt)
+(declaim (inline expt)
          (ftype (cl:function (number number) number) expt))
 
 (export 'expt)
 (defun expt (u v)
-  ;; Defined explicitly so that it can be redefined in arith/math
+  ;; NB: This definition is used in `%prin-float-to-string' so as to
+  ;; avoid CLISP underflow.
   "EXPT(U:number, V:integer):number eval, spread
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
 exponentiation."
   ;; The REDUCE definition is more general; see above type declamation!
-  (cl:expt u v))
+  #+CLISP (ext:without-floating-point-underflow (cl:expt u v))
+  #-CLISP (cl:expt u v))
 
 ;; Prevent use of the definition of expt in "arith/math.red":
-#+LISPMATH (flag '(expt) 'sl::lose)
-
-;; Should fexpt be an alias for expt (see "arith/math.red")?
+(flag '(expt) 'sl::lose)
 
 (declaim (inline fix)
          (ftype (cl:function (number) integer) fix))
@@ -2081,7 +2081,7 @@ EXPR PROCEDURE DELETE(U, V);
       ELSE CAR V . DELETE(U, CDR V);"
   (cl:remove u v :test #'equal :count 1))
 
-(declaim (ftype (cl:function (t) list) digit))
+(declaim (ftype (cl:function (t) boolean) digit))
 
 (export 'digit)
 (defun digit (u)
@@ -2090,9 +2090,8 @@ Returns T if U is a digit, otherwise NIL.
 EXPR PROCEDURE DIGIT(U);
    IF MEMQ(U, '(!0 !1 !2 !3 !4 !5 !6 !7 !8 !9))
       THEN T ELSE NIL;"
-  (cl:member u '(sl::\0 sl::\1 sl::\2 sl::\3 sl::\4
-                 sl::\5 sl::\6 sl::\7 sl::\8 sl::\9)
-             :test #'eq))
+  (handler-case (not (not (digit-char-p (character u))))
+    (cl:error () nil)))
 
 (declaim (ftype (cl:function (t) (integer 0)) length))
 
@@ -2113,7 +2112,7 @@ EXPR PROCEDURE LENGTH(X);
       ;; When pointer hits an atom, return the count:
       ((atom p) n)))
 
-(declaim (ftype (cl:function (t) list) liter))
+(declaim (ftype (cl:function (t) boolean) liter))
 
 (export 'liter)
 (defun liter (u)
@@ -2125,15 +2124,8 @@ EXPR PROCEDURE LITER(U);
                 !a !b !c !d !e !f !g !h !i !j !k !l !m
                 !n !o !p !q !r !s !t !u !v !w !x !y !z))
       THEN T ELSE NIL;"
-  (cl:member u '(sl::\A sl::\B sl::\C sl::\D sl::\E sl::\F sl::\G
-                 sl::\H sl::\I sl::\J sl::\K sl::\L sl::\M
-                 sl::\N sl::\O sl::\P sl::\Q sl::\R sl::\S sl::\T
-                 sl::\U sl::\V sl::\W sl::\X sl::\Y sl::\Z
-                 sl::\a sl::\b sl::\c sl::\d sl::\e sl::\f sl::\g
-                 sl::\h sl::\i sl::\j sl::\k sl::\l sl::\m
-                 sl::\n sl::\o sl::\p sl::\q sl::\r sl::\s sl::\t
-                 sl::\u sl::\v sl::\w sl::\x sl::\y sl::\z)
-             :test #'eq))
+  (handler-case (alpha-char-p (character u))
+    (cl:error () nil)))
 
 (declaim (ftype (cl:function (t t) list) member memq))
 
@@ -2823,6 +2815,8 @@ in vector-notation.  The value of U is returned."
   "Print a float to a string, rounded to 6 significant digits."
   ;; Must be able to handle 2.0^1023 and 2.0^(-1022), used in
   ;; "arith/rounded.red"!
+  ;; Uses expt defined earlier in this file so as to avoid CLISP
+  ;; underflow.
   (if (zerop u) "0.0"
       (let* ((absu (abs u))
              (e (floor (cl:log absu 10d0)))) ; decimal exponent
@@ -2832,7 +2826,7 @@ in vector-notation.  The value of U is returned."
         ;; factor s = 10^(d-e-1), round and divide s out again.
         ;; The multiplication by s is done in two steps to avoid
         ;; overflow!
-        (setq u (* u (cl:expt 10d0 (- e)))
+        (setq u (* u (expt 10d0 (- e)))
               u (fround (* u 1d5))) ; 6 sig figs as integer-valued float
         (if (or (>= absu 999999.5d0) (< absu 0.0001d0))
             ;; Exponential (e) format, e.g. 9.99999e-05
@@ -2852,7 +2846,7 @@ in vector-notation.  The value of U is returned."
                     (format nil "~ae-~2,'0d" m (- e))
                     (format nil "~ae+~2,'0d" m e))))
             ;; Fixed (f) format, e.g. 99999.9
-            (format nil "~f" (/ u (cl:expt 10d0 (- 5 e))))))))
+            (format nil "~f" (/ u (expt 10d0 (- 5 e))))))))
 
 (declaim (ftype (cl:function (simple-vector cl:function) null) %prin-vector))
 
