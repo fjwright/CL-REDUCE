@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-11 14:45:01 franc>
+;; Time-stamp: <2026-02-11 15:34:46 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -58,7 +58,8 @@
   (push :LISPMATH *features*))
 
 #+SBCL (eval-when (:compile-toplevel :load-toplevel :execute)
-         (require :sb-posix))
+         (require :sb-posix)
+         (require :sb-introspect))
 
 #+CLISP (eval-when (:compile-toplevel :load-toplevel :execute)
           (setq custom:*suppress-check-redefinition* t
@@ -3994,6 +3995,18 @@ in file name."
   )
 
 (export '(getenv setenv exit))          ; used in "bootstrap.lisp"
+
+(declaim (inline sl::symbol-argcount)
+         (ftype (cl:function ((or symbol cl:function)) (integer 0))
+                sl::symbol-argcount))
+
+(defun sl::symbol-argcount (fn)    ; used in "rtools/simplertrace.red"
+  "Return number of arguments of a function."
+  ;; Code provided by Rainer Schöpf.
+  #+SBCL (cl:length (cl:nth 1 (sb-introspect:function-lambda-list fn)))
+  #+CLISP (cl:length (sys::arglist fn))
+  #+(or CCL ABCL) (cl:length (arglist fn))
+  )
 
 
 ;;; Compile and load
