@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-10 18:34:46 franc>
+;; Time-stamp: <2026-02-11 14:45:01 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -30,15 +30,15 @@
 ;; symbols are inherited by the STANDARD-LISP package via the
 ;; defpackage :use option.
 
-;; Only the standard-lisp-implementation package uses common-lisp.
-;; The standard-lisp package uses only the
-;; standard-lisp-implementation package; it contains only required
-;; common-lisp external symbols that are imported directly and
-;; standard-lisp-implementation external symbols, and so should not
-;; contain any extraneous symbols.  Some symbols are defined directly
-;; in the standard-lisp package.  NB: It is *essential* that all
-;; symbols used in Standard Lisp are interned in the standard-lisp
-;; package.
+;; Only SLIM uses common-lisp and SL uses only SLIM.  SL contains only
+;; required common-lisp external symbols that are imported directly
+;; and SLIM external symbols, and so should not contain any extraneous
+;; symbols.  Most symbols are interned directly in SL.  NB: It is
+;; *essential* that all symbols used in Standard Lisp are interned in
+;; SL.
+
+;; The names of SLIM internal symbols begin with %, and if they are
+;; special variables they also end with %.
 
 ;; The DEBUG feature may be initially added by build.sh:
 #+DEBUG (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -749,7 +749,7 @@ having properties, flags, functions and the like. U is returned."
 (defvar *defn nil)
 (export '*defn)
 
-(defvar %saved-plist-alist nil
+(defvar %saved-plist-alist% nil
   "Association list of symbols and their saved property lists.
 Its value should normally be nil, except while ON DEFN.")
 
@@ -759,9 +759,9 @@ Its value should normally be nil, except while ON DEFN.")
   "Save property list of symbol SYMBOL if not already saved.
 Do not do this if Lisp file load in progress."
   (or *load-pathname*
-      (cl:assoc symbol %saved-plist-alist :test #'eq)
+      (cl:assoc symbol %saved-plist-alist% :test #'eq)
       (push (cons symbol (cl:copy-tree (symbol-plist symbol)))
-            %saved-plist-alist))
+            %saved-plist-alist%))
   nil)
 
 (declaim (ftype (cl:function () null) %reinstate-plists))
@@ -771,8 +771,8 @@ Do not do this if Lisp file load in progress."
 Do not do this if Lisp file load in progress."
   (unless *load-pathname*
     (cl:mapc #'(lambda (s) (setf (symbol-plist (car s)) (cdr s)))
-             %saved-plist-alist)
-    (setf %saved-plist-alist nil))
+             %saved-plist-alist%)
+    (setf %saved-plist-alist% nil))
   nil)
 
 (declaim (ftype (cl:function (list symbol) null) flag))
@@ -2502,7 +2502,7 @@ executed by the print functions when the length set by the PAGE-
 LENGTH function is exceeded."
   nil)
 
-(defvar %linelength 80
+(defvar %linelength% 80
   "Current Standard LISP line length accessed via function `LINELENGTH'.")
 
 (declaim (ftype (cl:function ((or fixnum null)) fixnum) linelength))
@@ -2521,8 +2521,8 @@ selected output file or LEN is negative or zero.
   (if len
       (if #|(or (not (integerp len))|# (<= len 0);)
           (%error "~a is an invalid line length" len)
-          (prog1 %linelength (setq %linelength len)))
-      %linelength))
+          (prog1 %linelength% (setq %linelength% len)))
+      %linelength%))
 
 (declaim (ftype (cl:function () fixnum) lposn))
 
@@ -2621,16 +2621,16 @@ ejects will occur."
   nil)
 
 (defconstant %tab-width 8
-  "Outputting a Tab character increments `%posn' to the next integer
+  "Outputting a Tab character increments `%posn%' to the next integer
 multiple of `%tab-width'.")
 
-(defvar %posn 0
+(defvar %posn% 0
   "Number of characters in the current line output by Standard LISP.
-Except that Tab increments `%posn' the next integer multiple of
-`%tab-width', and Newline resets `%posn' to 0.
+Except that Tab increments `%posn%' the next integer multiple of
+`%tab-width', and Newline resets `%posn%' to 0.
 Set by the functions `%prin-string', `terpri' and `readch'.
 Accessed (read-only) via the function `posn'.
-It's value should be between 0 and `%linelength' inclusive.")
+It's value should be between 0 and `%linelength%' inclusive.")
 
 (declaim (inline posn)
          (ftype (cl:function () fixnum) posn))
@@ -2640,9 +2640,9 @@ It's value should be between 0 and `%linelength' inclusive.")
   "POSN():integer eval, spread
 Returns the number of characters in the output buffer. When the
 buffer is empty, 0 is returned."
-  %posn)
+  %posn%)
 
-(defvar %prin-space-maybe nil
+(defvar %prin-space-maybe% nil
   "True if there is a pending space to print.")
 
 (declaim (inline posn)
@@ -2651,46 +2651,46 @@ buffer is empty, 0 is returned."
 (defun %prin-space-maybe ()
   "Record that a space should be printed and return t unless at the
 beginning of a line."
-  (when (> %posn 0)
-    (setq %prin-space-maybe t)))
+  (when (> %posn% 0)
+    (setq %prin-space-maybe% t)))
 
 (declaim (ftype (cl:function (simple-string) null) %prin-string))
 
 (defun %prin-string (s)
   "Print string S preceded by a newline or space if necessary.
-Check and update `%posn' to keep it <= `%linelength'.
+Check and update `%posn%' to keep it <= `%linelength%'.
 This is the only function that actually produces graphical output.
 (S already contains any ! escape characters required.)"
   ;; This code is designed to reproduce the output in
   ;; "regressions/2011-08-31-linelength.rlg", but without visibly
   ;; overflowing!
   (let ((len (cl:length s)) overflowed)
-    (when %prin-space-maybe (incf %posn))
-    ;; Compute %posn AFTER printing S here to determine whether to
+    (when %prin-space-maybe% (incf %posn%))
+    ;; Compute %posn% AFTER printing S here to determine whether to
     ;; break the line:
     (do ((i 0 (1+ i)))
         ((= i len))
       (case (schar s i)
         (#\Tab           ; invisible, so no overflow (same for Space?)
-         (setq %posn (* (1+ (floor %posn %tab-width)) %tab-width)))
+         (setq %posn% (* (1+ (floor %posn% %tab-width)) %tab-width)))
         (#\Newline
-         (when (> (1+ %posn) %linelength) (setq overflowed t))
-         (setq %posn 0))
+         (when (> (1+ %posn%) %linelength%) (setq overflowed t))
+         (setq %posn% 0))
         (otherwise
-         (when (> (incf %posn) %linelength) (setq overflowed t)))))
+         (when (> (incf %posn%) %linelength%) (setq overflowed t)))))
     (if overflowed
         (progn
-          (cl:terpri) (setq %posn 0)
-          ;; Re-compute %posn AFTER printing S here because the effect
+          (cl:terpri) (setq %posn% 0)
+          ;; Re-compute %posn% AFTER printing S here because the effect
           ;; of Tabs will have changed:
           (do ((i 0 (1+ i)))
               ((= i len))
             (case (schar s i)
-              (#\Tab (setq %posn (* (1+ (floor %posn %tab-width)) %tab-width)))
-              (#\Newline (setq %posn 0))
-              (otherwise (incf %posn)))))
-        (when %prin-space-maybe (write-char #\Space)))
-    (setq %prin-space-maybe nil)
+              (#\Tab (setq %posn% (* (1+ (floor %posn% %tab-width)) %tab-width)))
+              (#\Newline (setq %posn% 0))
+              (otherwise (incf %posn%)))))
+        (when %prin-space-maybe% (write-char #\Space)))
+    (setq %prin-space-maybe% nil)
     (write-string s))
   nil)
 
@@ -2712,7 +2712,7 @@ This is the only function that actually produces graphical output.
 (defun terpri ()
   "TERPRI():NIL
 The current print line is terminated."
-  (setq %posn 0) (cl:terpri) nil)
+  (setq %posn% 0) (cl:terpri) nil)
 
 (declaim (inline print)
          (ftype (cl:function (t) t) print))
@@ -2890,12 +2890,12 @@ Cons cell elements are printed using PRINFN."
   "The default read stream using the current value of *standard-input*."
   (cons *standard-input* *standard-input*))
 
-(defparameter +default-read-stream+ (%default-read-stream)
+(defparameter %default-read-stream% (%default-read-stream)
   "The default read stream using the initial value of *standard-input*.
 This must be re-set when Standard Lisp is started to work in a saved
 CLISP memory image.")
 
-(defvar %read-stream +default-read-stream+
+(defvar %read-stream% %default-read-stream%
   "The current input filehandle: a cons pair of the form
 \(input-stream . echo-stream).
 This must be re-set when Standard Lisp is started to work in a saved
@@ -2905,7 +2905,7 @@ CLISP memory image.")
 
 (defun %read-stream ()
   "Return the appropriate input stream depending on the value of *echo."
-  (or (and *echo (cdr %read-stream)) (car %read-stream)))
+  (or (and *echo (cdr %read-stream%)) (car %read-stream%)))
 
 (declaim (ftype (cl:function (filehandle) filehandle) rds))
 
@@ -2922,11 +2922,11 @@ standard input device the Standard LISP reader terminates. RDS
 returns the internal name of the previously selected input file.
 ***** FILEHANDLE could not be selected for input"
   (prog1
-      %read-stream
-    (setq %read-stream
+      %read-stream%
+    (setq %read-stream%
           (if (and filehandle (open-stream-p (car filehandle)))
               filehandle
-              +default-read-stream+))))
+              %default-read-stream%))))
 
 (defparameter *sl-readtable* (copy-readtable)
   "Readtable implementing Standard Lisp syntax.
@@ -3017,7 +3017,7 @@ Comments delimited by % and end-of-line are not transparent to READCH."
         (progn
           (when *echo                   ; track output position
             ;; Revise as for %prin-string?
-            (setq %posn (if (char= c #\Newline) 0 (1+ %posn))))
+            (setq %posn% (if (char= c #\Newline) 0 (1+ %posn%))))
           (if *raise
               ;; down-case (because REDUCE is now LC, not UC!)
               (%intern-character-preserve-case (cl:char-upcase c))
@@ -3031,12 +3031,12 @@ Comments delimited by % and end-of-line are not transparent to READCH."
   "The default write stream using the current value of *standard-output*."
   (list 'sl::file *standard-output*))
 
-(defparameter +default-write-stream+ (%default-write-stream)
+(defparameter %default-write-stream% (%default-write-stream)
   "The default write stream using the initial value of *standard-output*.
 This must be re-set when Standard Lisp is started to work in a saved
 CLISP memory image.")
 
-(defvar %write-stream +default-write-stream+
+(defvar %write-stream% %default-write-stream%
   "The current output filehandle: a dotted-list of the form
 \('file . output-stream) or ('pipe output-stream . process).
 This must be re-set when Standard Lisp is started to work in a saved
@@ -3055,21 +3055,21 @@ device is selected. WRS returns the internal name of the previously
 selected output file.
 ***** FILEHANDLE could not be selected for output"
   (prog1
-      %write-stream
-    (setq *standard-output* (cadr +default-write-stream+)
-          %write-stream +default-write-stream+)
+      %write-stream%
+    (setq *standard-output* (cadr %default-write-stream%)
+          %write-stream% %default-write-stream%)
     (when filehandle
       (ecase (car filehandle)
         (sl::file
          ;; Output file stream ('file output-stream):
          (if (open-stream-p (cadr filehandle))
              (setq *standard-output* (cadr filehandle)
-                   %write-stream filehandle)))
+                   %write-stream% filehandle)))
         (sl::pipe
          ;; Output pipe stream ('pipe output-stream . process):
          (if (open-stream-p (cadr filehandle))
              (setq *standard-output* (cadr filehandle)
-                   %write-stream filehandle)))))))
+                   %write-stream% filehandle)))))))
 
 (declaim (ftype (cl:function (simple-string symbol) filehandle) pipe-open))
 
@@ -3115,7 +3115,7 @@ stream by this function."
 (export 'flush)
 (defun flush ()                         ; CSL
   "Flush the current output stream."
-  (finish-output (cadr %write-stream))
+  (finish-output (cadr %write-stream%))
   nil)
 
 
@@ -3169,9 +3169,9 @@ beginning of the year 1970.  The difference of 70 years is
 70*31,536,000 = 2,207,520,000 seconds.  This function should not be
 used to determine an absolute date or time!")
 
-(declaim ((rational 0) +milliseconds-per-internal-time-unit+))
+(declaim ((rational 0) %milliseconds-per-internal-time-unit%))
 
-(defconstant +milliseconds-per-internal-time-unit+
+(defconstant %milliseconds-per-internal-time-unit%
   ;; `internal-time-units-per-second' is a positive integer
   ;; representing the number of internal time units in one second.  In
   ;; SBCL, CLISP and 64-bit CCL, it's value is 1000000, so an internal
@@ -3187,7 +3187,7 @@ used to determine an absolute date or time!")
 Elapsed time from some arbitrary initial point in milliseconds."
   ;; This is used for timing computations, so use run time.
   (values (round (* (get-internal-run-time)
-                    +milliseconds-per-internal-time-unit+))))
+                    %milliseconds-per-internal-time-unit%))))
 
 (declaim (ftype (cl:function ((integer 0)) (integer 0)) %nth-room-value))
 
@@ -3208,7 +3208,7 @@ Counting starts at 0.  Suppress the printed output."
   (values (round (* #+SBCL sb-ext:*gc-run-time*
                     #+CLISP (%nth-room-value 5)
                     #+CCL (ccl:gctime)
-                    +milliseconds-per-internal-time-unit+))))
+                    %milliseconds-per-internal-time-unit%))))
 
 (declaim (ftype (cl:function () list) oblist))
 
@@ -3246,7 +3246,7 @@ incrementally, as desired.")
 
 #+SBCL (progn                          ; <use sb-ext:*after-gc-hooks*>
 
-(defvar *previous-gc-run-time* 0
+(defvar %previous-gc-run-time% 0
   "Total (internal) GC time up to previous garbage collection.")
 
 (declaim (ftype (cl:function () null) %gc-reporting %run-gc-hook))
@@ -3258,9 +3258,9 @@ A function hung on the garbage collection hook."
   (if *gc
       (format t "*** Garbage collection number ~a completed in ~ams.~%"
               gcknt*
-              (round (* (- sb-ext:*gc-run-time* *previous-gc-run-time*)
-                        +milliseconds-per-internal-time-unit+))))
-  (setq *previous-gc-run-time* sb-ext:*gc-run-time*)
+              (round (* (- sb-ext:*gc-run-time* %previous-gc-run-time%)
+                        %milliseconds-per-internal-time-unit%))))
+  (setq %previous-gc-run-time% sb-ext:*gc-run-time*)
   nil)
 
 (push #'%gc-reporting sb-ext:*after-gc-hooks*)
@@ -4140,9 +4140,9 @@ or nil, meaning no header.")
 
 (export '(*writingfaslfile *int))
 
-(defvar %faslout-name.lisp)
-#+CLISP (defvar %faslout-name.lib)
-(defvar %faslout-stream)
+(defvar %faslout-name.lisp%)
+#+CLISP (defvar %faslout-name.lib%)
+(defvar %faslout-stream%)
 
 (declaim (ftype (cl:function (t) t) prettyprint %faslout-prettyprint))
 
@@ -4154,12 +4154,12 @@ Redefined later as an autoload for the real prettyprinter."
 
 (defun %faslout-prettyprint (u)
   "The prettyprint function used for faslout generation.
-It prints Common Lisp syntax to %faslout-stream."
+It prints Common Lisp syntax to %faslout-stream%."
   (let (*print-gensym* ; inhibit printing #: prefix for uninterned symbols
         (*readtable* (copy-readtable nil))) ; needed for CLISP
-    (cl:print u %faslout-stream)))
+    (cl:print u %faslout-stream%)))
 
-(defvar %faslout-saved-prettyprint nil
+(defvar %faslout-saved-prettyprint% nil
   "The saved current global definition of the function prettyprint.
 It is replaced during faslout.")
 
@@ -4177,20 +4177,20 @@ files depends on the version of Common Lisp.)"
       (format t "FASLOUT ~a: IN files$ or type in expressions.
 When all done, execute FASLEND;~2%" name))
   ;; (unless
-  (setq %faslout-stream
-        (cl:open (setq %faslout-name.lisp (concat2 name ".lisp"))
+  (setq %faslout-stream%
+        (cl:open (setq %faslout-name.lisp% (concat2 name ".lisp"))
                  :direction :output :if-exists :supersede
                  #-CCL :external-format
                  #+CLISP charset:UTF-8
                  #-(or CLISP CCL) :UTF-8))
-  ;; (%error "FASLOUT cannot open ~a" %faslout-name.lisp))
+  ;; (%error "FASLOUT cannot open ~a" %faslout-name.lisp%))
   (if %faslout-header
-      (cl:princ %faslout-header %faslout-stream))
-  (setf %faslout-saved-prettyprint (symbol-function 'prettyprint)
+      (cl:princ %faslout-header %faslout-stream%))
+  (setf %faslout-saved-prettyprint% (symbol-function 'prettyprint)
         (symbol-function 'prettyprint) (symbol-function '%faslout-prettyprint))
   (setq *defn t
         *writingfaslfile t)
-  #+CLISP (setq %faslout-name.lib (concat2 name ".lib"))
+  #+CLISP (setq %faslout-name.lib% (concat2 name ".lib"))
   nil)
 
 (flag '(faslout) 'sl::opfn)
@@ -4209,25 +4209,25 @@ When all done, execute FASLEND;~2%" name))
     (%error "FASLEND is only allowed after a previous FASLOUT"))
   ;; First, tidy up after the call of FASLOUT:
   (unless
-      (cl:close %faslout-stream)
-    (%error "FASLEND cannot close ~a" %faslout-name.lisp))
+      (cl:close %faslout-stream%)
+    (%error "FASLEND cannot close ~a" %faslout-name.lisp%))
   (setq *writingfaslfile nil
         *defn nil) ; necessary here if faslend not input as a statement
-  (setf (symbol-function 'prettyprint) %faslout-saved-prettyprint)
+  (setf (symbol-function 'prettyprint) %faslout-saved-prettyprint%)
   ;; Now compile the Lisp output generated by FASLOUT:
-  ;; (format t  "Compiling ~a..." %faslout-name.lisp)
+  ;; (format t  "Compiling ~a..." %faslout-name.lisp%)
   ;; (if
   (let ((*readtable* (copy-readtable nil))) ; normal CL syntax
-    (compile-file %faslout-name.lisp
+    (compile-file %faslout-name.lisp%
                   #-CCL :external-format
                   #+CLISP charset:UTF-8
                   #-(or CLISP CCL) :UTF-8))
-  #+CLISP (delete-file %faslout-name.lib)
+  #+CLISP (delete-file %faslout-name.lib%)
   ;;      ;; (progn
-  ;;      ;; (delete-file %faslout-name.lisp) ; keep to aid debugging ???
-  ;;      (format t "Compiling ~a...done" %faslout-name.lisp)
+  ;;      ;; (delete-file %faslout-name.lisp%) ; keep to aid debugging ???
+  ;;      (format t "Compiling ~a...done" %faslout-name.lisp%)
   ;;      ;; nil)
-  ;;      (%error "Error compiling ~a" %faslout-name.lisp))
+  ;;      (%error "Error compiling ~a" %faslout-name.lisp%))
   nil)
 
 (defvar cursym*)
@@ -4271,10 +4271,10 @@ When all done, execute FASLEND;~2%" name))
           *read-default-float-format* 'double-float
           ;; These must be re-set when Standard Lisp is started to
           ;; work in a saved CLISP memory image:
-          +default-read-stream+ (%default-read-stream)
-          %read-stream +default-read-stream+
-          +default-write-stream+ (%default-write-stream)
-          %write-stream +default-write-stream+)))
+          %default-read-stream% (%default-read-stream)
+          %read-stream% %default-read-stream%
+          %default-write-stream% (%default-write-stream)
+          %write-stream% %default-write-stream%)))
 
 (import '(standard-lisp) :cl-user)
 
