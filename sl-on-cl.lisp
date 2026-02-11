@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-11 16:08:56 franc>
+;; Time-stamp: <2026-02-11 16:19:56 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -283,7 +283,7 @@ documentation string for OLDNAME."
 ;; EXPR PROCEDURE ATOM(U);
 ;;    NULL PAIRP U;
 
-(declaim (ftype (cl:function (t) boolean) sl::codep sl::constantp))
+(declaim (ftype (cl:function (t) boolean) sl::codep constantp))
 
 (%defalias sl::codep cl:compiled-function-p
   "CODEP(U:any):boolean eval, spread
@@ -342,9 +342,7 @@ have identical dimensions and EQUAL values in all
 positions. Strings must have identical characters. Function
 pointers must have EQ values. Other atoms must be EQN equal.")
 
-(declaim (ftype (cl:function (t) boolean)
-                sl::fixp sl::idp sl::minusp sl::onep
-                sl::pairp sl::vectorp sl::zerop))
+(declaim (ftype (cl:function (t) boolean) sl::fixp sl::idp))
 
 (%defalias sl::fixp cl:integerp
   "FIXP(U:any):boolean eval, spread
@@ -357,6 +355,9 @@ Returns T if U is an integer (a fixed number).")
 (%defalias sl::idp cl:symbolp
   "IDP(U:any):boolean eval, spread
 Returns T if U is an id.")
+
+(declaim (inline minusp)
+         (ftype (cl:function (t) boolean) minusp))
 
 (export 'minusp)
 (defun minusp (u)
@@ -378,6 +379,9 @@ EXPR PROCEDURE MINUSP(U);
 ;; Returns T if U is a number (integer or floating).
 ;; EXPR PROCEDURE NUMBERP(U);
 ;;    IF OR(FIXP U, FLOATP U) THEN T ELSE NIL;
+
+(declaim (ftype (cl:function (t) boolean)
+                onep sl::pairp vectorp zerop))
 
 (export 'onep)
 (defun onep (u)
