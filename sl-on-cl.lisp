@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-11 15:34:46 franc>
+;; Time-stamp: <2026-02-11 16:08:56 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -283,7 +283,7 @@ documentation string for OLDNAME."
 ;; EXPR PROCEDURE ATOM(U);
 ;;    NULL PAIRP U;
 
-(declaim (ftype (cl:function (t) boolean) codep constantp))
+(declaim (ftype (cl:function (t) boolean) sl::codep sl::constantp))
 
 (%defalias sl::codep cl:compiled-function-p
   "CODEP(U:any):boolean eval, spread
@@ -343,7 +343,8 @@ positions. Strings must have identical characters. Function
 pointers must have EQ values. Other atoms must be EQN equal.")
 
 (declaim (ftype (cl:function (t) boolean)
-                fixp idp minusp onep pairp vectorp zerop))
+                sl::fixp sl::idp sl::minusp sl::onep
+                sl::pairp sl::vectorp sl::zerop))
 
 (%defalias sl::fixp cl:integerp
   "FIXP(U:any):boolean eval, spread
@@ -1406,8 +1407,8 @@ dependent format."
 ;;; Vectors
 ;;; =======
 
-(declaim (inline getv igetv)
-         (ftype (cl:function (simple-vector unsigned-byte) t) getv igetv))
+(declaim (inline getv sl::igetv)
+         (ftype (cl:function (simple-vector unsigned-byte) t) getv sl::igetv))
 
 (export 'getv)
 (defun getv (v index)
@@ -1434,8 +1435,8 @@ amount of available memory is insufficient for a vector of this size:
   ;; uplim = -1 used in redlog/rltools/lto.red!
   (make-array (1+ uplim) :initial-element nil))
 
-(declaim (inline putv iputv)
-         (ftype (cl:function (simple-vector unsigned-byte t) t) putv iputv))
+(declaim (inline putv sl::iputv)
+         (ftype (cl:function (simple-vector unsigned-byte t) t) putv sl::iputv))
 
 (export 'putv)
 (defun putv (v index value)
@@ -1581,7 +1582,7 @@ Returns the upper limit of U if U is a vector, or NIL if it is not."
 ;; EXPR PROCEDURE ABS(U);
 ;;    IF LESSP(U, 0) THEN MINUS(U) ELSE U;
 
-(declaim (ftype (cl:function (number) number) add1))
+(declaim (ftype (cl:function (number) number) sl::add1))
 
 (%defalias sl::add1 cl:1+
   "ADD1(U:number):number eval, spread
@@ -1589,7 +1590,7 @@ Returns the value of U plus 1 of the same type as U (fixed or floating).
 EXPR PROCEDURE ADD1(U);
    PLUS2(U, 1);")
 
-(declaim (ftype (cl:function (number number) number) difference))
+(declaim (ftype (cl:function (number number) number) sl::difference))
 
 (%defalias sl::difference cl:-
   "DIFFERENCE(U:number, V:number):number eval, spread
@@ -1672,7 +1673,7 @@ error occurs:
   (cl:float u 1d0))
 
 (declaim (ftype (cl:function (number number) boolean)
-                greaterp lessp geq leq))
+                sl::greaterp sl::lessp sl::geq sl::leq))
 
 (%defalias sl::greaterp cl:>
   "GREATERP(U:number, V:number):boolean eval, spread
@@ -1695,7 +1696,7 @@ Returns T if U is strictly less than V, otherwise returns NIL.")
 ;; MACRO PROCEDURE MAX(U);
 ;;    EXPAND(CDR U, 'MAX2);
 
-(declaim (ftype (cl:function (number number) number) max2 min2))
+(declaim (ftype (cl:function (number number) number) sl::max2 sl::min2))
 
 (%defalias sl::max2 cl:max
   "MAX2(U:number, V:number):number eval, spread
@@ -1718,7 +1719,7 @@ U is returned (U and V might be of different types).
 EXPR PROCEDURE MIN2(U, V);
    IF GREATERP(U, V) THEN V ELSE U;")
 
-(declaim (ftype (cl:function (number) number) minus))
+(declaim (ftype (cl:function (number) number) sl::minus))
 
 (%defalias sl::minus cl:-
   "MINUS(U:number):number eval, spread
@@ -1726,7 +1727,7 @@ Returns -U.
 EXPR PROCEDURE MINUS(U);
    DIFFERENCE(0, U);")
 
-(declaim (ftype (cl:function (&rest number) number) plus))
+(declaim (ftype (cl:function (&rest number) number) sl::plus))
 
 (%defalias sl::plus cl:+
   "PLUS([U:number]):number noeval, nospread, or macro
@@ -1735,7 +1736,7 @@ MACRO PROCEDURE PLUS(U);
    EXPAND(CDR U, 'PLUS2);")
 
 (declaim (ftype (cl:function (number number) number)
-                plus2 quotient remainder))
+                sl::plus2 quotient sl::remainder))
 
 (%defalias sl::plus2 cl:+
   "PLUS2(U:number, V:number):number eval, spread
@@ -1770,7 +1771,7 @@ zero:
 EXPR PROCEDURE REMAINDER(U, V);
    DIFFERENCE(U, TIMES2(QUOTIENT(U, V), V));")
 
-(declaim (ftype (cl:function (number) number) sub1))
+(declaim (ftype (cl:function (number) number) sl::sub1))
 
 (%defalias sl::sub1 cl:1-
   "SUB1(U:number):number eval, spread
@@ -1779,7 +1780,7 @@ value returned is U less 1.0.
 EXPR PROCEDURE SUB1(U);
    DIFFERENCE(U, 1);")
 
-(declaim (ftype (cl:function (&rest number) number) times))
+(declaim (ftype (cl:function (&rest number) number) sl::times))
 
 #+CLISP
 (progn
@@ -1799,7 +1800,7 @@ Returns the product of all its arguments.
 MACRO PROCEDURE TIMES(U);
    EXPAND(CDR U, 'TIMES2);")
 
-(declaim (ftype (cl:function (number number) number) times2))
+(declaim (ftype (cl:function (number number) number) sl::times2))
 
 (%defalias sl::times2 cl:*
   "TIMES2(U:number, V:number):number eval, spread
@@ -1858,14 +1859,12 @@ Returns the product of U and V.")
 (export 'iminusp)
 (defun iminusp (u) (cl:minusp u))
 
-;; (defun iequal (u v)
-;;   (declare (fixnum u v))
-;;   (eql u v))
-
 ;; iequal is defined in CSL (but not PSL).  It is called with a list
 ;; as its first argument in sqrt2top in int/df2q.red, so it does not
 ;; always have integer arguments!  But I assume it will not be called
 ;; with float arguments.
+
+(declaim (ftype (cl:function (t t) boolean) sl::iequal))
 
 (%defalias sl::iequal eql)
 
@@ -2213,7 +2212,7 @@ END;"
     (setq w (cons (car u) w)
           u (cdr u))))
 
-(declaim (ftype (cl:function (list) list) reversip))
+(declaim (ftype (cl:function (list) list)  sl::reversip))
 
 (%defalias sl::reversip cl:nreverse)       ; PSL function
 
@@ -2230,7 +2229,7 @@ EXPR PROCEDURE SASSOC(U, V, FN);
       ELSE SASSOC(U, CDR V, FN);"
   (or (cl:assoc u v :test #'equal) (funcall fn)))
 
-(declaim (ftype (cl:function (list function) list) sort))
+(declaim (ftype (cl:function (list function) list)  sl::sort))
 
 ;; (import 'cl:sort :sl)                       ; CSL function
 (%defalias sl::sort cl:sort)
@@ -2727,7 +2726,7 @@ EXPR PROCEDURE PRINT(U);
 << PRIN1 U; TERPRI(); U >>;"
   (prin1 u) (terpri) u)
 
-(declaim (ftype (cl:function (t) t) prin1 prin2 princ))
+(declaim (ftype (cl:function (t) t) prin1 prin2  sl::princ))
 
 (export 'prin1)
 (defun prin1 (u)
@@ -3160,7 +3159,7 @@ The date in the form \"day-month-year\"
     (format nil "~2,'0d-~a-~d"
             date (aref +short-month-names+ (1- month)) year)))
 
-(declaim (ftype (cl:function () unsigned-byte) datestamp))
+(declaim (ftype (cl:function () unsigned-byte)  sl::datestamp))
 
 (%defalias sl::datestamp cl:get-universal-time
   "The number of seconds that have elapsed since some epoch.
@@ -3311,7 +3310,7 @@ A function hung on the garbage collection hook."
   #+(not (or SBCL CLISP)) 0)
 
 (declaim (ftype (cl:function (t) list)
-                explode2 explodec explode2uc explode2lc))
+                explode2  sl::explodec explode2uc explode2lc))
 
 (export 'explode2)
 (defun explode2 (u)                     ; PSL
@@ -3478,7 +3477,7 @@ are not valid UTF-8 is to be considered undefined."
 ;; Stores into a PSL string. String indexes start with 0."
 ;;   (setf (aref s i) (%character x)))
 
-(declaim (ftype (cl:function (simple-string) (integer 0)) string-length))
+(declaim (ftype (cl:function (simple-string) (integer 0))  sl::string-length))
 
 (%defalias sl::string-length cl:length  ; PSL
   "(string-length S:string): integer expr
@@ -3486,9 +3485,9 @@ Returns the number of elements in a PSL string. Since indexes start with
 index 0, the size is one larger than the greatest legal index. Compare this
 function with string-upper-bound, documented below.")
 
-(declaim (inline char-downcase red-char-downcase char-upcase)
+(declaim (inline char-downcase  sl::red-char-downcase char-upcase)
          (ftype (cl:function (symbol) symbol)
-                char-downcase red-char-downcase char-upcase))
+                char-downcase  sl::red-char-downcase char-upcase))
 
 (export 'char-downcase)
 (defun char-downcase (c)                ; CSL
@@ -3538,8 +3537,8 @@ Returns the id space position of D as a LISP integer."
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
   (cl:char-code (character c)))
 
-(declaim (inline id2string symbol-name)
-         (ftype (cl:function (symbol) simple-string) id2string symbol-name))
+(declaim (inline id2string  sl::symbol-name)
+         (ftype (cl:function (symbol) simple-string) id2string  sl::symbol-name))
 
 (export 'id2string)
 (defun id2string (d)                    ; PSL
@@ -3564,7 +3563,7 @@ character ! does not appear in the result.
   "Convert identifier or string U to a lower-case string."
   (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u)))
 
-(declaim (ftype (cl:function (integer integer) integer) land lshift))
+(declaim (ftype (cl:function (integer integer) integer)  sl::land  sl::lshift))
 
 (%defalias sl::land cl:logand           ; PSL
   "(land U:integer V:integer): integer expr
@@ -3579,8 +3578,9 @@ by 2 to the K power. Negative values are acceptable for K, and cause a
 right shift (in the usual manner). Lshift is a logical shift, so right
 shifts do not resemble division by a power of 2.")
 
-(declaim (inline list2vector list-to-vector)
- (ftype (cl:function (list) simple-vector) list2vector list-to-vector))
+(declaim (inline list2vector  sl::list-to-vector)
+         (ftype (cl:function (list) simple-vector)
+                list2vector  sl::list-to-vector))
 
 (export 'list2vector)
 (defun list2vector (l)                  ; PSL
@@ -3604,7 +3604,7 @@ order.
 \(L I S T)"
   (cl:map 'list #'cl:identity v))
 
-(declaim (ftype (cl:function (t) t) copy))
+(declaim (ftype (cl:function (t) t)  sl::copy))
 
 (%defalias sl::copy cl:copy-tree        ; PSL
   "(copy X:any): any expr
@@ -3613,7 +3613,7 @@ elements (for example ids, strings, and vectors) are not.")
 
 ;; REDUCE needs complexp in various places but also needs to be able
 ;; to overwrite it, as in rlisp88.tst:
-(declaim (ftype (cl:function (t) boolean) complexp))
+(declaim (ftype (cl:function (t) boolean)  sl::complexp))
 
 (%defalias sl::complexp cl:complexp)
 
@@ -3637,7 +3637,7 @@ elements (for example ids, strings, and vectors) are not.")
 
 (export '(bothtimes compiletime loadtime))
 
-(declaim (ftype (cl:function (symbol) list) prop plist))
+(declaim (ftype (cl:function (symbol) list)  sl::prop  sl::plist))
 
 (%defalias sl::prop cl:symbol-plist)    ; PSL
 (%defalias sl::plist cl:symbol-plist)   ; CSL
@@ -3671,7 +3671,8 @@ Returns the union of sets X and Y."
 ;; Declaiming this type breaks cali, which redefines mod!
 (%defalias sl::mod cl:mod) ; not just imported because cali redefines mod
 
-(declaim (ftype (cl:function (integer integer) unsigned-byte) gcdn lcmn))
+(declaim (ftype (cl:function (integer integer) unsigned-byte)
+                sl::gcdn sl::lcmn))
 
 (%defalias sl::gcdn cl:gcd)
 (%defalias sl::lcmn cl:lcm)
@@ -3912,7 +3913,7 @@ Return the current working directory in system specific format."
 
 (declaim (ftype (cl:function (&optional (or null simple-string))
                              (or null simple-string))
-                cd chdir))
+                cd  sl::chdir))
 
 (export 'cd)
 (defun cd (&optional dir)               ; PSL / Unix
@@ -3968,7 +3969,7 @@ in file name."
   (cl:file-write-date (%tidy-pathname file)))
 
 #+SBCL (import 'sb-posix:getpid :sl)
-#+CLISP (declaim (ftype (cl:function () unsigned-byte) getpid)) ; ???
+#+CLISP (declaim (ftype (cl:function () unsigned-byte)  sl::getpid)) ; ???
 #+CLISP (%defalias sl::getpid os:process-id)
 #+CCL (import 'ccl::getpid :sl)
 
