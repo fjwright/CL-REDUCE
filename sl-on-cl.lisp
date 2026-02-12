@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-12 17:24:54 franc>
+;; Time-stamp: <2026-02-12 18:20:20 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -83,14 +83,9 @@
   ;; Best to use the shadow option here and not separate calls of the
   ;; shadow function, mainly because the shadow function is not
   ;; evaluated at compile time!
-  (:shadow :constantp :equal :minusp :vectorp :zerop :nth :pnth
-           :gensym :intern :get :remprop :error :expt :float :map
-           :mapc :mapcan :mapcar :mapcon :maplist :append :assoc
-           :delete :length :member :sort :sublis :subla :subst :rassoc
-           :apply :eval :function :close :open :princ :print :prin1
-           :reverse :read :terpri :complexp :union :load :time
-           :char-downcase :char-upcase :string-downcase :mod
-           :file-write-date :char-code :symbol-name :number)
+  (:shadow :equal :vectorp :get :expt :float
+           :eval :function :print :prin1 :terpri
+           :load :string-downcase :mod :number)
 
   #+SBCL (:import-from :sb-ext :quit :gc)
   #+SBCL (:import-from :sb-posix :getenv)
@@ -3845,7 +3840,7 @@ return the new current directory as a string; otherwise, return nil."
 FILE.  Substitutes environment variables in file name."
   (probe-file (%tidy-pathname file)))
 
-(declaim (inline file-write-date)
+(declaim (inline sl::file-write-date)
          (ftype (cl:function (simple-string) (or unsigned-byte null))
                 sl::file-write-date))
 
