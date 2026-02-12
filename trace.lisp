@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019, 2025, 2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-09 12:20:33 franc>
+;; Time-stamp: <2026-02-12 17:30:57 franc>
 ;; Created: 20 February 2019
 
 ;; Based on, and hopefully consistent with, the portable REDUCE
@@ -69,7 +69,7 @@ List all traced functions if no functions or nil are specified."
 (defparameter %fasl.lisp-pathname-template%
   (merge-pathnames
    (make-pathname :type "lisp")
-   slim::%fasl-directory-pathname)
+   slim::%fasl-directory-pathname%)
   "Absolute pathname of the form \"/.../fasl.<lisp>/???.lisp\".")
 
 (declaim (ftype (cl:function (symbol) cons) get-fasl-source))

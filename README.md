@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-02-10 18:09:17 franc>
+Time-stamp: <2026-02-11 16:54:36 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -284,7 +284,6 @@ I cannot see any way to support the facilities for restricting execution time on
 * Better error handling.
 * Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 * Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
-* Hide the implementation details within an implementation package and only export required functions to the STANDARD-LISP package?
 
 <!-- Local Variables: -->
 <!-- fill-column: 1000 -->

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-11 16:19:56 franc>
+;; Time-stamp: <2026-02-12 17:24:54 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -240,7 +240,8 @@ documentation string for OLDNAME."
 
 (declaim (ftype (cl:function (t t) boolean) eqcar))
 
-(export 'eqcar)
+(export 'eqcar)                         ; used internally!
+
 (defun eqcar (u v)
   "Return true if U is a cons cell and its car is eq to V."
   (and (consp u) (eq (car u) v)))
@@ -283,15 +284,14 @@ documentation string for OLDNAME."
 ;; EXPR PROCEDURE ATOM(U);
 ;;    NULL PAIRP U;
 
-(declaim (ftype (cl:function (t) boolean) sl::codep constantp))
+(declaim (ftype (cl:function (t) boolean) sl::codep sl::constantp))
 
 (%defalias sl::codep cl:compiled-function-p
   "CODEP(U:any):boolean eval, spread
 Returns T if U is a function-pointer.")
 ;; This means compiled code only!
 
-(export 'constantp)
-(defun constantp (u)
+(defun sl::constantp (u)
   "CONSTANTP(U:any):boolean eval, spread
 Returns T if U is a constant (a number, string, function-pointer, or vector).
 EXPR PROCEDURE CONSTANTP(U);
@@ -319,10 +319,9 @@ EXPR PROCEDURE CONSTANTP(U);
 ;;         (and uu vv (cl:eq uu vv)))
 ;;       (cl:eq u v)))
 
-(declaim (ftype (cl:function (t t) boolean) eqn equal))
+(declaim (ftype (cl:function (t t) boolean) sl::eqn equal))
 
-(export 'eqn)
-(defun eqn (u v)
+(defun sl::eqn (u v)
   "EQN(U:any, V:any):boolean eval, spread
 Returns T if U and V are EQ or if U and V are numbers and have
 the same value and type."               ; i.e. the same SL type!
@@ -332,6 +331,7 @@ the same value and type."               ; i.e. the same SL type!
   (if (and (floatp u) (floatp v)) (= u v) (eql u v)))
 
 (export 'equal)                         ; used internally!
+
 (%defalias equal cl:equalp
   ;; This definition is not strictly correct but it seems to be the
   ;; best compromise!
@@ -357,10 +357,9 @@ Returns T if U is an integer (a fixed number).")
 Returns T if U is an id.")
 
 (declaim (inline minusp)
-         (ftype (cl:function (t) boolean) minusp))
+         (ftype (cl:function (t) boolean) sl::minusp))
 
-(export 'minusp)
-(defun minusp (u)
+(defun sl::minusp (u)
   "MINUSP(U:any):boolean eval, spread
 Returns T if U is a number and less than 0. If U is not a number
 or is a positive number, NIL is returned.
@@ -381,10 +380,9 @@ EXPR PROCEDURE MINUSP(U);
 ;;    IF OR(FIXP U, FLOATP U) THEN T ELSE NIL;
 
 (declaim (ftype (cl:function (t) boolean)
-                onep sl::pairp vectorp zerop))
+                sl::onep sl::pairp vectorp sl::zerop))
 
-(export 'onep)
-(defun onep (u)
+(defun sl::onep (u)
   "ONEP(U:any):boolean eval, spread.
 Returns T if U is a number and has the value 1 or 1.0. Returns NIL
 otherwise.
@@ -400,7 +398,8 @@ Returns T if U is a dotted-pair.")
 ;; STRINGP(U:any):boolean eval, spread
 ;; Returns T if U is a string.
 
-(export 'vectorp)
+(export 'vectorp)                       ; used internally
+
 (defun vectorp (u)
   "VECTORP(U:any):boolean eval, spread
 Returns T if U is a vector."
@@ -408,8 +407,7 @@ Returns T if U is a vector."
   ;; (and (vectorp u) (not (stringp u)))
   (typep u '(vector t)))
 
-(export 'zerop)
-(defun zerop (u)
+(defun sl::zerop (u)
   "ZEROP(U:any):boolean eval, spread
 Returns T if U is a number and has the value 0 or 0.0. Returns
 NIL otherwise.
@@ -465,11 +463,10 @@ EXPR PROCEDURE ZEROP(U);
 
 (import '(cl:first cl:second cl:third cl:fourth cl:rest) :sl)
 
-(declaim (inline lastpair lastcar nth pnth)
-         (ftype (cl:function (t) t) lastpair lastcar))
+(declaim (inline sl::lastpair sl::lastcar sl::nth sl::pnth)
+         (ftype (cl:function (t) t) sl::lastpair sl::lastcar))
 
-(export 'lastpair)
-(defun lastpair (l)
+(defun sl::lastpair (l)
   "(lastpair L:pair): any expr
 Returns the last pair of a L. It is often useful to think of this as a
 pointer to the last element for use with destructive functions such as
@@ -481,8 +478,7 @@ rplaca. If L is not a pair then a type mismatch error occurs.
   ;; The inconsistent description above is from the PSL manual!
   (if (atom l) l (cl:last l)))
 
-(export 'lastcar)
-(defun lastcar (l)                      ; inline
+(defun sl::lastcar (l)
   "(lastcar L:pair): any expr
 Returns the last element of the pair L. A type mismatch error results
 if L is not a pair.
@@ -491,10 +487,9 @@ if L is not a pair.
   ;; The inconsistent description above is from the PSL manual!
   (if (atom l) l (car (cl:last l))))
 
-(declaim (ftype (cl:function (list fixnum) t) nth pnth))
+(declaim (ftype (cl:function (list fixnum) t) sl::nth sl::pnth))
 
-(export 'nth)
-(defun nth (l n)
+(defun sl::nth (l n)
   "(nth L:pair N:integer): any expr
 Returns the Nth element of the list L. If L is atomic or contains
 fewer than N elements, an out of range error occurs.
@@ -507,8 +502,7 @@ Common LISP definition reverses the arguments and defines the car
 of a list to be the zeroth element."
   (cl:nth (1- n) l))
 
-(export 'pnth)
-(defun pnth (l n)
+(defun sl::pnth (l n)
   "(pnth L:list N:integer): any expr
 Returns a list starting with the nth element of the list L. Note
 that the result is a pointer to the nth element of L, a
@@ -536,10 +530,9 @@ MESSAGE possibly followed by arguments ARGS as for `format'."
   "As `cl:character', but case-inverted."
   (%character-invert-case (character c)))
 
-(declaim (ftype (cl:function (list) t) compress))
+(declaim (ftype (cl:function (list) t) sl::compress))
 
-(export 'compress)
-(defun compress (u)                     ; PSL spec
+(defun sl::compress (u)                 ; PSL spec
   "COMPRESS(U:id-list):{atom-vector} eval, spread
 U is a list of single character identifiers which is built into a
 Standard LISP entity and returned.  Recognized are lists, numbers,
@@ -620,7 +613,8 @@ occurs:
 
 (declaim (ftype (cl:function (t) list) explode))
 
-(export 'explode)
+(export 'explode)                       ; used internally (recursive)
+
 (defun explode (u)                      ; PSL spec
   "(explode U:any): id-list expr
 Explode returns a list of interned single-character identifiers
@@ -676,10 +670,9 @@ printing (using prin1) to a list.  E.g.
   "A non-negative integer used in constructing the name of the next
 symbol generated by the function gensym.")
 
-(declaim (ftype (cl:function () symbol) gensym))
+(declaim (ftype (cl:function () symbol) sl::gensym))
 
-(export 'gensym)
-(defun gensym ()
+(defun sl::gensym ()
   "GENSYM():identifier eval, spread
 Creates an identifier which is not interned on the OBLIST and
 consequently not EQ to anything else."
@@ -687,16 +680,15 @@ consequently not EQ to anything else."
       (make-symbol (format nil "G~4,'0d" %gensym-counter%))
     (incf %gensym-counter%)))
 
-(declaim (ftype (cl:function (t) boolean) gensymp))
+(declaim (ftype (cl:function (t) boolean) sl::gensymp))
 
-(export 'gensymp)
-(defun gensymp (u)                      ; from pslrend
+(defun sl::gensymp (u)                  ; from pslrend
   (and (symbolp u) (not (cl:find-symbol (cl:symbol-name u)))))
 
-(declaim (ftype (cl:function ((or symbol simple-string)) symbol) intern))
+(declaim (ftype (cl:function ((or symbol simple-string)) symbol)
+                sl::intern))
 
-(export 'intern)
-(defun intern (u)
+(defun sl::intern (u)
   "INTERN(U:{id,string}):id eval, spread
 INTERN searches the OBLIST for an identifier with the same print
 name as U and returns the identifier on the OBLIST if a match is
@@ -711,10 +703,9 @@ error occurs:
                          (%string-invert-case u)) ; string
                      :sl)))
 
-(declaim (ftype (cl:function (symbol) symbol) remob))
+(declaim (ftype (cl:function (symbol) symbol) sl::remob))
 
-(export 'remob)
-(defun remob (u)
+(defun sl::remob (u)
   "REMOB(U:id):id eval, spread
 If U is present on the OBLIST it is removed. This does not affect U
 having properties, flags, functions and the like. U is returned."
@@ -753,6 +744,7 @@ having properties, flags, functions and the like. U is returned."
 ;; building REDUCE.
 
 (defvar *defn nil)
+
 (export '*defn)
 
 (defvar %saved-plist-alist% nil
@@ -783,7 +775,8 @@ Do not do this if Lisp file load in progress."
 
 (declaim (ftype (cl:function (list symbol) null) flag))
 
-(export 'flag)
+(export 'flag)                          ; used internally
+
 (defun flag (u v)
   "FLAG(U:id-list, V:id):NIL eval, spread
 U is a list of ids which are flagged with V. The effect of FLAG is
@@ -794,10 +787,9 @@ type mismatch error occurs."
   (cl:mapc #'(lambda (x) (put x v t)) u)
   nil)
 
-(declaim (ftype (cl:function (t t) boolean) flagp))
+(declaim (ftype (cl:function (t t) boolean) sl::flagp))
 
-(export 'flagp)
-(defun flagp (u v)
+(defun sl::flagp (u v)
   "FLAGP(U:any, V:any):boolean eval, spread
 Returns T if U has been previously flagged with V, else NIL. Returns
 NIL if either U or V is not an id."
@@ -805,7 +797,8 @@ NIL if either U or V is not an id."
 
 (declaim (ftype (cl:function (t symbol) t) get))
 
-(export 'get)
+(export 'get)                           ; used internally
+
 (defun get (u ind)
   "GET(U:any, IND:id):any eval, spread
 Returns the property associated with indicator IND from the
@@ -817,7 +810,8 @@ instead)."
 
 (declaim (ftype (cl:function (symbol symbol t) t) put))
 
-(export 'put)
+(export 'put)                           ; used internally
+
 (defun put (u ind prop)
   "PUT(U:id, IND:id, PROP:any):any eval, spread
 The indicator IND with the property PROP is placed on the
@@ -827,10 +821,9 @@ mismatch error will occur and no property will be placed. PUT
 cannot be used to define functions (use PUTD instead)."
   (setf (cl:get u ind) prop))
 
-(declaim (ftype (cl:function (list symbol) null) remflag))
+(declaim (ftype (cl:function (list symbol) null) sl::remflag))
 
-(export 'remflag)
-(defun remflag (u v)
+(defun sl::remflag (u v)
   "REMFLAG(U:any-list, V:id):NIL eval, spread
 Removes the flag V from the property list of each member of the
 list U. Both V and all the elements of U must be ids or the type
@@ -839,10 +832,9 @@ mismatch error will occur."
   (cl:mapc #'(lambda (x) (cl:remprop x v)) u)
   nil)
 
-(declaim (ftype (cl:function (t symbol) t) remprop))
+(declaim (ftype (cl:function (t symbol) t) sl::remprop))
 
-(export 'remprop)
-(defun remprop (u ind)
+(defun sl::remprop (u ind)
   "REMPROP(U:any, IND:any):any eval, spread
 Removes the property with indicator IND from the property list of U.
 Returns the removed property or NIL if there was no such indicator."
@@ -853,6 +845,26 @@ Returns the removed property or NIL if there was no such indicator."
 
 ;;; Function Definition
 ;;; ===================
+
+(declaim (inline fluidp)
+         (ftype (cl:function (t) boolean) fluidp))
+
+(export 'fluidp)                        ; used internally
+
+(defun fluidp (u)
+  "FLUIDP(U:any):boolean eval, spread
+If U has been declared fluid then t is returned, otherwise nil is returned."
+  (get u 'fluid))
+
+(declaim (inline globalp)
+         (ftype (cl:function (t) boolean) globalp))
+
+(export 'globalp)                       ; used internally
+
+(defun globalp (u)
+  "GLOBALP(U:any):boolean eval, spread
+If U has been declared global then t is returned, otherwise nil is returned."
+  (get u 'global))                      ; PSL/CSL definition
 
 ;; NOTE that Standard Lisp macros are nospread and therefore take a
 ;; single parameter that gets the list of actual arguments, so `DM'
@@ -878,6 +890,8 @@ Returns the removed property or NIL if there was no such indicator."
 ;; the property %FTYPE with value EXPR just for symmetry, but this
 ;; property value is not actually used by GETD.
 
+(export 'de)                            ; used internally
+
 (defmacro de (fname params &rest fn)    ; PSL definition
   "(de Fname:id PARAMS:id-list [FN:form]): id macro
 Defines the function named FNAME, of type expr. The forms FN are made
@@ -897,8 +911,6 @@ returned."
      ;; Splice in *list* of content or nil.
      ,@(if *comp `((values (compile ',fname))))))
 
-(export 'de)
-
 ;; *** df appears not to be required, so is not implemented. ***
 ;; DF(FNAME:id, PARAM:id-list, FN:any):id noeval, nospread
 ;; The function FN with formal parameter PARAM is added to the set
@@ -908,6 +920,8 @@ returned."
 ;; of the defined function is returned.
 ;; FEXPR PROCEDURE DF(U);
 ;;    PUTD(CAR U, 'FEXPR, LIST('LAMBDA, CADR U, CADDR U));
+
+(export 'dm)                            ; used internally
 
 (defmacro dm (mname param fn)
   "DM(MNAME:id, PARAM:id-list, FN:any):id noeval, nospread
@@ -933,11 +947,10 @@ FEXPR PROCEDURE DM(U);
        ,fn)
      ,@(if *comp `((values (compile ',mname)))))) ; see DE
 
-(export 'dm)
-
 (declaim (ftype (cl:function (t) list) getd))
 
-(export 'getd)
+(export 'getd)                          ; used internally
+
 (defun getd (fname)
   "GETD(FNAME:any):{NIL, dotted-pair} eval, spread
 If FNAME is not the name of a defined function, return NIL. If
@@ -974,7 +987,8 @@ FNAME is a defined function then return the dotted-pair
 
 (declaim (ftype (cl:function (symbol symbol function) symbol) putd))
 
-(export 'putd)
+(export 'putd)                          ; used internally
+
 (defun putd (fname type body)
   "PUTD(FNAME:id, TYPE:ftype, BODY:function):id eval, spread
 Creates a function with name FNAME and definition BODY of type
@@ -991,9 +1005,8 @@ already exists a warning message will appear:
 The function defined by PUTD will be compiled before definition if
 the !*COMP global variable is non-NIL."
   ;; NB: Compilation is done by de and dm.
-  (if (or (cl:get fname 'global)        ; only if explicitly declared
-          (fluidp fname))
-      (%error "~a is a non-local variable" fname))
+  (when (or (globalp fname) (fluidp fname)) ; only if explicitly declared
+    (%error "~a is a non-local variable" fname))
   (%redefmsg fname)
   ;; body = (lambda (u) body-form) or function-pointer
   (let (*redefmsg)                  ; don't report redefinitions twice
@@ -1025,10 +1038,9 @@ the !*COMP global variable is non-NIL."
       (t (%error "Invalid type in PUTD"))))
   fname)
 
-(declaim (ftype (cl:function (symbol) list) remd))
+(declaim (ftype (cl:function (symbol) list) sl::remd))
 
-(export 'remd)
-(defun remd (fname)
+(defun sl::remd (fname)
   "REMD(FNAME:id):{NIL, dotted-pair} eval, spread
 Removes the function named FNAME from the set of defined
 functions. Returns the (ftype . function) dotted-pair or NIL as
@@ -1040,10 +1052,9 @@ the name may be used subsequently as a variable."
       (cl:remprop fname 'sl::%ftype))
     def))
 
-(declaim (ftype (cl:function (symbol symbol function) symbol) compd))
+(declaim (ftype (cl:function (symbol symbol function) symbol) sl::compd))
 
-(export 'compd)
-(defun compd (name type body)
+(defun sl::compd (name type body)
   "(compd NAME:id TYPE:ftype BODY:lambda): NAME:id expr
 This is a compiling analogue of the function putd.
 It is used in \"rsupport.red\" to compile inlines, etc."
@@ -1087,6 +1098,8 @@ This internal function is called only by FLUID."
    idlist)
   nil)
 
+(export 'fluid)                         ; used internally
+
 (defmacro fluid (idlist)
   ;; Must be a CL macro to be active at compile time!
   "FLUID(IDLIST:id-list):NIL eval, spread
@@ -1118,16 +1131,6 @@ from GLOBAL to FLUID is not permissible and results in the error:
       ;; in procedure switch in "rlisp/switch.red".
       `(%fluid ,idlist))))
 
-(export 'fluid)
-
-(declaim (ftype (cl:function (t) boolean) fluidp))
-
-(export 'fluidp)
-(defun fluidp (u)
-  "FLUIDP(U:any):boolean eval, spread
-If U has been declared fluid then t is returned, otherwise nil is returned."
-  (get u 'fluid))
-
 (declaim (ftype (cl:function (list) null) %global))
 
 (defun %global (idlist)
@@ -1150,6 +1153,8 @@ This internal function is called only by GLOBAL."
                (put x 'global t)))))
    idlist)
   nil)
+
+(export 'global)                        ; used internally
 
 (defmacro global (idlist)
   ;; Must be a CL macro to be active at compile time!
@@ -1177,16 +1182,6 @@ results in the error:
       ;; in procedure ps!:unknown!-crule in "tps/tpscomp.red".
       `(%global ,idlist))))
 
-(export 'global)
-
-(declaim (ftype (cl:function (t) boolean) globalp))
-
-(export 'globalp)
-(defun globalp (u)
-  "GLOBALP(U:any):boolean eval, spread
-If U has been declared global then t is returned, otherwise nil is returned."
-  (get u 'global))                      ; PSL/CSL definition
-
 (import 'cl:set :sl)
 ;; Auto fluid not implemented!
 ;; SET(EXP:id, VALUE:any):any eval, spread
@@ -1212,10 +1207,9 @@ If U has been declared global then t is returned, otherwise nil is returned."
 ;; MACRO PROCEDURE SETQ(X);
 ;;    LIST('SET, LIST('QUOTE, CADR X), CADDR X);
 
-(declaim (ftype (cl:function (list) null) unfluid))
+(declaim (ftype (cl:function (list) null) sl::unfluid))
 
-(export 'unfluid)
-(defun unfluid (idlist)
+(defun sl::unfluid (idlist)
   "UNFLUID(IDLIST:id-list):NIL eval, spread
 The variables in IDLIST that have been declared as FLUID
 variables are no longer considered as fluid variables. Others are
@@ -1302,10 +1296,9 @@ in interpreted functions are automatically considered fluid."
   ()
   (:documentation "Standard Lisp error without error number or message"))
 
-(declaim (ftype (cl:function () nil) error1))
+(declaim (ftype (cl:function () nil) sl::error1))
 
-(export 'error1)
-(defun error1 ()
+(defun sl::error1 ()
   "This is the simplest error return, without a message printed.
 It can be defined as ERROR(99,NIL) if necessary.
 In PSL it is throw('!$error!$,99)."
@@ -1319,10 +1312,9 @@ In PSL it is throw('!$error!$,99)."
              (with-slots (errno errmsg) condition
                (format stream "Standard Lisp error ~a: ~a." errno errmsg)))))
 
-(declaim (ftype (cl:function (integer t) nil) error))
+(declaim (ftype (cl:function (integer t) nil) sl::error))
 
-(export 'error)
-(defun error (number message)
+(defun sl::error (number message)
   "ERROR(NUMBER:integer, MESSAGE:any) eval, spread
 NUMBER and MESSAGE are passed back to a surrounding ERRORSET (the
 Standard LISP reader has an ERRORSET). MESSAGE is placed in the
@@ -1359,10 +1351,9 @@ as if its argument `tr' were true.")
 (ext:without-package-lock ("SYSTEM")
   (setq system::*debug-print-frame-limit* 20)) ; default unlimited
 
-(declaim (ftype (cl:function (t boolean boolean) t) errorset))
+(declaim (ftype (cl:function (t boolean boolean) t) sl::errorset))
 
-(export 'errorset)
-(defun errorset (u msgp tr)
+(defun sl::errorset (u msgp tr)
   "ERRORSET(U:any, MSGP:boolean, TR:boolean):any eval, spread
 If an error occurs during the evaluation of U, the value of
 NUMBER from the ERROR call is returned as the value of
@@ -1411,11 +1402,10 @@ dependent format."
 ;;; Vectors
 ;;; =======
 
-(declaim (inline getv sl::igetv)
-         (ftype (cl:function (simple-vector unsigned-byte) t) getv sl::igetv))
+(declaim (inline sl::getv sl::igetv)
+         (ftype (cl:function (simple-vector unsigned-byte) t) sl::getv sl::igetv))
 
-(export 'getv)
-(defun getv (v index)
+(defun sl::getv (v index)
   "GETV(V:vector, INDEX:integer):any eval, spread
 Returns the value stored at position INDEX of the vector V. The
 type mismatch error may occur. An error occurs if the INDEX does
@@ -1423,13 +1413,12 @@ not lie within 0...UPBV(V) inclusive:
 ***** INDEX subscript is out of range"
   (aref v index))
 
-(%defalias sl::igetv getv)
+(%defalias sl::igetv sl::getv)
 
-(declaim (inline mkvect)
-         (ftype (cl:function (fixnum) simple-vector) mkvect))
+(declaim (inline sl::mkvect)
+         (ftype (cl:function (fixnum) simple-vector) sl::mkvect))
 
-(export 'mkvect)
-(defun mkvect (uplim)                   ; PSL
+(defun sl::mkvect (uplim)               ; PSL
   "(mkvect UPLIM:integer): vector expr
 Defines and allocates space for a vector with UPLIM+1 elements accessed
 as 0 ... UPLIM. Each element is initialized to nil. If UPLIM is -1, an
@@ -1439,11 +1428,11 @@ amount of available memory is insufficient for a vector of this size:
   ;; uplim = -1 used in redlog/rltools/lto.red!
   (make-array (1+ uplim) :initial-element nil))
 
-(declaim (inline putv sl::iputv)
-         (ftype (cl:function (simple-vector unsigned-byte t) t) putv sl::iputv))
+(declaim (inline sl::putv sl::iputv)
+         (ftype (cl:function (simple-vector unsigned-byte t) t)
+                sl::putv sl::iputv))
 
-(export 'putv)
-(defun putv (v index value)
+(defun sl::putv (v index value)
   "PUTV(V:vector, INDEX:integer, VALUE:any):any eval, spread
 Stores VALUE into the vector V at position INDEX. VALUE is
 returned. The type mismatch error may occur. If INDEX does not
@@ -1451,77 +1440,70 @@ lie in 0...UPBV(V) an error occurs:
 ***** INDEX subscript is out of range"
   (setf (aref v index) value))
 
-(%defalias sl::iputv putv)
+(%defalias sl::iputv sl::putv)
 
-(declaim (inline upbv)
-         (ftype (cl:function (t) (or fixnum null)) upbv))
+(declaim (inline sl::upbv)
+         (ftype (cl:function (t) (or fixnum null)) sl::upbv))
 
-(export 'upbv)
-(defun upbv (u)
+(defun sl::upbv (u)
   "UPBV(U:any):NIL,integer eval, spread
 Returns the upper limit of U if U is a vector, or NIL if it is not."
   (and (vectorp u) (1- (cl:length u))))
 
 (declaim
- (inline getv8)
+ (inline sl::getv8)
  (ftype (cl:function ((simple-array (signed-byte 8) (*)) unsigned-byte)
                      (signed-byte 8))
-        getv8))
+        sl::getv8))
 
-(export 'getv8)
-(defun getv8 (v index)                  ; CSL
+(defun sl::getv8 (v index)              ; CSL
   (aref v index))
 
 (declaim
- (inline mkvect8)
+ (inline sl::mkvect8)
  (ftype (cl:function (unsigned-byte) (simple-array (signed-byte 8) (*)))
-        mkvect8))
+        sl::mkvect8))
 
-(export 'mkvect8)
-(defun mkvect8 (uplim)                  ; CSL
+(defun sl::mkvect8 (uplim)              ; CSL
   "Make a vector of 8-bit signed integers, cf. mkvect."
   (make-array (1+ uplim) :element-type '(signed-byte 8) :initial-element 0))
 
 (declaim
- (inline putv8)
+ (inline sl::putv8)
  (ftype (cl:function
          ((simple-array (signed-byte 8) (*)) unsigned-byte (signed-byte 8))
          (signed-byte 8))
-        putv8))
+        sl::putv8))
 
-(export 'putv8)
-(defun putv8 (v index value)            ; CSL
+(defun sl::putv8 (v index value)        ; CSL
   (setf (aref v index) value))
 
 (declaim
- (inline getv16)
+ (inline sl::getv16)
  (ftype (cl:function ((simple-array (signed-byte 16) (*)) unsigned-byte)
                      (signed-byte 16))
-        getv16))
+        sl::getv16))
 
-(export 'getv16)
-(defun getv16 (v index)           ; CSL
+(defun sl::getv16 (v index)             ; CSL
   (aref v index))
 
 (declaim
- (inline mkvect16)
+ (inline sl::mkvect16)
  (ftype (cl:function (unsigned-byte) (simple-array (signed-byte 16) (*)))
-        mkvect16))
+        sl::mkvect16))
 
-(export 'mkvect16)
-(defun mkvect16 (uplim)                 ; CSL
+(defun sl::mkvect16 (uplim)             ; CSL
   "Make a vector of 16-bit signed integers, cf. mkvect."
   (make-array (1+ uplim) :element-type '(signed-byte 16) :initial-element 0))
 
 (declaim
- (inline putv16)
+ (inline sl::putv16)
  (ftype (cl:function
          ((simple-array (signed-byte 16) (*)) unsigned-byte (signed-byte 16))
          (signed-byte 16))
-        putv16))
+        sl::putv16))
 
-(export 'putv16)
-(defun putv16 (v index value)           ; CSL
+(defun sl::putv16 (v index value)       ; CSL
   (setf (aref v index) value))
 
 
@@ -1616,11 +1598,10 @@ The value U - V is returned.")
 
 ;; The following definition agrees with that above:
 
-(declaim (inline divide)
-         (ftype (cl:function (number number) cons) divide))
+(declaim (inline sl::divide)
+         (ftype (cl:function (number number) cons) sl::divide))
 
-(export 'divide)
-(defun divide (u v)
+(defun sl::divide (u v)
   "DIVIDE(U:number, V:number):dotted-pair eval, spread
 The dotted-pair (quotient . remainder) is returned. The quotient
 part is computed the same as by QUOTIENT and the remainder
@@ -1634,7 +1615,8 @@ EXPR PROCEDURE DIVIDE(U, V);
 (declaim (inline expt)
          (ftype (cl:function (number number) number) expt))
 
-(export 'expt)
+(export 'expt)                          ; TO BE REVIEWED!
+
 (defun expt (u v)
   ;; NB: This definition is used in `%prin-float-to-string' so as to
   ;; avoid CLISP underflow.
@@ -1649,11 +1631,10 @@ exponentiation."
 ;; Prevent use of the definition of expt in "arith/math.red":
 (flag '(expt) 'sl::lose)
 
-(declaim (inline fix)
-         (ftype (cl:function (number) integer) fix))
+(declaim (inline sl::fix)
+         (ftype (cl:function (number) integer) sl::fix))
 
-(export 'fix)
-(defun fix (u)
+(defun sl::fix (u)
   "FIX(U:number):integer eval, spread
 Returns an integer which corresponds to the truncated value of U.
 The result of conversion must retain all significant portions of U. If
@@ -1663,7 +1644,8 @@ U is an integer it is returned unchanged."
 (declaim (inline float)
          (ftype (cl:function (number) double-float) float))
 
-(export 'float)
+(export 'float)                         ; used internally
+
 (defun float (u)
   "FLOAT(U:number):floating eval, spread
 The floating point number corresponding to the value of the
@@ -1740,16 +1722,15 @@ MACRO PROCEDURE PLUS(U);
    EXPAND(CDR U, 'PLUS2);")
 
 (declaim (ftype (cl:function (number number) number)
-                sl::plus2 quotient sl::remainder))
+                sl::plus2 sl::quotient sl::remainder))
 
 (%defalias sl::plus2 cl:+
   "PLUS2(U:number, V:number):number eval, spread
 Returns the sum of U and V.")
 
-(declaim (inline quotient))
+(declaim (inline sl::quotient))
 
-(export 'quotient)
-(defun quotient (u v)
+(defun sl::quotient (u v)
   "QUOTIENT(U:number, V:number):number eval, spread
 The quotient of U divided by V is returned. Division of two positive
 or two negative integers is conventional. When both U and V are
@@ -1788,9 +1769,8 @@ EXPR PROCEDURE SUB1(U);
 
 #+CLISP
 (progn
-  (declaim (inline times))
-  (export 'times)
-  (defun times (&rest args)
+  (declaim (inline sl::times))
+  (defun sl::times (&rest args)
     "TIMES([U:number]):number noeval, nospread, or macro
 Returns the product of all its arguments.
 MACRO PROCEDURE TIMES(U);
@@ -1813,55 +1793,46 @@ Returns the product of U and V.")
 ;; Small integer (fixnum) arithmetic operators defined in
 ;; alg/farith.red:
 
-(declaim (inline iplus2 itimes2)
-         (ftype (cl:function (fixnum fixnum) fixnum) iplus2 itimes2))
-
-(export 'iplus2)
-(defun iplus2 (u v) (+ u v))
-
-(export 'itimes2)
-(defun itimes2 (u v) (* u v))
-
-(declaim (inline isub1 iadd1 iminus)
-         (ftype (cl:function (fixnum) fixnum) isub1 iadd1 iminus))
-
-(export 'isub1)
-(defun isub1 (u) (1- u))
-
-(export 'iadd1)
-(defun iadd1 (u) (1+ u))
-
-(export 'iminus)
-(defun iminus (u) (- u))
-
-(declaim (inline idifference iquotient iremainder)
+(declaim (inline sl::iplus2 sl::itimes2)
          (ftype (cl:function (fixnum fixnum) fixnum)
-                idifference iquotient iremainder))
+                sl::iplus2 sl::itimes2))
 
-(export 'idifference)
-(defun idifference (u v) (- u v))
+(defun sl::iplus2 (u v) (+ u v))
 
-(export 'iquotient)
-(defun iquotient (u v) (values (truncate u v)))
+(defun sl::itimes2 (u v) (* u v))
 
-(export 'iremainder)
-(defun iremainder (u v) (rem u v))
+(declaim (inline sl::isub1 sl::iadd1 sl::iminus)
+         (ftype (cl:function (fixnum) fixnum)
+                sl::isub1 sl::iadd1 sl::iminus))
 
-(declaim (inline igreaterp ilessp)
+(defun sl::isub1 (u) (1- u))
+
+(defun sl::iadd1 (u) (1+ u))
+
+(defun sl::iminus (u) (- u))
+
+(declaim (inline sl::idifference sl::iquotient sl::iremainder)
+         (ftype (cl:function (fixnum fixnum) fixnum)
+                sl::idifference sl::iquotient sl::iremainder))
+
+(defun sl::idifference (u v) (- u v))
+
+(defun sl::iquotient (u v) (values (truncate u v)))
+
+(defun sl::iremainder (u v) (rem u v))
+
+(declaim (inline sl::igreaterp sl::ilessp)
          (ftype (cl:function (fixnum fixnum) boolean)
-                igreaterp ilessp))
+                sl::igreaterp sl::ilessp))
 
-(export 'igreaterp)
-(defun igreaterp (u v) (> u v))
+(defun sl::igreaterp (u v) (> u v))
 
-(export 'ilessp)
-(defun ilessp (u v) (< u v))
+(defun sl::ilessp (u v) (< u v))
 
-(declaim (inline iminusp)
-         (ftype (cl:function (fixnum) boolean) iminusp))
+(declaim (inline sl::iminusp)
+         (ftype (cl:function (fixnum) boolean) sl::iminusp))
 
-(export 'iminusp)
-(defun iminusp (u) (cl:minusp u))
+(defun sl::iminusp (u) (cl:minusp u))
 
 ;; iequal is defined in CSL (but not PSL).  It is called with a list
 ;; as its first argument in sqrt2top in int/df2q.red, so it does not
@@ -1874,17 +1845,15 @@ Returns the product of U and V.")
 
 ;; Small integer (fixnum) arithmetic operators required but not defined:
 
-(declaim (inline itimes)
-         (ftype (cl:function (fixnum fixnum) fixnum) itimes))
+(declaim (inline sl::itimes)
+         (ftype (cl:function (fixnum fixnum) fixnum) sl::itimes))
 
-(export 'itimes)
-(defun itimes (u v) (* u v)) ; used as a binary operator in dipoly/torder
+(defun sl::itimes (u v) (* u v)) ; used as a binary operator in dipoly/torder
 
-(declaim (inline izerop)
-         (ftype (cl:function (fixnum) boolean) izerop))
+(declaim (inline sl::izerop)
+         (ftype (cl:function (fixnum) boolean) sl::izerop))
 
-(export 'izerop)
-(defun izerop (u) (cl:zerop u))         ; used in plot/plotexp3
+(defun sl::izerop (u) (cl:zerop u))     ; used in plot/plotexp3
 
 
 ;;; Floating Point Math Functions
@@ -1901,61 +1870,51 @@ Returns the product of U and V.")
 ;; type errors.  So explicitly convert the arguments to double-float.
 
 #+LISPMATH
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (shadow '(sin cos tan asin acos atan
-            sinh cosh tanh asinh acosh atanh
-            sqrt exp log)))            ; cannot be in the progn below!
-
-#+LISPMATH
 (progn
-  (declaim (inline sin cos tan asin acos atan atan2
-                   sinh cosh tanh asinh acosh atanh
-                   sqrt exp log ln logb)
-           (ftype (cl:function (number) double-float)
-                  sin cos tan asin acos atan
-                  sinh cosh tanh asinh acosh atanh
-                  sqrt exp log ln)
-           (ftype (cl:function (number number) double-float)
-                  atan2 logb))
+  (declaim
+   (inline sl::sin sl::cos sl::tan sl::asin sl::acos sl::atan sl::atan2
+           sl::sinh sl::cosh sl::tanh sl::asinh sl::acosh sl::atanh
+           sl::sqrt sl::exp sl::log sl::ln sl::logb)
+   (ftype (cl:function (number) double-float)
+          sl::sin sl::cos sl::tan sl::asin sl::acos sl::atan
+          sl::sinh sl::cosh sl::tanh sl::asinh sl::acosh sl::atanh
+          sl::sqrt sl::exp sl::log sl::ln)
+   (ftype (cl:function (number number) double-float)
+          sl::atan2 sl::logb))
 
-  (defun sin (x) (cl:sin (cl:float x 1d0)))
-  (defun cos (x) (cl:cos (cl:float x 1d0)))
-  (defun tan (x) (cl:tan (cl:float x 1d0)))
-  (defun asin (x) (cl:asin (cl:float x 1d0)))
-  (defun acos (x) (cl:acos (cl:float x 1d0)))
-  (defun atan (x) (cl:atan (cl:float x 1d0)))
-  (defun atan2 (x y) (cl:atan (cl:float x 1d0) (cl:float y 1d0)))
-  (defun sinh (x) (cl:sinh (cl:float x 1d0)))
-  (defun cosh (x) (cl:cosh (cl:float x 1d0)))
-  (defun tanh (x) (cl:tanh (cl:float x 1d0)))
-  (defun asinh (x) (cl:asinh (cl:float x 1d0)))
-  (defun acosh (x) (cl:acosh (cl:float x 1d0)))
-  (defun atanh (x) (cl:atanh (cl:float x 1d0)))
-  (defun sqrt (x) (cl:sqrt (cl:float x 1d0)))
-  (defun exp (x) (cl:exp (cl:float x 1d0)))
-  (defun log (x) (cl:log (cl:float x 1d0)))
-  (defun ln (x) (cl:log (cl:float x 1d0)))
-  (defun logb (x y) (cl:log (cl:float x 1d0) (cl:float y 1d0)))
-
-  (export '(sin cos tan asin acos atan atan2
-            sinh cosh tanh asinh acosh atanh
-            sqrt exp log ln logb))
+  (defun sl::sin (x) (cl:sin (float x)))
+  (defun sl::cos (x) (cl:cos (float x)))
+  (defun sl::tan (x) (cl:tan (float x)))
+  (defun sl::asin (x) (cl:asin (float x)))
+  (defun sl::acos (x) (cl:acos (float x)))
+  (defun sl::atan (x) (cl:atan (float x)))
+  (defun sl::atan2 (x y) (cl:atan (float x) (float y)))
+  (defun sl::sinh (x) (cl:sinh (float x)))
+  (defun sl::cosh (x) (cl:cosh (float x)))
+  (defun sl::tanh (x) (cl:tanh (float x)))
+  (defun sl::asinh (x) (cl:asinh (float x)))
+  (defun sl::acosh (x) (cl:acosh (float x)))
+  (defun sl::atanh (x) (cl:atanh (float x)))
+  (defun sl::sqrt (x) (cl:sqrt (float x)))
+  (defun sl::exp (x) (cl:exp (float x)))
+  (defun sl::log (x) (cl:log (float x)))
+  (defun sl::ln (x) (cl:log (float x)))
+  (defun sl::logb (x y) (cl:log (float x) (float y)))
 
   ;; Prevent use of the definitions in "arith/math.red":
-  (flag '(sin cos tan asin acos atan atan2
-          sinh cosh tanh asinh acosh atanh
-          sqrt exp log ln logb)
+  (flag '(sl::sin sl::cos sl::tan sl::asin sl::acos sl::atan sl::atan2
+          sl::sinh sl::cosh sl::tanh sl::asinh sl::acosh sl::atanh
+          sl::sqrt sl::exp sl::log sl::ln sl::logb)
         'sl::lose))
 
 
 ;;; Map Composite Functions
 ;;; =======================
 
-(declaim (inline map mapc)
-         (ftype (cl:function (list function) null) map mapc))
+(declaim (inline sl::map sl::mapc)
+         (ftype (cl:function (list function) null) sl::map sl::mapc))
 
-(export 'map)
-(defun map (x fn)
+(defun sl::map (x fn)
   "MAP(X:list, FN:function):any eval, spread
 Applies FN to successive CDR segments of X and returns NIL.
 EXPR PROCEDURE MAP(X, FN);
@@ -1963,8 +1922,7 @@ EXPR PROCEDURE MAP(X, FN);
   (cl:mapl fn x)
   nil)
 
-(export 'mapc)
-(defun mapc (x fn)
+(defun sl::mapc (x fn)
   "MAPC(X:list, FN:function):any eval, spread
 Applies FN to successive CAR segments of X and returns NIL.
 EXPR PROCEDURE MAPC(X, FN);
@@ -1972,12 +1930,11 @@ EXPR PROCEDURE MAPC(X, FN);
   (cl:mapc fn x)
   nil)
 
-(declaim (inline mapcan mapcar mapcon maplist)
+(declaim (inline sl::mapcan sl::mapcar sl::mapcon sl::maplist)
          (ftype (cl:function (list function) list)
-                mapcan mapcar mapcon maplist))
+                sl::mapcan sl::mapcar sl::mapcon sl::maplist))
 
-(export 'mapcan)
-(defun mapcan (x fn)
+(defun sl::mapcan (x fn)
   "MAPCAN(X:list, FN:function):any eval, spread
 Returns a concatenated list of FN applied to successive CAR elements of X.
 EXPR PROCEDURE MAPCAN(X, FN);
@@ -1985,8 +1942,7 @@ EXPR PROCEDURE MAPCAN(X, FN);
       ELSE NCONC(FN CAR X, MAPCAN(CDR X, FN));"
   (cl:mapcan fn x))
 
-(export 'mapcar)
-(defun mapcar (x fn)
+(defun sl::mapcar (x fn)
   "MAPCAR(X:list, FN:function):any eval, spread
 Returns a constructed list of FN applied to each CAR of list X.
 EXPR PROCEDURE MAPCAR(X, FN);
@@ -1994,8 +1950,7 @@ EXPR PROCEDURE MAPCAR(X, FN);
       ELSE FN CAR X . MAPCAR(CDR X, FN);"
   (cl:mapcar fn x))
 
-(export 'mapcon)
-(defun mapcon (x fn)
+(defun sl::mapcon (x fn)
   "MAPCON(X:list, FN:function):any eval, spread
 Returns a concatenated list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPCON(X, FN);
@@ -2003,8 +1958,7 @@ EXPR PROCEDURE MAPCON(X, FN);
       ELSE NCONC(FN X, MAPCON(CDR X, FN));"
   (cl:mapcon fn x))
 
-(export 'maplist)
-(defun maplist (x fn)
+(defun sl::maplist (x fn)
   "MAPLIST(X:list, FN:function):any eval, spread
 Returns a constructed list of FN applied to successive CDR segments of X.
 EXPR PROCEDURE MAPLIST(X, FN);
@@ -2023,11 +1977,10 @@ EXPR PROCEDURE MAPLIST(X, FN);
 ;; therefore always be supplied to CL functions as the :test keyword
 ;; argument.
 
-(declaim (inline append)
-         (ftype (cl:function (t t) t) append))
+(declaim (inline sl::append)
+         (ftype (cl:function (t t) t) sl::append))
 
-(export 'append)
-(defun append (u v)
+(defun sl::append (u v)
   "(append U:any V:any):any expr
 Returns a constructed list in which the last element of U is followed by the
 first element of V. The list U is copied, but V is not."
@@ -2035,10 +1988,9 @@ first element of V. The list U is copied, but V is not."
   ;; have any type:
   (if (consp u) (cl:append u v) v))
 
-(declaim (ftype (cl:function (t t) list) assoc))
+(declaim (ftype (cl:function (t t) list) sl::assoc))
 
-(export 'assoc)
-(defun assoc (u v)                      ; PSL definition
+(defun sl::assoc (u v)                  ; PSL definition
   "(assoc U:any V:any): pair, nil expr
 If U occurs as the car portion of an element of the a-list V, the pair in which
 U occurred is returned, otherwise nil is returned. The function equal is used
@@ -2052,10 +2004,9 @@ to test for equality.
              (if (and (consp x) (equal u (car x)))
                  (return x)))))
 
-(declaim (ftype (cl:function (list symbol) list) deflist))
+(declaim (ftype (cl:function (list symbol) list) sl::deflist))
 
-(export 'deflist)
-(defun deflist (u ind)
+(defun sl::deflist (u ind)
   "DEFLIST(U:dlist, IND:id):list eval, spread
 A \"dlist\" is a list in which each element is a two element list: (ID:id
 PROP:any). Each ID in U has the indicator IND with property
@@ -2072,11 +2023,10 @@ EXPR PROCEDURE DEFLIST(U, IND);
                  (car x))
              u))
 
-(declaim (inline delete)
-         (ftype (cl:function (t list) list) delete))
+(declaim (inline sl::delete)
+         (ftype (cl:function (t list) list) sl::delete))
 
-(export 'delete)
-(defun delete (u v)
+(defun sl::delete (u v)
   "DELETE(U:any, V:list):list eval, spread
 Returns V with the first top level occurrence of U removed from it.
 EXPR PROCEDURE DELETE(U, V);
@@ -2087,7 +2037,8 @@ EXPR PROCEDURE DELETE(U, V);
 
 (declaim (ftype (cl:function (t) boolean) digit))
 
-(export 'digit)
+(export 'digit)                         ; used internally
+
 (defun digit (u)
   "DIGIT(U:any):boolean eval, spread
 Returns T if U is a digit, otherwise NIL.
@@ -2097,10 +2048,9 @@ EXPR PROCEDURE DIGIT(U);
   (handler-case (not (not (digit-char-p (character u))))
     (cl:error () nil)))
 
-(declaim (ftype (cl:function (t) (integer 0)) length))
+(declaim (ftype (cl:function (t) (integer 0)) sl::length))
 
-(export 'length)
-(defun length (x)
+(defun sl::length (x)
   "LENGTH(X:any):integer eval, spread
 The top level length of the list X is returned.
 EXPR PROCEDURE LENGTH(X);
@@ -2116,10 +2066,9 @@ EXPR PROCEDURE LENGTH(X);
       ;; When pointer hits an atom, return the count:
       ((atom p) n)))
 
-(declaim (ftype (cl:function (t) boolean) liter))
+(declaim (ftype (cl:function (t) boolean) sl::liter))
 
-(export 'liter)
-(defun liter (u)
+(defun sl::liter (u)
   "LITER(U:any):boolean eval, spread
 Returns T if U is a character of the alphabet, NIL otherwise.
 EXPR PROCEDURE LITER(U);
@@ -2131,10 +2080,9 @@ EXPR PROCEDURE LITER(U);
   (handler-case (alpha-char-p (character u))
     (cl:error () nil)))
 
-(declaim (ftype (cl:function (t t) list) member memq))
+(declaim (ftype (cl:function (t t) list) sl::member sl::memq))
 
-(export 'member)
-(defun member (a l)
+(defun sl::member (a l)
   "(member A:any L:any): extra-boolean expr
 Returns nil if A is not equal to some top level element of the list L;
 otherwise it returns the remainder of L whose first element is equal
@@ -2149,10 +2097,9 @@ to A."
         (when (atom tail) (return))
         (when (equal a (car tail)) (return tail))))
 
-(declaim (inline memq))
+(declaim (inline sl::memq))
 
-(export 'memq)
-(defun memq (a l)
+(defun sl::memq (a l)
   "(memq A:any L:any): extra-boolean expr
 Returns nil if A is not eq to some top level element of the list L;
 otherwise it returns the remainder of L whose first element is equal
@@ -2163,7 +2110,7 @@ to A."
   ;; (cond ((atom l) nil)
   ;;       ((eq a (car l)) l)
   ;;       (t (memq a (cdr l))))
-  (and (listp l) (cl:member a l :test #'cl:eq)))
+  (and (consp l) (cl:member a l :test #'cl:eq)))
 
 (import 'cl:nconc :sl)
 ;; NCONC(U:list, V:list):list eval, spread
@@ -2178,10 +2125,9 @@ to A."
 ;;    RETURN U
 ;; END;
 
-(declaim (ftype (cl:function (list list) list) pair))
+(declaim (ftype (cl:function (list list) list) sl::pair))
 
-(export 'pair)
-(defun pair (u v)
+(defun sl::pair (u v)
   ;; Could implement as pairlis, but pairlis doesn't guarantee the
   ;; ordering in the result list.
   "PAIR(U:list, V:list):alist eval, spread
@@ -2199,10 +2145,9 @@ EXPR PROCEDURE PAIR(U, V);
       (%error "Different length lists in PAIR")
       (cl:map 'list #'cons u v)))
 
-(declaim (ftype (cl:function (list) list) reverse))
+(declaim (ftype (cl:function (list) list) sl::reverse))
 
-(export 'reverse)
-(defun reverse (u)
+(defun sl::reverse (u)
   "REVERSE(U:list):list eval, spread
 Returns a copy of the top level of U in reverse order.
 EXPR PROCEDURE REVERSE(U);
@@ -2220,10 +2165,9 @@ END;"
 
 (%defalias sl::reversip cl:nreverse)       ; PSL function
 
-(declaim (ftype (cl:function (t list (function ())) t) sassoc))
+(declaim (ftype (cl:function (t list (function ())) t) sl::sassoc))
 
-(export 'sassoc)
-(defun sassoc (u v fn)
+(defun sl::sassoc (u v fn)
   "SASSOC(U:any, V:alist, FN:function):any eval, spread
 Searches the alist V for an occurrence of U. If U is not in the alist
 the evaluation of function FN is returned.
@@ -2242,11 +2186,10 @@ EXPR PROCEDURE SASSOC(U, V, FN);
 ;; is built into CSL and for PSL it is defined as an alias for gsort
 ;; in "pslrend.red".)
 
-(declaim (inline sublis subla)
-         (ftype (cl:function (list t) t) sublis subla))
+(declaim (inline sl::sublis sl::subla)
+         (ftype (cl:function (list t) t) sl::sublis sl::subla))
 
-(export 'sublis)
-(defun sublis (x y)
+(defun sl::sublis (x y)
   "SUBLIS(X:alist, Y:any):any eval, spread
 The value returned is the result of substituting the CDR of each
 element of the alist X for every occurrence of the CAR part of that
@@ -2262,16 +2205,14 @@ EXPR PROCEDURE SUBLIS(X, Y);
                  END;"
   (cl:sublis x y :test #'equal))
 
-(export 'subla)
-(defun subla (x y)                      ; PSL function
+(defun sl::subla (x y)                  ; PSL function
   "Eq version of sublis; replaces atoms only."
   (cl:sublis x y :test #'eq))
 
-(declaim (inline subst)
-         (ftype (cl:function (t t t) t) subst))
+(declaim (inline sl::subst)
+         (ftype (cl:function (t t t) t) sl::subst))
 
-(export 'subst)
-(defun subst (u v w)
+(defun sl::subst (u v w)
   "SUBST(U:any, V:any, W:any):any eval, spread
 The value returned is the result of substituting U for all occurrences
 of V in W.
@@ -2285,11 +2226,10 @@ EXPR PROCEDURE SUBST(U, V, W);
 ;; This function is used in several places in REDUCE, but I can't find
 ;; a reference to it anywhere!  The documentation string below is
 ;; based on that in Emacs Lisp:
-(declaim (inline rassoc)
-         (ftype (cl:function (t list) list) rassoc))
+(declaim (inline sl::rassoc)
+         (ftype (cl:function (t list) list) sl::rassoc))
 
-(export 'rassoc)
-(defun rassoc (key list)
+(defun sl::rassoc (key list)
   "Return non-nil if KEY is equal to the cdr of an element of LIST.
 The value is actually the first element of LIST whose cdr equals KEY."
   (cl:rassoc key list :test #'equal))
@@ -2315,11 +2255,10 @@ The value is actually the first element of LIST whose cdr equals KEY."
 ;; Otherwise revert to the Common Lisp apply."
 ;;   (cl:apply (%lam2fn fn) args))
 
-(declaim (inline apply)
-         (ftype (cl:function (function list) t) apply))
+(declaim (inline sl::apply)
+         (ftype (cl:function (function list) t) sl::apply))
 
-(export 'apply)
-(defun apply (fn args)
+(defun sl::apply (fn args)
   "Treat a lambda expression as an operator.
 Otherwise revert to the Common Lisp apply."
   (cl:apply (coerce fn 'cl:function) args))
@@ -2359,7 +2298,8 @@ Otherwise revert to the Common Lisp apply."
 (declaim (inline evlis)
          (ftype (cl:function (list) list) evlis))
 
-(export 'evlis)
+(export 'evlis)                         ; used internally
+
 (defun evlis (u)
   "EVLIS(U:any-list):any-list eval, spread
 EVLIS returns a list of the evaluation of each element of U.
@@ -2370,7 +2310,8 @@ EXPR PROCEDURE EVLIS(U);
 
 (declaim (ftype (cl:function (t) t) eval))
 
-(export 'eval)
+(export 'eval)                          ; used internally
+
 (defun eval (u)
   "Treat (function foo) the same as the operator foo.
 Otherwise revert to the Common Lisp eval."
@@ -2409,7 +2350,8 @@ Otherwise revert to the Common Lisp eval."
 
 (declaim (ftype (cl:function (cons function) t) expand))
 
-(export 'expand)
+(export 'expand)                        ; recursive
+
 (defun expand (l fn)
   "EXPAND(L:list, FN:function):list eval, spread
 FN is a defined function of two arguments to be used in the expansion
@@ -2425,7 +2367,7 @@ EXPR PROCEDURE EXPAND(L,FN);
       (car l)
       (list fn (car l) (expand (cdr l) fn))))
 
-(defmacro function (fn)
+(defmacro sl::function (fn)
   "FUNCTION(FN:function):function noeval, nospread
 The function FN is to be passed to another function. If FN is to have
 side effects its free variables must be fluid or global. FUNCTION is
@@ -2442,8 +2384,6 @@ do not consider FUNARGs in this report."
   (if (eqcar fn 'lambda)
       `(cl:function ,fn)
       `(cl:quote ,fn)))
-
-(export 'function)
 
 (import 'cl:quote :sl)
 ;; QUOTE(U:any):any noeval, nospread
@@ -2464,10 +2404,9 @@ do not consider FUNARGs in this report."
 
 ;; Filehandles should probably be structures rather than lists!
 
-(declaim (ftype (cl:function (filehandle) filehandle) close))
+(declaim (ftype (cl:function (filehandle) filehandle) sl::close))
 
-(export 'close)
-(defun close (filehandle)
+(defun sl::close (filehandle)
   "CLOSE(FILEHANDLE:any):any eval, spread
 Closes the file with the internal name FILEHANDLE writing any
 necessary end of file marks and such. The value of FILEHANDLE
@@ -2496,10 +2435,9 @@ closed.
            (cl:close (cdr filehandle))
            (cl:close (car filehandle)))))))
 
-(declaim (ftype (cl:function () null) eject))
+(declaim (ftype (cl:function () null) sl::eject))
 
-(export 'eject)
-(defun eject ()
+(defun sl::eject ()
   "EJECT():NIL eval, spread
 Skip to the top of the next output page. Automatic EJECTs are
 executed by the print functions when the length set by the PAGE-
@@ -2509,10 +2447,9 @@ LENGTH function is exceeded."
 (defvar %linelength% 80
   "Current Standard LISP line length accessed via function `LINELENGTH'.")
 
-(declaim (ftype (cl:function ((or fixnum null)) fixnum) linelength))
+(declaim (ftype (cl:function ((or fixnum null)) fixnum) sl::linelength))
 
-(export 'linelength)
-(defun linelength (len)
+(defun sl::linelength (len)
   "LINELENGTH(LEN:{integer, NIL}):integer eval, spread
 If LEN is an integer the maximum line length to be printed before
 the print functions initiate an automatic TERPRI is set to the value
@@ -2528,10 +2465,9 @@ selected output file or LEN is negative or zero.
           (prog1 %linelength% (setq %linelength% len)))
       %linelength%))
 
-(declaim (ftype (cl:function () fixnum) lposn))
+(declaim (ftype (cl:function () fixnum) sl::lposn))
 
-(export 'lposn)
-(defun lposn ()
+(defun sl::lposn ()
   "LPOSN():integer eval, spread
 Returns the number of lines printed on the current page. At the top
 of a page, 0 is returned."
@@ -2585,10 +2521,9 @@ necessary).  Called by `open', `cd', `filep', `file-write-date'."
 ;; between Cygwin pathnames (e.g., #P"/cygdrive/c/gnu/clisp/") and
 ;; native Win32 pathnames (e.g., #P"C:\\gnu\\clisp\\").
 
-(declaim (ftype (cl:function (simple-string symbol) filehandle) open))
+(declaim (ftype (cl:function (simple-string symbol) filehandle) sl::open))
 
-(export 'open)
-(defun open (file how)
+(defun sl::open (file how)
   "OPEN(FILE:any, HOW:id):any eval, spread
 Open the file with the system dependent name FILE for output if
 HOW is EQ to OUTPUT, or input if HOW is EQ to INPUT. If the
@@ -2610,11 +2545,10 @@ OUTPUT or the file can't be opened.
                     :if-exists :supersede :if-does-not-exist :create)))
     (t (%error "~a is not option for OPEN" how))))
 
-(declaim (inline pagelength)
-         (ftype (cl:function (integer) null) pagelength))
+(declaim (inline sl::pagelength)
+         (ftype (cl:function (integer) null) sl::pagelength))
 
-(export 'pagelength)
-(defun pagelength (len)
+(defun sl::pagelength (len)
   (declare (ignore len))
   "PAGELENGTH(LEN:{integer, NIL}):integer eval, spread
 Sets the vertical length (in lines) of an output page. Automatic page
@@ -2624,23 +2558,22 @@ previous page length is returned. If LEN is 0, no automatic page
 ejects will occur."
   nil)
 
-(defconstant %tab-width 8
+(defconstant %tab-width% 8
   "Outputting a Tab character increments `%posn%' to the next integer
-multiple of `%tab-width'.")
+multiple of `%tab-width%'.")
 
 (defvar %posn% 0
   "Number of characters in the current line output by Standard LISP.
 Except that Tab increments `%posn%' the next integer multiple of
-`%tab-width', and Newline resets `%posn%' to 0.
+`%tab-width%', and Newline resets `%posn%' to 0.
 Set by the functions `%prin-string', `terpri' and `readch'.
 Accessed (read-only) via the function `posn'.
 It's value should be between 0 and `%linelength%' inclusive.")
 
-(declaim (inline posn)
-         (ftype (cl:function () fixnum) posn))
+(declaim (inline sl::posn)
+         (ftype (cl:function () fixnum) sl::posn))
 
-(export 'posn)
-(defun posn ()
+(defun sl::posn ()
   "POSN():integer eval, spread
 Returns the number of characters in the output buffer. When the
 buffer is empty, 0 is returned."
@@ -2649,7 +2582,7 @@ buffer is empty, 0 is returned."
 (defvar %prin-space-maybe% nil
   "True if there is a pending space to print.")
 
-(declaim (inline posn)
+(declaim (inline %prin-space-maybe)
          (ftype (cl:function () boolean) %prin-space-maybe))
 
 (defun %prin-space-maybe ()
@@ -2676,7 +2609,7 @@ This is the only function that actually produces graphical output.
         ((= i len))
       (case (schar s i)
         (#\Tab           ; invisible, so no overflow (same for Space?)
-         (setq %posn% (* (1+ (floor %posn% %tab-width)) %tab-width)))
+         (setq %posn% (* (1+ (floor %posn% %tab-width%)) %tab-width%)))
         (#\Newline
          (when (> (1+ %posn%) %linelength%) (setq overflowed t))
          (setq %posn% 0))
@@ -2690,7 +2623,7 @@ This is the only function that actually produces graphical output.
           (do ((i 0 (1+ i)))
               ((= i len))
             (case (schar s i)
-              (#\Tab (setq %posn% (* (1+ (floor %posn% %tab-width)) %tab-width)))
+              (#\Tab (setq %posn% (* (1+ (floor %posn% %tab-width%)) %tab-width%)))
               (#\Newline (setq %posn% 0))
               (otherwise (incf %posn%)))))
         (when %prin-space-maybe% (write-char #\Space)))
@@ -2712,7 +2645,8 @@ This is the only function that actually produces graphical output.
 (declaim (inline terpri)
          (ftype (cl:function () null) terpri))
 
-(export 'terpri)
+(export 'terpri)                        ; used internally
+
 (defun terpri ()
   "TERPRI():NIL
 The current print line is terminated."
@@ -2721,7 +2655,8 @@ The current print line is terminated."
 (declaim (inline print)
          (ftype (cl:function (t) t) print))
 
-(export 'print)
+(export 'print)                         ; used internally
+
 (defun print (u)
   "PRINT(U:any):any eval, spread
 Displays U in READ readable format and terminates the print line.
@@ -2732,7 +2667,8 @@ EXPR PROCEDURE PRINT(U);
 
 (declaim (ftype (cl:function (t) t) prin1 prin2  sl::princ))
 
-(export 'prin1)
+(export 'prin1)                         ; used internally
+
 (defun prin1 (u)
   "PRIN1(U:any):any eval, spread
 U is displayed in a READ readable form. The format of display is the
@@ -2759,7 +2695,8 @@ of U is returned."
   "Convert identifier U to a string without any escapes."
   (%string-invert-case (cl:symbol-name u)))
 
-(export 'prin2)
+(export 'prin2)                         ; recursive
+
 (defun prin2 (u)
   "PRIN2(U:any):any eval, spread
 U is displayed upon the currently selected print device but output is
@@ -2821,7 +2758,7 @@ in vector-notation.  The value of U is returned."
   ;; "arith/rounded.red"!
   ;; Uses expt defined earlier in this file so as to avoid CLISP
   ;; underflow.
-  (if (zerop u) "0.0"
+  (if (cl:zerop u) "0.0"
       (let* ((absu (abs u))
              (e (floor (cl:log absu 10d0)))) ; decimal exponent
         ;; |u| = m 10^e, where 0 <= m < 10, so (for e >= 0) the
@@ -2911,10 +2848,9 @@ CLISP memory image.")
   "Return the appropriate input stream depending on the value of *echo."
   (or (and *echo (cdr %read-stream%)) (car %read-stream%)))
 
-(declaim (ftype (cl:function (filehandle) filehandle) rds))
+(declaim (ftype (cl:function (filehandle) filehandle) sl::rds))
 
-(export 'rds)
-(defun rds (filehandle)
+(defun sl::rds (filehandle)
   "RDS(FILEHANDLE:any):any eval, spread
 Input from the currently selected input file is suspended and
 further input comes from the file named. FILEHANDLE is a system
@@ -2932,23 +2868,23 @@ returns the internal name of the previously selected input file.
               filehandle
               %default-read-stream%))))
 
-(defparameter *sl-readtable* (copy-readtable)
+(defparameter %sl-readtable% (copy-readtable)
   "Readtable implementing Standard Lisp syntax.
 % introduces a comment and ! is the single-escape character.")
 ;; Cannot redefine *readtable* directly because it would come into
 ;; effect immediately during a load of the uncompiled file and break
 ;; the syntax below!
-(set-syntax-from-char #\% #\; *sl-readtable*)
-(set-syntax-from-char #\; #\A *sl-readtable*)
-(set-syntax-from-char #\! #\\ *sl-readtable*)
-(set-syntax-from-char #\\ #\A *sl-readtable*)
-(set-syntax-from-char #\# #\A *sl-readtable*)
-(set-syntax-from-char #\| #\A *sl-readtable*)
+(set-syntax-from-char #\% #\; %sl-readtable%)
+(set-syntax-from-char #\; #\A %sl-readtable%)
+(set-syntax-from-char #\! #\\ %sl-readtable%)
+(set-syntax-from-char #\\ #\A %sl-readtable%)
+(set-syntax-from-char #\# #\A %sl-readtable%)
+(set-syntax-from-char #\| #\A %sl-readtable%)
 
-(defparameter *string-readtable* (copy-readtable *sl-readtable*)
+(defparameter %string-readtable% (copy-readtable %sl-readtable%)
   "Readtable implementing Standard Lisp string syntax.
 No escape characters are defined.")
-(set-syntax-from-char #\! #\A *string-readtable*)
+(set-syntax-from-char #\! #\A %string-readtable%)
 
 ;; ***** NEED BETTER HANDLING FOR %CL-READ-STRING! *****
 
@@ -2962,7 +2898,7 @@ No escape characters are defined.")
   ;; This accumulates chars until it sees same char that invoked it,
   ;; namely closech. See the function read-string in
   ;; "sbcl-1.4.14/src/code/reader.lisp".
-  (let* ((*readtable* *string-readtable*)
+  (let* ((*readtable* %string-readtable%)
          (s (%cl-read-string stream closech)))
     (loop while ;; following character is "
           (char= (peek-char nil stream nil $eof$ t) closech)
@@ -2973,7 +2909,7 @@ No escape characters are defined.")
                                (%cl-read-string stream closech))))
     s))
 
-(set-macro-character #\" #'%sl-read-string nil *sl-readtable*)
+(set-macro-character #\" #'%sl-read-string nil %sl-readtable%)
 
 ;; The read functions (rather than open or rds) must select the echo
 ;; stream dynamically because REDUCE sets *echo AFTER open and rds
@@ -2981,10 +2917,9 @@ No escape characters are defined.")
 ;; %read-stream, which returns either the input stream or the echo
 ;; stream depending on the value of *echo.
 
-(declaim (ftype (cl:function () t) read))
+(declaim (ftype (cl:function () t) sl::read))
 
-(export 'read)
-(defun read ()
+(defun sl::read ()
   "READ():any
 The next expression from the file currently selected for
 input. Valid input forms are: vector-notation, dot-notation,
@@ -2993,7 +2928,7 @@ identifiers with escape characters. Identifiers are interned on
 the OBLIST (see the INTERN function in \"Identifiers\"). READ
 returns the value of !$EOF!$ when the end of the currently
 selected input file is reached."
-  (let ((*readtable* *sl-readtable*))
+  (let ((*readtable* %sl-readtable%))
     ;; The case sensitivity mode is one of the symbols :upcase,
     ;; :downcase, :preserve, or :invert.
     ;; (setf (readtable-case *readtable*)
@@ -3004,10 +2939,9 @@ selected input file is reached."
     ;; of curline* and this is used in rlisp88.tst.
     (cl:read-preserving-whitespace (%read-stream) nil $eof$)))
 
-(declaim (ftype (cl:function () symbol) readch))
+(declaim (ftype (cl:function () symbol) sl::readch))
 
-(export 'readch)
-(defun readch ()
+(defun sl::readch ()
   "READCH():id
 Returns the next interned character from the file currently selected
 for input. Two special cases occur. If all the characters in an input
@@ -3046,10 +2980,9 @@ CLISP memory image.")
 This must be re-set when Standard Lisp is started to work in a saved
 CLISP memory image.")
 
-(declaim (ftype (cl:function (filehandle) filehandle) wrs))
+(declaim (ftype (cl:function (filehandle) filehandle) sl::wrs))
 
-(export 'wrs)
-(defun wrs (filehandle)
+(defun sl::wrs (filehandle)
   "WRS(FILEHANDLE:any):any eval, spread
 Output to the currently active output file is suspended and further
 output is directed to the file named. FILEHANDLE is an internal
@@ -3075,10 +3008,9 @@ selected output file.
              (setq *standard-output* (cadr filehandle)
                    %write-stream% filehandle)))))))
 
-(declaim (ftype (cl:function (simple-string symbol) filehandle) pipe-open))
+(declaim (ftype (cl:function (simple-string symbol) filehandle) sl::pipe-open))
 
-(export 'pipe-open)
-(defun pipe-open (command how)
+(defun sl::pipe-open (command how)
   "Run COMMAND asynchronously with input via the pipe returned as a
 stream by this function."
   (case how
@@ -3102,22 +3034,20 @@ stream by this function."
      (list 'sl::pipe (ext:make-pipe-output-stream command)))
     (t (%error "~a is not (currently) an option for PIPE-OPEN" how))))
 
-(declaim (inline channelflush)
-         (ftype (cl:function (filehandle) null) channelflush))
+(declaim (inline sl::channelflush)
+         (ftype (cl:function (filehandle) null) sl::channelflush))
 
-(export 'channelflush)
-(defun channelflush (filehandle)        ; PSL
+(defun sl::channelflush (filehandle)    ; PSL
   "Flush FILEHANDLE if it is a pipe stream."
   ;; filehandle = ('pipe output-stream . process)
   (when (eq (car filehandle) 'sl::pipe)
     (finish-output (cadr filehandle)))
   nil)
 
-(declaim (inline flush)
-         (ftype (cl:function () null) flush))
+(declaim (inline sl::flush)
+         (ftype (cl:function () null) sl::flush))
 
-(export 'flush)
-(defun flush ()                         ; CSL
+(defun sl::flush ()                     ; CSL
   "Flush the current output stream."
   (finish-output (cadr %write-stream%))
   nil)
@@ -3129,29 +3059,27 @@ stream by this function."
 ;; In the Standard Lisp world, "character" means either a symbol whose
 ;; name is one character long or an ASCII character code.
 
-(defconstant +short-day-names+
+(defconstant %short-day-names%
   #("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")
   "A vector of names of the days abbreviated to 3 letters.")
 
-(defconstant +short-month-names+
+(defconstant %short-month-names%
   #("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
   "A vector of names of the months abbreviated to 3 letters.")
 
-(declaim (ftype (cl:function () simple-string) date-and-time date))
+(declaim (ftype (cl:function () simple-string) sl::date-and-time sl::date))
 
-(export 'date-and-time)
-(defun date-and-time ()                 ; CSL
+(defun sl::date-and-time ()             ; CSL
   "Return a string of the form \"Fri Feb 01 18:38:36 2019\"."
   (multiple-value-bind
         (second minute hour date month year day)
       (get-decoded-time)
     (format nil "~a ~a ~2,'0d ~2,'0d:~2,'0d:~2,'0d ~d"
-            (aref +short-day-names+ day)
-            (aref +short-month-names+ (1- month))
+            (aref %short-day-names% day)
+            (aref %short-month-names% (1- month))
             date hour minute second year)))
 
-(export 'date)
-(defun date ()                          ; PSL
+(defun sl::date ()                      ; PSL
   "(date): string expr
 The date in the form \"day-month-year\"
 1 lisp> (date)
@@ -3161,7 +3089,7 @@ The date in the form \"day-month-year\"
       (get-decoded-time)
     (declare (ignore second minute hour))
     (format nil "~2,'0d-~a-~d"
-            date (aref +short-month-names+ (1- month)) year)))
+            date (aref %short-month-names% (1- month)) year)))
 
 (declaim (ftype (cl:function () unsigned-byte)  sl::datestamp))
 
@@ -3183,10 +3111,9 @@ used to determine an absolute date or time!")
   (/ 1000 internal-time-units-per-second)
   "Multiplier to convert internal time units to milliseconds.")
 
-(declaim (ftype (cl:function () (integer 0)) time))
+(declaim (ftype (cl:function () (integer 0)) sl::time))
 
-(export 'time)
-(defun time ()                          ; PSL
+(defun sl::time ()                      ; PSL
   "(time): integer expr
 Elapsed time from some arbitrary initial point in milliseconds."
   ;; This is used for timing computations, so use run time.
@@ -3202,10 +3129,9 @@ Counting starts at 0.  Suppress the printed output."
   (with-open-stream (*standard-output* (make-broadcast-stream))
     (nth-value n (room nil))))
 
-(declaim (ftype (cl:function () (integer 0)) gctime))
+(declaim (ftype (cl:function () (integer 0)) sl::gctime))
 
-(export 'gctime)
-(defun gctime ()
+(defun sl::gctime ()
   "The total time (in milliseconds) spent in garbage collection."
   ;; cf. time () defined above.
   ;; For CCL, only documented in "ccl/lib/time.lisp".
@@ -3214,10 +3140,9 @@ Counting starts at 0.  Suppress the printed output."
                     #+CCL (ccl:gctime)
                     %milliseconds-per-internal-time-unit%))))
 
-(declaim (ftype (cl:function () list) oblist))
+(declaim (ftype (cl:function () list) sl::oblist))
 
-(export 'oblist)
-(defun oblist ()                        ; CSL
+(defun sl::oblist ()                    ; CSL
   "Return the Standard Lisp object list.
 That is, the list of interned identifiers or the symbol table for the
 current package."
@@ -3225,10 +3150,9 @@ current package."
     (do-symbols (s :sl) (push s lst))
     lst))
 
-(declaim (ftype (cl:function () null) reclaim))
+(declaim (ftype (cl:function () null) sl::reclaim))
 
-(export 'reclaim)
-(defun reclaim ()
+(defun sl::reclaim ()
   "(reclaim): nil expr
 Reclaim is the user level call to the garbage collector. Active data
 in the heap is made contiguous and all tagged pointers into the heap
@@ -3299,10 +3223,9 @@ A function hung on the garbage collection hook."
 ;;       (funcall %old-gc%)
 ;;       (format t "Garbage collection called."))))
 
-(declaim (ftype (cl:function () (integer 0)) gtheap))
+(declaim (ftype (cl:function () (integer 0)) sl::gtheap))
 
-(export 'gtheap)
-(defun gtheap ()
+(defun sl::gtheap ()
   "Size of the free dynamic space in bytes."
   #+SBCL (- (sb-ext:dynamic-space-size)
             (let* ((s (with-output-to-string (*standard-output*)
@@ -3314,9 +3237,10 @@ A function hung on the garbage collection hook."
   #+(not (or SBCL CLISP)) 0)
 
 (declaim (ftype (cl:function (t) list)
-                explode2  sl::explodec explode2uc explode2lc))
+                explode2  sl::explodec sl::explode2uc sl::explode2lc))
 
-(export 'explode2)
+(export 'explode2)                      ; used internally
+
 (defun explode2 (u)                     ; PSL
   "(explode2 U:atom-vector): id-list expr
 PRIN2-like version of EXPLODE without escapes or double quotes."
@@ -3330,8 +3254,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 
 (%defalias sl::explodec explode2)       ; see "pslrend.red"
 
-(export 'explode2uc)
-(defun explode2uc (u)                   ; see "pslrend.red"
+(defun sl::explode2uc (u)               ; see "pslrend.red"
   "Upper-case version of explode2."
   ;; NB: downcase because of symbol name case inversion!
   (cl:map 'list #'%intern-character-preserve-case
@@ -3341,8 +3264,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
              (cl:float (%prin-float-to-string u))
              (t (princ-to-string u))))))
 
-(export 'explode2lc)
-(defun explode2lc (u)                   ; defined in "pslrend.red"
+(defun sl::explode2lc (u)               ; defined in "pslrend.red"
   "Lower-case version of explode2."
   ;; NB: upcase because of symbol name case inversion!
   (cl:map 'list #'%intern-character-preserve-case
@@ -3352,27 +3274,24 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
              (cl:float (%prin-float-to-string u))
              (t (princ-to-string u))))))
 
-(declaim (ftype (cl:function (unsigned-byte) list) explodehex))
+(declaim (ftype (cl:function (unsigned-byte) list) sl::explodehex))
 
-(export 'explodehex)
-(defun explodehex (u)
+(defun sl::explodehex (u)
   "Explode an unsigned integer to a list of hexadecimal digits.
 Hex digits are represented as identifiers using lower case letters."
   (cl:map 'list #'%intern-character-preserve-case
           (with-output-to-string (s)
             (write u :base 16 :stream s))))
 
-(declaim (ftype (cl:function (t) list) explodecn exploden))
+(declaim (ftype (cl:function (t) list) sl::explodecn sl::exploden))
 
-(export 'explodecn)
-(defun explodecn (u)
+(defun sl::explodecn (u)
   "Like explodec but returns a list of the numeric codes of the
 characters involved, e.g. explodecn \"#alpha;\" => (945)."
   (cl:mapcar #'(lambda (x) (cl:char-code (character x)))
-             (explodec u)))
+             (explode2 u)))
 
-(export 'exploden)
-(defun exploden (u)
+(defun sl::exploden (u)
   "Like explode but returns a list of integer codes.
 Note some codes can be bigger than 0xff."
   (cl:mapcar #'(lambda (x) (cl:char-code (character x)))
@@ -3383,7 +3302,8 @@ Note some codes can be bigger than 0xff."
                              simple-string)
                 concat2))
 
-(export 'concat2)
+(export 'concat2)                       ; used internally
+
 (defun concat2 (s1 s2)
   "Concatenates its two string arguments, returning the newly created string."
   (concatenate 'string s1 s2))
@@ -3393,7 +3313,8 @@ Note some codes can be bigger than 0xff."
                              simple-string)
                 concat))
 
-(export 'concat)
+(export 'concat)                        ; used internally
+
 (defun concat (&rest s)
   "Concatenates all of its string arguments, returning the newly created string."
   ;; Flagged variadic in clprolo.
@@ -3404,11 +3325,10 @@ Note some codes can be bigger than 0xff."
 ;; Constructs and returns a string with SIZE characters. The contents of
 ;; the string are not initialized.")
 
-(declaim (inline string2list)
-         (ftype (cl:function (simple-string) list) string2list))
+(declaim (inline sl::string2list)
+         (ftype (cl:function (simple-string) list) sl::string2list))
 
-(export 'string2list)
-(defun string2list (s)                  ; PSL
+(defun sl::string2list (s)              ; PSL
   "(string2list S:string): inum-list expr
 Creates a list of length (add1 (size S)), converting the ASCII
 characters into small integers.
@@ -3416,7 +3336,7 @@ lisp> (string2list \"STRING\")
 \(83 84 82 73 78 71)"
   (cl:map 'list #'cl:char-code s))
 
-(declaim (ftype (cl:function ((or (unsigned-byte 8) symbol)) character)
+(declaim (ftype (cl:function ((or (unsigned-byte 21) symbol)) character)
                 %character))
 
 (defun %character (x)
@@ -3429,12 +3349,11 @@ lisp> (string2list \"STRING\")
           ;; (%error "~d is not a character code" x))
       (%id-to-char-invert-case x)))
 
-(declaim (inline list2string)
+(declaim (inline sl::list2string)
          (ftype (cl:function (list) simple-string)
-                list2string list2widestring))
+                sl::list2string sl::list2widestring))
 
-(export 'list2string)
-(defun list2string (l)                  ; PSL
+(defun sl::list2string (l)              ; PSL
   "(list2string L:inum-list): string expr
 Allocates a string of the same size as L, and converts small integers
 into characters according to their ASCII code. An integer outside the
@@ -3444,10 +3363,7 @@ lisp> (list2string '(83 84 82 73 78 71))
 Identifiers are case-inverted."
   (cl:map 'string #'%character l))
 
-(declaim (ftype (cl:function (list) simple-string) list2widestring))
-
-(export 'list2widestring)
-(defun list2widestring (u)
+(defun sl::list2widestring (u)          ; same as list2string!
   "Take a list U of integers (each in the range 0-0x0010ffff) and turn
 it into a string encoding those using UTF-8.  It will also support use
 of identifiers or strings as well as integers, and will use the first
@@ -3456,17 +3372,12 @@ Identifiers are case-inverted."
   ;; This is a re-implementation of the procedure in rlisp/tok.red.
   ;; It must be flagged lose in clprolo.
   ;; It should make string!-store etc. redundant.
-  (cl:map 'string #'(lambda (x)
-                      (if (integerp x)
-                          (code-char x)
-                          (%id-to-char-invert-case x)))
-          u))
+  (cl:map 'string #'%character u))
 
-(declaim (inline widestring2list)
-         (ftype (cl:function (simple-string) list) widestring2list))
+(declaim (inline sl::widestring2list)
+         (ftype (cl:function (simple-string) list) sl::widestring2list))
 
-(export 'widestring2list)
-(defun widestring2list (u)
+(defun sl::widestring2list (u)
   "Given a string U that may contain bytes that are over 127, return a
 list of positive integers corresponding to the characters in it if it
 is interpreted as being encoded in UTF-8.  The behaviour if the bytes
@@ -3489,29 +3400,26 @@ Returns the number of elements in a PSL string. Since indexes start with
 index 0, the size is one larger than the greatest legal index. Compare this
 function with string-upper-bound, documented below.")
 
-(declaim (inline char-downcase  sl::red-char-downcase char-upcase)
+(declaim (inline sl::char-downcase  sl::red-char-downcase sl::char-upcase)
          (ftype (cl:function (symbol) symbol)
-                char-downcase  sl::red-char-downcase char-upcase))
+                sl::char-downcase  sl::red-char-downcase sl::char-upcase))
 
-(export 'char-downcase)
-(defun char-downcase (c)                ; CSL
+(defun sl::char-downcase (c)            ; CSL
   "Convert single-character identifier C to lower case."
   ;; NB: upcase because of symbol name case inversion!
-  (values (cl:intern (cl:string-upcase (cl:symbol-name c)))))
+  (values (cl:intern (cl:string-upcase (cl:symbol-name c)) :sl)))
 
-(%defalias sl::red-char-downcase char-downcase) ; PSL
+(%defalias sl::red-char-downcase sl::char-downcase) ; PSL
 
-(export 'char-upcase)
-(defun char-upcase (c)                  ; CSL
+(defun sl::char-upcase (c)              ; CSL
   "Convert single-character identifier C to lower case."
   ;; NB: downcase because of symbol name case inversion!
   (values (cl:intern (cl:string-downcase (cl:symbol-name c)) :sl)))
 
-(declaim (inline int2id)
-         (ftype (cl:function ((unsigned-byte 8)) symbol) int2id))
+(declaim (inline sl::int2id)
+         (ftype (cl:function ((unsigned-byte 8)) symbol) sl::int2id))
 
-(export 'int2id)
-(defun int2id (i)                       ; PSL
+(defun sl::int2id (i)                   ; PSL
   "(int2id I:integer): id expr
 Converts an integer to an id; this refers to the I'th id in the id space. Since
 0 ... 255 correspond to ASCII characters, int2id with an argument in this
@@ -3523,11 +3431,10 @@ id NIL is always found by (int2id 128)."
   ;; (unless (= i 128) (%intern-character (code-char i)))
   (%intern-character-invert-case (code-char i)))
 
-(declaim (inline id2int char-code)
-         (ftype (cl:function (symbol) (unsigned-byte 8)) id2int char-code))
+(declaim (inline sl::id2int sl::char-code)
+         (ftype (cl:function (symbol) (unsigned-byte 8)) sl::id2int sl::char-code))
 
-(export 'id2int)
-(defun id2int (d)                       ; PSL
+(defun sl::id2int (d)                   ; PSL
   "(id2int D:id): integer expr
 Returns the id space position of D as a LISP integer."
   ;; Defined in csl.red as
@@ -3536,16 +3443,14 @@ Returns the id space position of D as a LISP integer."
   ;; (if d (cl:char-code (aref (symbol-name d) 0)) 128)
   (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0))))
 
-(export 'char-code)
-(defun char-code (c)                    ; PSL
+(defun sl::char-code (c)                ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
   (cl:char-code (character c)))
 
-(declaim (inline id2string  sl::symbol-name)
-         (ftype (cl:function (symbol) simple-string) id2string  sl::symbol-name))
+(declaim (inline sl::id2string sl::symbol-name)
+         (ftype (cl:function (symbol) simple-string) sl::id2string sl::symbol-name))
 
-(export 'id2string)
-(defun id2string (d)                    ; PSL
+(defun sl::id2string (d)                ; PSL
   "(id2string D:id): string expr
 Get name from id space. Id2string returns the print name of its argument
 as a string. This is not a copy, so destructive operations should not be performed
@@ -3557,12 +3462,13 @@ character ! does not appear in the result.
 \"is-%\""
   (%string-invert-case (cl:symbol-name d)))
 
-(%defalias sl::symbol-name id2string)
+(%defalias sl::symbol-name sl::id2string)
 
 (declaim (inline string-downcase)
          (ftype (cl:function ((or symbol simple-string)) simple-string) string-downcase))
 
-(export 'string-downcase)
+(export 'string-downcase)               ; used internally
+
 (defun string-downcase (u)
   "Convert identifier or string U to a lower-case string."
   (cl:string-downcase (if (symbolp u) (cl:symbol-name u) u)))
@@ -3582,25 +3488,23 @@ by 2 to the K power. Negative values are acceptable for K, and cause a
 right shift (in the usual manner). Lshift is a logical shift, so right
 shifts do not resemble division by a power of 2.")
 
-(declaim (inline list2vector  sl::list-to-vector)
+(declaim (inline sl::list2vector  sl::list-to-vector)
          (ftype (cl:function (list) simple-vector)
-                list2vector  sl::list-to-vector))
+                sl::list2vector  sl::list-to-vector))
 
-(export 'list2vector)
-(defun list2vector (l)                  ; PSL
+(defun sl::list2vector (l)              ; PSL
   "(list2vector L:list): vector expr
 Copy the elements of the list into a vector of the same size.
 1 lisp> (list2vector '(V E C T O R))
 [V E C T O R]"
   (cl:apply #'cl:vector l))
 
-(%defalias sl::list-to-vector list2vector)
+(%defalias sl::list-to-vector sl::list2vector)
 
-(declaim (inline vector2list)
-         (ftype (cl:function (simple-vector) list) vector2list))
+(declaim (inline sl::vector2list)
+         (ftype (cl:function (simple-vector) list) sl::vector2list))
 
-(export 'vector2list)
-(defun vector2list (v)                  ; PSL (should be flagged lose!)
+(defun sl::vector2list (v)             ; PSL (should be flagged lose!)
   "(vector2list V:vector): list expr
 Create a list of the same size as V, the elements are copied in a left to right
 order.
@@ -3624,33 +3528,30 @@ elements (for example ids, strings, and vectors) are not.")
 ;; The next three PSL definitions are based on those at the end of
 ;; support/csl.red:
 
-(defmacro bothtimes (u)                 ; PSL
+(defmacro sl::bothtimes (u)                 ; PSL
   "Evaluate the expression U at both compile time and load time."
   `(eval-when (:compile-toplevel :load-toplevel :execute) ,u))
 
-(defmacro compiletime (u)               ; PSL
+(defmacro sl::compiletime (u)               ; PSL
   "Evaluate the expression U at compile time only."
   `(eval-when (:compile-toplevel :execute) ,u))
 
-(flag '(bothtimes compiletime) 'eval)   ; evaluate despite "on defn"
+(flag '(sl::bothtimes sl::compiletime) 'eval) ; evaluate despite "on defn"
 ;; NB: eval already exported!
 
-(defmacro loadtime (u)                  ; PSL
+(defmacro sl::loadtime (u)                  ; PSL
   "Evaluate the expression U at load time only."
   `(eval-when (:load-toplevel :execute) ,u))
-
-(export '(bothtimes compiletime loadtime))
 
 (declaim (ftype (cl:function (symbol) list)  sl::prop  sl::plist))
 
 (%defalias sl::prop cl:symbol-plist)    ; PSL
 (%defalias sl::plist cl:symbol-plist)   ; CSL
 
-(declaim (inline setprop)
-         (ftype (cl:function (symbol list) list) setprop))
+(declaim (inline sl::setprop)
+         (ftype (cl:function (symbol list) list) sl::setprop))
 
-(export 'setprop)
-(defun setprop (u l)                    ; PSL
+(defun sl::setprop (u l)                ; PSL
   "(setprop U:id L:any): L:any expr
 Store item L as the property list of U."
   (setf (symbol-plist u) l))
@@ -3665,8 +3566,7 @@ Store item L as the property list of U."
 ;; (declaim (ftype (cl:function (list list) list) union))
 ;; Declaiming this type breaks crack, which can call union with an
 ;; atomic argument.  (This is probably a bug in crack!)
-(export 'union)
-(defun union (x y)                      ; PSL
+(defun sl::union (x y)                      ; PSL
   "(union X:list Y:list): list expr
 Returns the union of sets X and Y."
   (cl:union x y :test #'equal))
@@ -3681,10 +3581,9 @@ Returns the union of sets X and Y."
 (%defalias sl::gcdn cl:gcd)
 (%defalias sl::lcmn cl:lcm)
 
-(declaim (ftype (cl:function (symbol symbol) boolean) orderp))
+(declaim (ftype (cl:function (symbol symbol) boolean) sl::orderp))
 
-(export 'orderp)
-(defun orderp (u v)
+(defun sl::orderp (u v)
   "Return true if U = V or U sorts before V, where U and V are identifiers.
 Ordering is lexicographic with upper-case letters sorting before
 lower-case letters (i.e. ASCII code U <= ASCII code V)."
@@ -3710,31 +3609,27 @@ lower-case letters (i.e. ASCII code U <= ASCII code V)."
             ((= i j) (return (<= j k)))
             ((= i k) (return nil))))))
 
-(defvar bfz*)
-(export 'bfz*)
+(defvar sl::bfz*)
 
-(declaim (ftype (cl:function (double-float) cons) fl2bf))
+(declaim (ftype (cl:function (double-float) cons) sl::fl2bf))
 
-(export 'fl2bf)
-(defun fl2bf (x)
+(defun sl::fl2bf (x)
   "Convert float x to REDUCE binary bigfloat format."
-  ;; Replace default version defined in "arith/smlbflot.red".
+  ;; Replaces version defined in "arith/smlbflot.red".
   (if (cl:zerop x)
-      bfz*
+      sl::bfz*
       (multiple-value-bind (signif expon sign)
           (integer-decode-float x)
         (cons 'sl::\:rd\: (cons (* sign signif) expon)))))
 
-(flag '(fl2bf) 'sl::lose)
+(flag '(sl::fl2bf) 'sl::lose)
 
-(defvar cursym*)
-(defvar curescaped*)
-(export '(cursym* curescaped*))
+(defvar sl::cursym*)
+(defvar sl::curescaped*)
 
-(declaim (ftype (cl:function (t) boolean) yesp))
+(declaim (ftype (cl:function (t) boolean) sl::yesp))
 
-(export 'yesp)
-(defun yesp (u)
+(defun sl::yesp (u)
   "Ask the user the question that is the value of U.
 This may be an atom or a list."
   ;; Redefines yesp and yesp1 defined in "rlisp/inter.red".
@@ -3743,12 +3638,11 @@ This may be an atom or a list."
         (y-or-n-p "~a" u)
         (y-or-n-p "~a~{ ~a~}" (car u) (cdr u)))))
 
-(flag '(yesp yesp1) 'sl::lose)
+(flag '(sl::yesp sl::yesp1) 'sl::lose)
 
-(declaim (ftype (cl:function (t (integer 0)) t) resource-limit))
+(declaim (ftype (cl:function (t (integer 0)) t) sl::resource-limit))
 
-(export 'resource-limit)
-(defun resource-limit (exprn time_limit)
+(defun sl::resource-limit (exprn time_limit)
   "Evaluate EXPRN until TIME_LIMIT seconds have expired.
 *** But Lisps other than SBCL currently ignore the timeout! ***
 Return (list (eval exprn)) or atomic if there is a timeout,
@@ -3764,7 +3658,7 @@ rather like errorset."
   #-SBCL (declare (ignore time_limit))
   #-SBCL (list (eval exprn)))
 
-(import 'cl:boundp :sl)        ; avoid the definition in alg/simp.red!
+(export 'boundp)               ; avoid the definition in alg/simp.red!
 (flag '(boundp) 'sl::lose)
 
 
@@ -3775,7 +3669,7 @@ rather like errorset."
 ;; but not really documented anywhere, although fall-back versions are
 ;; defined in "rlisp/proc.red".
 
-(defmacro mkhash (size type &optional expansion)
+(defmacro sl::mkhash (size type &optional expansion)
   "Create and return a new hash table.
 - SIZE is a non-negative integer that determines approximately the
   number of entries that can be inserted without having to enlarge the
@@ -3791,9 +3685,7 @@ rather like errorset."
     :size ,size
     ,@(and expansion `(:rehash-size ,expansion))))
 
-(export 'mkhash)
-
-(flag '(mkhash) 'sl::variadic)
+(flag '(sl::mkhash) 'sl::variadic)
 
 (import 'hash-table-p :sl)
 ;; hash-table-p is true if its argument is a hash table, and otherwise
@@ -3804,10 +3696,9 @@ rather like errorset."
 ;; the associated value.  If there is no such entry, gethash returns
 ;; default, which is nil if not specified.
 
-(declaim (ftype (cl:function (t t t) t) puthash))
+(declaim (ftype (cl:function (t t t) t) sl::puthash))
 
-(export 'puthash)
-(defun puthash (key table val)
+(defun sl::puthash (key table val)
   "Make a new entry with the specified key KEY in hash
 table TABLE with value VAL.  If an entry with the specified key
 already exists, it is removed before the new entry is added."
@@ -3818,10 +3709,9 @@ already exists, it is removed before the new entry is added."
 ;; predicate that is true if there was an entry or false if there was
 ;; not.
 
-(declaim (ftype (cl:function (hash-table) list) hashcontents))
+(declaim (ftype (cl:function (hash-table) list) sl::hashcontents))
 
-(export 'hashcontents)
-(defun hashcontents (table)
+(defun sl::hashcontents (table)
   ;; Not defined in Common Lisp but used in REDUCE.
   ;; So this is a first guess at what it should do!
   "Return the contents of hash table TABLE as an association list."
@@ -3854,11 +3744,10 @@ already exists, it is removed before the new entry is added."
 ;;    (sb-ext:run-program "cmd" (cons "/c" command)
 ;;                     :search t :output t :escape-arguments nil)))
 
-(declaim (ftype (cl:function (simple-string) integer) system))
+(declaim (ftype (cl:function (simple-string) integer) sl::system))
 
-(export 'system)
 #+(or SBCL CLISP CCL)      ; to avoid a syntax error with other Lisps!
-(defun system (command)    ; PSL
+(defun sl::system (command)    ; PSL
   "(system COMMAND:string):undefined expr
 Run a (system specific) command interpreter synchronously, pass
 COMMAND to the interpreter and return the process exit code."
@@ -3893,34 +3782,30 @@ COMMAND to the interpreter and return the process exit code."
          (ccl:run-program "sh" (list "-c" command) :output t)))
        )
 
-(declaim (ftype (cl:function (simple-string) simple-string) system-to-string))
+(declaim (ftype (cl:function (simple-string) simple-string) sl::system-to-string))
 
 #+SBCL
-(defun system-to-string (command)       ; experimental - not tested!
+(defun sl::system-to-string (command)   ; experimental - not tested!
   (with-output-to-string (*standard-output*)
     (system command)))
 
 #+CLISP
-(defun system-to-string (command)       ; experimental - doesn't seem to work
+(defun sl::system-to-string (command) ; experimental - doesn't seem to work
   (let ((s (ext:run-shell-command command :output :stream)))
     (get-output-stream-string s)))
 
-(export 'system-to-string)
+(declaim (ftype (cl:function () simple-string) sl::pwd))
 
-(declaim (ftype (cl:function () simple-string) pwd))
-
-(export 'pwd)
-(defun pwd ()                           ; PSL / Unix
+(defun sl::pwd ()                       ; PSL / Unix
   "(pwd):STRING expr
 Return the current working directory in system specific format."
   (namestring (truename *default-pathname-defaults*)))
 
 (declaim (ftype (cl:function (&optional (or null simple-string))
                              (or null simple-string))
-                cd  sl::chdir))
+                sl::cd sl::chdir))
 
-(export 'cd)
-(defun cd (&optional dir)               ; PSL / Unix
+(defun sl::cd (&optional dir)           ; PSL / Unix
   "(cd DIR:{null,string}):{nil,string} expr
 Set the current working directory to string DIR (if supplied, non-nil
 and a non-empty string), which need not end with a directory
@@ -3950,23 +3835,21 @@ return the new current directory as a string; otherwise, return nil."
       (cl:apply #'ext:cd (and dir (> (cl:length dir) 0)
                               (list (%tidy-pathname dir t))))))))
 
-(%defalias sl::chdir cd)                     ; CSL / MS Windows
+(%defalias sl::chdir sl::cd)            ; CSL / MS Windows
 
-(declaim (inline filep)
-         (ftype (cl:function (simple-string) (or pathname null)) filep))
+(declaim (inline sl::filep)
+         (ftype (cl:function (simple-string) (or pathname null)) sl::filep))
 
-(export 'filep)
-(defun filep (file)                     ; PSL
+(defun sl::filep (file)                 ; PSL
   "Return false if FILE does not exist, otherwise return the truename of
 FILE.  Substitutes environment variables in file name."
   (probe-file (%tidy-pathname file)))
 
 (declaim (inline file-write-date)
          (ftype (cl:function (simple-string) (or unsigned-byte null))
-                file-write-date))
+                sl::file-write-date))
 
-(export 'file-write-date)
-(defun file-write-date (file)           ; PSL, used in remake
+(defun sl::file-write-date (file)       ; PSL, used in remake
   "Return the time at which FILE was last written (or created), or nil if
 such a time cannot be determined.  Substitutes environment variables
 in file name."
@@ -3977,21 +3860,21 @@ in file name."
 #+CLISP (%defalias sl::getpid os:process-id)
 #+CCL (import 'ccl::getpid :sl)
 
-(declaim (inline setenv)
+(declaim (inline sl::setenv)
          (ftype (cl:function (simple-string simple-string) unsigned-byte)
-                setenv))
+                sl::setenv))
 
 #+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
-(defun setenv (name value)
+(defun sl::setenv (name value)
   "Create or update an environment variable"
   #+SBCL (sb-posix:setenv name value 1) ; non-zero => overwrite
   #+CLISP (setf (ext:getenv name) value))
 
-(declaim (inline exit)
-         (ftype (cl:function (&optional signed-byte) nil) exit))
+(declaim (inline sl::exit)
+         (ftype (cl:function (&optional signed-byte) nil) sl::exit))
 
 #+(or SBCL CLISP ABCL CCL ECL)  ; to avoid a warning with other Lisps!
-(defun exit (&optional code)
+(defun sl::exit (&optional code)
   #+SBCL (sb-ext:exit :code code)
   #+CLISP (ext:exit code)
   #+CCL (ccl:quit code)
@@ -3999,7 +3882,7 @@ in file name."
   #+ECL (ext:quit code t)               ; kill-all-threads
   )
 
-(export '(getenv setenv exit))          ; used in "bootstrap.lisp"
+(export '(getenv))                      ; used internally
 
 (declaim (inline sl::symbol-argcount)
          (ftype (cl:function ((or symbol cl:function)) (integer 0))
@@ -4017,7 +3900,7 @@ in file name."
 ;;; Compile and load
 ;;; ================
 
-(defparameter %fasl-directory-pathname   ; MUST be absolute
+(defparameter %fasl-directory-pathname% ; MUST be absolute
   (let* ((dir (pathname-directory
                (or *load-truename* *default-pathname-defaults*)))
          ;; Should be a list ending with either "fasl.*" or "common-lisp".
@@ -4080,7 +3963,8 @@ extension (\".lisp\")."
 
 (declaim (ftype (cl:function ((or symbol simple-string)) boolean) load))
 
-(export 'load)
+(export 'load)                 ; symbol used internally
+
 (defun load (file)             ; currently only supports a single file
   "(load [FILE:{string, id}]): nil macro
 For each argument FILE, an attempt is made to locate a corresponding
@@ -4109,12 +3993,12 @@ Load a \".sl\" file using Standard Lisp read syntax.
         (progn
           (setq file-pathname (pathname file))
           (if (string-equal (pathname-type file-pathname) "sl")
-              (setq *readtable* *sl-readtable*))))
+              (setq *readtable* %sl-readtable%))))
     (if (eqcar (pathname-directory file-pathname) :absolute)
         (%load-extensions file-pathname)
         ;; Relative filename -- look first in fasl directory and then
         ;; in current directory; if not found throw an error:
-        (or (%load-extensions (merge-pathnames file-pathname %fasl-directory-pathname)
+        (or (%load-extensions (merge-pathnames file-pathname %fasl-directory-pathname%)
                               :if-does-not-exist nil)
             (%load-extensions file-pathname)))))
 
@@ -4122,8 +4006,7 @@ Load a \".sl\" file using Standard Lisp read syntax.
 ;;; Faslout/faslend interface
 ;;; =========================
 
-(export 'fasl-ext*)
-(defconstant fasl-ext*
+(defconstant sl::fasl-ext*
   #+SBCL ".fasl"
   #+CLISP ".fas"
   #+ABCL ".abcl"
@@ -4134,12 +4017,11 @@ Load a \".sl\" file using Standard Lisp read syntax.
   #+ECLP ".fasc" #+ECLN ".fas"
   "Standard Lisp fasl filename extension beginning with \".\", used by \"remake.red\".")
 
-(export 'fasl-dir*)
-(defparameter fasl-dir*
-  (namestring %fasl-directory-pathname)
+(defparameter sl::fasl-dir*
+  (namestring %fasl-directory-pathname%)
   "Standard Lisp fasl directory name ending with \"/\", used by \"remake.red\".")
 
-(defconstant %faslout-header
+(defconstant %faslout-header%
   (concatenate
    'string
    #-DEBUG "(cl:declaim (cl:optimize cl:speed))"
@@ -4165,6 +4047,7 @@ or nil, meaning no header.")
 (declaim (ftype (cl:function (t) t) prettyprint %faslout-prettyprint))
 
 (export 'prettyprint)
+
 (defun prettyprint (u)
   "Default prettyprint function, required for bootstrapping.
 Redefined later as an autoload for the real prettyprinter."
@@ -4181,10 +4064,9 @@ It prints Common Lisp syntax to %faslout-stream%."
   "The saved current global definition of the function prettyprint.
 It is replaced during faslout.")
 
-(declaim (ftype (cl:function ((or symbol simple-string)) null) faslout))
+(declaim (ftype (cl:function ((or symbol simple-string)) null) sl::faslout))
 
-(export 'faslout)
-(defun faslout (name)
+(defun sl::faslout (name)
   "Compile subsequent input into Common Lisp FASL file \"NAME.fasl\".
 NAME should be an identifier or string.  (The actual extension of fasl
 files depends on the version of Common Lisp.)"
@@ -4202,8 +4084,8 @@ When all done, execute FASLEND;~2%" name))
                  #+CLISP charset:UTF-8
                  #-(or CLISP CCL) :UTF-8))
   ;; (%error "FASLOUT cannot open ~a" %faslout-name.lisp%))
-  (if %faslout-header
-      (cl:princ %faslout-header %faslout-stream%))
+  (if %faslout-header%
+      (cl:princ %faslout-header% %faslout-stream%))
   (setf %faslout-saved-prettyprint% (symbol-function 'prettyprint)
         (symbol-function 'prettyprint) (symbol-function '%faslout-prettyprint))
   (setq *defn t
@@ -4211,17 +4093,16 @@ When all done, execute FASLEND;~2%" name))
   #+CLISP (setq %faslout-name.lib% (concat2 name ".lib"))
   nil)
 
-(flag '(faslout) 'sl::opfn)
-(flag '(faslout) 'sl::noval)
+(flag '(sl::faslout) 'sl::opfn)
+(flag '(sl::faslout) 'sl::noval)
 
 ;; SBCL outputs more detailed and useful messages than those that I
 ;; have therefore temporarily commented out below.  Delete them unless
 ;; they prove useful with other versions of Common Lisp.
 
-(declaim (ftype (cl:function () null) faslend))
+(declaim (ftype (cl:function () null) sl::faslend))
 
-(export 'faslend)
-(defun faslend ()
+(defun sl::faslend ()
   "Terminate a previous FASLOUT and generate the compiled file."
   (unless *writingfaslfile
     (%error "FASLEND is only allowed after a previous FASLOUT"))
@@ -4248,29 +4129,24 @@ When all done, execute FASLEND;~2%" name))
   ;;      (%error "Error compiling ~a" %faslout-name.lisp%))
   nil)
 
-(defvar cursym*)
-(export 'cursym*)
+(declaim (ftype (cl:function (symbol) null) sl::comm1))
 
-(declaim (ftype (cl:function (symbol) null) comm1))
+(defun sl::comm1 (u) (declare (ignore u))) ; redefined in rlisp/parser
 
-(export 'comm1)
-(defun comm1 (u) (declare (ignore u)))  ; redefined in rlisp/parser
+(declaim (ftype (cl:function () cons) sl::faslendstat))
 
-(declaim (ftype (cl:function () cons) faslendstat))
-
-(export 'faslendstat)
-(defun faslendstat ()
+(defun sl::faslendstat ()
   "Terminate reading faslend and turn defn off."
   ;; Modelled on endstat in rlisp/parser.
-  (let ((x cursym*))
+  (let ((x sl::cursym*))
     (setq *defn nil)                    ; must do this ASAP!
-    (comm1 'sl::end)
+    (sl::comm1 'sl::end)
     (list x)))
 
-(put 'faslend 'sl::stat 'faslendstat)   ; cf. endstat
-(flag '(faslendstat) 'sl::endstatfn)    ; ditto
+(put 'sl::faslend 'sl::stat 'sl::faslendstat) ; cf. endstat
+(flag '(sl::faslendstat) 'sl::endstatfn)      ; ditto
 
-(flag '(faslend) 'sl::ignore)           ; to stop it getting compiled!
+(flag '(sl::faslend) 'sl::ignore)       ; to stop it getting compiled!
 
 
 ;;; User interface
@@ -4278,11 +4154,13 @@ When all done, execute FASLEND;~2%" name))
 
 (declaim (ftype (cl:function () package) standard-lisp))
 
+(import 'standard-lisp :cl-user)        ; used internally
+
 (defun standard-lisp ()
   "Switch to STANDARD LISP mode."
   (prog1
       (in-package :sl)
-    (setq *readtable* *sl-readtable*
+    (setq *readtable* %sl-readtable%
           ;; The REDUCE source code implies that 64-bit IEEE
           ;; arithmetic is expected and it seems to be necessary to
           ;; read the constant 1.0e300 in arith/paraset.red:
@@ -4294,17 +4172,15 @@ When all done, execute FASLEND;~2%" name))
           %default-write-stream% (%default-write-stream)
           %write-stream% %default-write-stream%)))
 
-(import '(standard-lisp) :cl-user)
+(declaim (ftype (cl:function () null) sl::reset-readtable begin))
 
-(declaim (ftype (cl:function () null) reset-readtable begin))
-
-(export 'reset-readtable)
-(defun reset-readtable ()
+(defun sl::reset-readtable ()
   "Switch to Common Lisp read syntax."
   (setq *readtable* (copy-readtable nil))
   nil)
 
-(export 'begin)
+(export 'begin)                         ; used internally
+
 (defun begin ())                        ; redefined in clrend.red
 
 ;; From: Common Lisp the Language, 2nd Edition
@@ -4322,12 +4198,12 @@ When all done, execute FASLEND;~2%" name))
 ;; The initialisation code below is based on the REPL example on the
 ;; web page cited above.
 
-(declaim (ftype (cl:function () t) reduce-init-function))
+(declaim (ftype (cl:function () t) %reduce-init-function))
 
 #+SBCL
 ;; See function `toplevel-repl' in
 ;; "sbcl-2.6.0/src/code/toplevel.lisp".
-(defun reduce-init-function ()
+(defun %reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
   ;; Enable the interactive debugger only if the input and output are
   ;; both interactive, or we are running in Emacs (REDUCE IDE):
@@ -4358,7 +4234,7 @@ When all done, execute FASLEND;~2%" name))
 #+CLISP
 ;; See function `main-loop' in
 ;; "clisp-2.49-6.20150312hg15611.src/clisp/src/reploop.lisp".
-(defun reduce-init-function ()
+(defun %reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
   (standard-lisp)
   (if  (or (interactive-stream-p *standard-output*)
@@ -4382,7 +4258,7 @@ When all done, execute FASLEND;~2%" name))
 ;; #+CLISP (setq custom:*report-error-print-backtrace* t)
 
 #+CCL
-(defun reduce-init-function ()
+(defun %reduce-init-function ()
   (standard-lisp)
   (if  (or (getenv "interactive")
            (getenv "INSIDE_EMACS"))
@@ -4402,56 +4278,49 @@ When all done, execute FASLEND;~2%" name))
          (begin)))
   (quit))
 
-(declaim (ftype (cl:function (string) null) save-reduce-image))
+(declaim (ftype (cl:function (string) null) sl::save-reduce-image))
 
-(export 'save-reduce-image)
-(defun save-reduce-image (name)
+(defun sl::save-reduce-image (name)
   "Save a REDUCE memory image with main filename component NAME."
   #+SBCL
   (sb-ext:save-lisp-and-die (concat "fasl.sbcl/" name ".img")
-                            :toplevel #'reduce-init-function)
+                            :toplevel #'%reduce-init-function)
   #+CLISP
   (ext:saveinitmem
    (concat "fasl.clisp/" name ".mem")
-   :init-function #'reduce-init-function :quiet t :norc t
+   :init-function #'%reduce-init-function :quiet t :norc t
    :documentation "REDUCE Computer Algebra System")
   #+CCL
   (ccl:save-application (concat "fasl.ccl/" name ".image")
-                        :toplevel-function #'reduce-init-function)
-  #+ECL (reduce-init-function)
+                        :toplevel-function #'%reduce-init-function)
+  #+ECL (%reduce-init-function)
   #+ABCL (asdf-jar:package name :verbose t))
 
-;; (pushnew :standard-lisp *features*)
-
-(defparameter lispsystem* '(sl::common-lisp sl::sl-on-cl)
+(defparameter sl::lispsystem* '(sl::common-lisp sl::sl-on-cl)
   "Information about the Lisp system supporting REDUCE.
 A list of identifiers indicating system properties.")
 
-(export 'lispsystem*)
-
-#+SBCL  (pushnew 'sl::SBCL  lispsystem*)
-#+CLISP (pushnew 'sl::CLISP lispsystem*)
-#+ABCL  (pushnew 'sl::ABCL  lispsystem*)
-#+CCL   (pushnew 'sl::CCL   lispsystem*)
-#+ECL   (progn (pushnew 'sl::ECL lispsystem*)
-               (pushnew #+ECLP 'sl::ECLP #+ECLN 'sl::ECLN lispsystem*))
+#+SBCL  (pushnew 'sl::SBCL  sl::lispsystem*)
+#+CLISP (pushnew 'sl::CLISP sl::lispsystem*)
+#+ABCL  (pushnew 'sl::ABCL  sl::lispsystem*)
+#+CCL   (pushnew 'sl::CCL   sl::lispsystem*)
+#+ECL   (progn (pushnew 'sl::ECL sl::lispsystem*)
+               (pushnew #+ECLP 'sl::ECLP #+ECLN 'sl::ECLN sl::lispsystem*))
 
 ;; The symbols UNIX, CYGWIN and WIN32 are used in gnuintfc.red.
-#+(or WIN32 WINDOWS) (pushnew 'sl::WIN32 lispsystem*)
-#+CYGWIN (pushnew 'sl::CYGWIN lispsystem*)
-#+UNIX (pushnew 'sl::UNIX lispsystem*)
-#+(or MACOS OS-MACOSX) (pushnew 'sl::MACOS lispsystem*)
+#+(or WIN32 WINDOWS) (pushnew 'sl::WIN32 sl::lispsystem*)
+#+CYGWIN (pushnew 'sl::CYGWIN sl::lispsystem*)
+#+UNIX (pushnew 'sl::UNIX sl::lispsystem*)
+#+(or MACOS OS-MACOSX) (pushnew 'sl::MACOS sl::lispsystem*)
 
 ;; For ECLP, use the portable bytecode compiler:
 #+ECLP (ext:install-bytecodes-compiler)
 ;; For ECLN, use the DEFAULT native binary compiler.
 
-(declaim (ftype (cl:function (boolean) symbol) compilation))
-
 #+SBCL
 (progn
-  (export 'compilation)
-  (defun compilation (on)
+  (declaim (ftype (cl:function (boolean) symbol) sl::compilation))
+  (defun sl::compilation (on)
     "Set the SBCL evaluation mode to compile if ON is non-nil and to
 interpret otherwise.  The default is compile.
 Called by ON/OFF COMP; see 'clrend.red'."
