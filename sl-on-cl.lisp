@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-13 12:26:29 franc>
+;; Time-stamp: <2026-02-13 17:28:33 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -36,8 +36,8 @@
 ;; symbols.  Most symbols are interned directly in SL.  NB: It is
 ;; *essential* that all symbols used in Standard Lisp are interned in
 ;; SL.  Symbol properties used internally within SLIM use symbols such
-;; as :ftype and :fluid that are in the keyword package, and so are
-;; intentionally inaccessible from REDUCE.
+;; as :%ftype% and :%fluid% that are in the keyword package, and so
+;; are intentionally inaccessible from REDUCE.
 
 ;; The names of SLIM internal symbols begin with %, and if they are
 ;; special variables they also end with %.
@@ -237,7 +237,7 @@ documentation string for OLDNAME."
 
 (declaim (ftype (cl:function (t t) boolean) eqcar))
 
-(export 'eqcar)                         ; used internally!
+(export 'eqcar)                         ; used internally
 
 (defun eqcar (u v)
   "Return true if U is a cons cell and its car is eq to V."
@@ -327,7 +327,7 @@ the same value and type."               ; i.e. the same SL type!
   ;;  (eql/equal -0.0 0.0) is false in SBCL although true in CLISP!
   (if (and (floatp u) (floatp v)) (= u v) (eql u v)))
 
-(export 'equal)                         ; used internally!
+(export 'equal)                         ; used internally
 
 (%defalias equal cl:equalp
   ;; This definition is not strictly correct but it seems to be the
@@ -851,7 +851,7 @@ Returns the removed property or NIL if there was no such indicator."
 (defun fluidp (u)
   "FLUIDP(U:any):boolean eval, spread
 If U has been declared fluid then t is returned, otherwise nil is returned."
-  (get u :fluid))
+  (get u :%fluid%))
 
 (declaim (inline globalp)
          (ftype (cl:function (t) boolean) globalp))
@@ -861,7 +861,7 @@ If U has been declared fluid then t is returned, otherwise nil is returned."
 (defun globalp (u)
   "GLOBALP(U:any):boolean eval, spread
 If U has been declared global then t is returned, otherwise nil is returned."
-  (get u :global))
+  (get u :%global%))
 
 ;; NOTE that Standard Lisp macros are nospread and therefore take a
 ;; single parameter that gets the list of actual arguments, so `DM'
@@ -878,13 +878,13 @@ If U has been declared global then t is returned, otherwise nil is returned."
 
 ;; REDUCE handles macros specially, assuming they are Standard LISP
 ;; macros, whereas SL functions that are actually defined as Common
-;; Lisp macros need to be handled by REDUCE as if they were
-;; EXPRs. Therefore, it is important that the function type defaults
-;; to EXPR, so only macros defined using DM or PUTD are given the
-;; property :FTYPE with value :MACRO. The :FTYPE property is required
-;; so that macros defined in REDUCE can be distinguished from Common
-;; Lisp macros. Normal functions defined using DE or PUTD are given
-;; the property :FTYPE with value EXPR just for symmetry, but this
+;; Lisp macros need to be handled by REDUCE as if they were EXPRs.
+;; Therefore, it is important that the function type defaults to EXPR,
+;; so only macros defined using DM or PUTD are given the property
+;; :%FTYPE% with value :%MACRO%.  The :%FTYPE% property is required so
+;; that macros defined in REDUCE can be distinguished from Common Lisp
+;; macros.  Normal functions defined using DE or PUTD are given the
+;; property :%FTYPE% with value :%EXPR% just for symmetry, but this
 ;; property value is not actually used by GETD.
 
 (export 'de)                            ; used internally
@@ -899,7 +899,7 @@ returned."
   (declare (symbol fname) (list params fn))
   `(progn
      (%redefmsg ',fname)
-     (put ',fname :ftype :expr)
+     (put ',fname :%ftype% :%expr%)
      (defun ,fname ,params ,@fn)
      ;; It makes no sense to include code to compile this function
      ;; when the function definition is being compiled into a fasl
@@ -931,9 +931,9 @@ FEXPR PROCEDURE DM(U);
   (declare (symbol mname) (list param fn))
   `(progn
      (%redefmsg ',mname)
-     (put ',mname :ftype :macro)
+     (put ',mname :%ftype% :%macro%)
      ;; Save the (uncompiled) SL macro form:
-     ;; (put ',mname '%macro '(macro lambda ,param ,fn)) ; not currently used
+     ;; (put ',mname '%macro% '(macro lambda ,param ,fn)) ; not currently used
      ;; param must be a list containing a single identifier, which
      ;; must therefore be spliced into the macro definition.
      ;; Spread the arguments and include macro name as first arg:
@@ -956,7 +956,7 @@ FNAME is a defined function then return the dotted-pair
   (and (symbolp fname) (fboundp fname)
        (cond
          ;; MACRO if fname defined using SL dm macro:
-         ((eq (cl:get fname :ftype) :macro)
+         ((eq (cl:get fname :%ftype%) :%macro%)
           ;; Return the (uncompiled) SL macro form:
           ;; This may need more work!
           ;; A CL macro expansion needs an environment.
@@ -1013,7 +1013,7 @@ the !*COMP global variable is non-NIL."
               (cl:eval `(de ,fname ,(cadr body) ,@(cddr body))))
              ((functionp body)
               (setf (symbol-function fname) body)
-              (put fname :ftype :expr))
+              (put fname :%ftype% :%expr%))
              (t (%error "Invalid expr body in PUTD"))))
       (sl::macro                  ; SL macro (implemented as CL macro)
        (cond ((eqcar body 'lambda)
@@ -1021,17 +1021,17 @@ the !*COMP global variable is non-NIL."
                   ;; This "hybrid form" is returned by getd.
                   (progn
                     (setf (macro-function fname) (cadr (caddr body)))
-                    (put fname :ftype :macro))
+                    (put fname :%ftype% :%macro%))
                   ;; This "pure source form" is used in "rlisp/block.red".
                   (cl:eval `(dm ,fname ,(cadr body) ,@(cddr body)))))
              ;; ((functionp body)       ; This case should not happen!
              ;;  (setf (macro-function fname) body)
-             ;;  (put fname :ftype :macro))
+             ;;  (put fname :%ftype% :%macro%))
              (t (%error "Invalid macro body in PUTD"))))
       ;; I hope putd doesn't get called for a fexpr!
       ;; (fexpr         ; CL special operator or macro (but not SL macro)
       ;;  (setf (symbol-function fname) body) ; FAILS FOR BOTH TYPES!
-      ;;  (put fname :ftype :fexpr))
+      ;;  (put fname :%ftype% :%fexpr%))
       (t (%error "Invalid type in PUTD"))))
   fname)
 
@@ -1046,7 +1046,7 @@ the name may be used subsequently as a variable."
   (let ((def (getd fname)))
     (when def
       (fmakunbound fname)
-      (cl:remprop fname :ftype))
+      (cl:remprop fname :%ftype%))
     def))
 
 (declaim (ftype (cl:function (symbol symbol function) symbol) sl::compd))
@@ -1091,7 +1091,7 @@ This internal function is called only by FLUID."
              (progn
                ;; defvar is a macro, so ...
                (cl:eval `(defvar ,x nil "Standard LISP fluid variable."))
-               (put x :fluid t)))))
+               (put x :%fluid% t)))))
    idlist)
   nil)
 
@@ -1147,7 +1147,7 @@ This internal function is called only by GLOBAL."
                (unless (cl:constantp x) ; nil, t, $eol$, $eof$, etc.
                  ;; defvar is a macro, so ...
                  (cl:eval `(defvar ,x nil "Standard LISP global variable.")))
-               (put x :global t)))))
+               (put x :%global% t)))))
    idlist)
   nil)
 
@@ -1612,11 +1612,9 @@ EXPR PROCEDURE DIVIDE(U, V);
 (declaim (inline expt)
          (ftype (cl:function (number number) number) expt))
 
-(export 'expt)                          ; TO BE REVIEWED!
+(export 'expt)                          ; used internally
 
 (defun expt (u v)
-  ;; NB: This definition is used in `%prin-float-to-string' so as to
-  ;; avoid CLISP underflow.
   "EXPT(U:number, V:integer):number eval, spread
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
@@ -2754,7 +2752,7 @@ in vector-notation.  The value of U is returned."
   ;; Must be able to handle 2.0^1023 and 2.0^(-1022), used in
   ;; "arith/rounded.red"!
   ;; Uses expt defined earlier in this file so as to avoid CLISP
-  ;; underflow.
+  ;; underflow error.
   (if (cl:zerop u) "0.0"
       (let* ((absu (abs u))
              (e (floor (cl:log absu 10d0)))) ; decimal exponent
@@ -4178,7 +4176,7 @@ When all done, execute FASLEND;~2%" name))
 
 (export 'begin)                         ; used internally
 
-(defun begin ())                        ; redefined in clrend.red
+(defun begin ())                        ; redefined in "clrend.red"
 
 ;; From: Common Lisp the Language, 2nd Edition
 ;; https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node341.html
@@ -4353,6 +4351,8 @@ Called by ON/OFF COMP; see 'clrend.red'."
 ;;; sl-on-cl.lisp ends here
 
 ;; To do:
+
+;; Try using long floats in CLISP; see manual section 12.2.4.
 
 ;; Revise documentation strings and function order to follow PSL
 ;; manual more closely?
