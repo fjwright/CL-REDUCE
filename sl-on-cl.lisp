@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-12 18:20:20 franc>
+;; Time-stamp: <2026-02-13 12:08:12 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3886,7 +3886,7 @@ in file name."
 (defun sl::symbol-argcount (fn)    ; used in "rtools/simplertrace.red"
   "Return number of arguments of a function."
   ;; Code provided by Rainer Schöpf.
-  #+SBCL (cl:length (cl:nth 1 (sb-introspect:function-lambda-list fn)))
+  #+SBCL (cl:length (sb-introspect:function-lambda-list fn))
   #+CLISP (cl:length (sys::arglist fn))
   #+(or CCL ABCL) (cl:length (arglist fn))
   )
