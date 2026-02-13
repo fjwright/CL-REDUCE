@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-13 12:08:12 franc>
+;; Time-stamp: <2026-02-13 12:26:29 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -35,7 +35,9 @@
 ;; and SLIM external symbols, and so should not contain any extraneous
 ;; symbols.  Most symbols are interned directly in SL.  NB: It is
 ;; *essential* that all symbols used in Standard Lisp are interned in
-;; SL.
+;; SL.  Symbol properties used internally within SLIM use symbols such
+;; as :ftype and :fluid that are in the keyword package, and so are
+;; intentionally inaccessible from REDUCE.
 
 ;; The names of SLIM internal symbols begin with %, and if they are
 ;; special variables they also end with %.
@@ -849,7 +851,7 @@ Returns the removed property or NIL if there was no such indicator."
 (defun fluidp (u)
   "FLUIDP(U:any):boolean eval, spread
 If U has been declared fluid then t is returned, otherwise nil is returned."
-  (get u 'fluid))
+  (get u :fluid))
 
 (declaim (inline globalp)
          (ftype (cl:function (t) boolean) globalp))
@@ -859,7 +861,7 @@ If U has been declared fluid then t is returned, otherwise nil is returned."
 (defun globalp (u)
   "GLOBALP(U:any):boolean eval, spread
 If U has been declared global then t is returned, otherwise nil is returned."
-  (get u 'global))                      ; PSL/CSL definition
+  (get u :global))
 
 ;; NOTE that Standard Lisp macros are nospread and therefore take a
 ;; single parameter that gets the list of actual arguments, so `DM'
@@ -879,10 +881,10 @@ If U has been declared global then t is returned, otherwise nil is returned."
 ;; Lisp macros need to be handled by REDUCE as if they were
 ;; EXPRs. Therefore, it is important that the function type defaults
 ;; to EXPR, so only macros defined using DM or PUTD are given the
-;; property %FTYPE with value MACRO. The %FTYPE property is required
+;; property :FTYPE with value :MACRO. The :FTYPE property is required
 ;; so that macros defined in REDUCE can be distinguished from Common
 ;; Lisp macros. Normal functions defined using DE or PUTD are given
-;; the property %FTYPE with value EXPR just for symmetry, but this
+;; the property :FTYPE with value EXPR just for symmetry, but this
 ;; property value is not actually used by GETD.
 
 (export 'de)                            ; used internally
@@ -897,7 +899,7 @@ returned."
   (declare (symbol fname) (list params fn))
   `(progn
      (%redefmsg ',fname)
-     (put ',fname 'sl::%ftype 'sl::expr)
+     (put ',fname :ftype :expr)
      (defun ,fname ,params ,@fn)
      ;; It makes no sense to include code to compile this function
      ;; when the function definition is being compiled into a fasl
@@ -929,7 +931,7 @@ FEXPR PROCEDURE DM(U);
   (declare (symbol mname) (list param fn))
   `(progn
      (%redefmsg ',mname)
-     (put ',mname 'sl::%ftype 'sl::macro)
+     (put ',mname :ftype :macro)
      ;; Save the (uncompiled) SL macro form:
      ;; (put ',mname '%macro '(macro lambda ,param ,fn)) ; not currently used
      ;; param must be a list containing a single identifier, which
@@ -954,7 +956,7 @@ FNAME is a defined function then return the dotted-pair
   (and (symbolp fname) (fboundp fname)
        (cond
          ;; MACRO if fname defined using SL dm macro:
-         ((eq (cl:get fname 'sl::%ftype) 'sl::macro)
+         ((eq (cl:get fname :ftype) :macro)
           ;; Return the (uncompiled) SL macro form:
           ;; This may need more work!
           ;; A CL macro expansion needs an environment.
@@ -1011,7 +1013,7 @@ the !*COMP global variable is non-NIL."
               (cl:eval `(de ,fname ,(cadr body) ,@(cddr body))))
              ((functionp body)
               (setf (symbol-function fname) body)
-              (put fname 'sl::%ftype 'sl::expr))
+              (put fname :ftype :expr))
              (t (%error "Invalid expr body in PUTD"))))
       (sl::macro                  ; SL macro (implemented as CL macro)
        (cond ((eqcar body 'lambda)
@@ -1019,17 +1021,17 @@ the !*COMP global variable is non-NIL."
                   ;; This "hybrid form" is returned by getd.
                   (progn
                     (setf (macro-function fname) (cadr (caddr body)))
-                    (put fname 'sl::%ftype 'sl::macro))
+                    (put fname :ftype :macro))
                   ;; This "pure source form" is used in "rlisp/block.red".
                   (cl:eval `(dm ,fname ,(cadr body) ,@(cddr body)))))
              ;; ((functionp body)       ; This case should not happen!
              ;;  (setf (macro-function fname) body)
-             ;;  (put fname '%ftype 'macro))
+             ;;  (put fname :ftype :macro))
              (t (%error "Invalid macro body in PUTD"))))
       ;; I hope putd doesn't get called for a fexpr!
       ;; (fexpr         ; CL special operator or macro (but not SL macro)
       ;;  (setf (symbol-function fname) body) ; FAILS FOR BOTH TYPES!
-      ;;  (put fname '%ftype 'fexpr))
+      ;;  (put fname :ftype :fexpr))
       (t (%error "Invalid type in PUTD"))))
   fname)
 
@@ -1044,7 +1046,7 @@ the name may be used subsequently as a variable."
   (let ((def (getd fname)))
     (when def
       (fmakunbound fname)
-      (cl:remprop fname 'sl::%ftype))
+      (cl:remprop fname :ftype))
     def))
 
 (declaim (ftype (cl:function (symbol symbol function) symbol) sl::compd))
@@ -1089,7 +1091,7 @@ This internal function is called only by FLUID."
              (progn
                ;; defvar is a macro, so ...
                (cl:eval `(defvar ,x nil "Standard LISP fluid variable."))
-               (put x 'fluid t)))))
+               (put x :fluid t)))))
    idlist)
   nil)
 
@@ -1145,7 +1147,7 @@ This internal function is called only by GLOBAL."
                (unless (cl:constantp x) ; nil, t, $eol$, $eof$, etc.
                  ;; defvar is a macro, so ...
                  (cl:eval `(defvar ,x nil "Standard LISP global variable.")))
-               (put x 'global t)))))
+               (put x :global t)))))
    idlist)
   nil)
 
