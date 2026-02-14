@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-13 17:28:33 franc>
+;; Time-stamp: <2026-02-14 16:51:45 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -607,6 +607,25 @@ occurs:
          (loop while (eq (car u) 'sl::\ ) do (setq u (cdr u)))))
     ;;
     (compress)))
+
+;; The following potential succinct new version of compress causes a
+;; problem reading "rlisp/tok.red" that I can't track down, so it is
+;; commented out for now.
+
+;; (defun sl::compress (u)                 ; PSL spec
+;;   "COMPRESS(U:id-list):{atom-vector} eval, spread
+;; U is a list of single character identifiers which is built into a
+;; Standard LISP entity and returned.  Recognized are lists, numbers,
+;; strings, and identifiers with the escape character prefixing special
+;; characters.  Identifiers are not interned.  Function pointers may not
+;; be compressed.  If an entity cannot be parsed out of U an error
+;; occurs:
+;; ***** Poorly formed atom in COMPRESS"
+;;   (let ((*readtable* %sl-readtable%))
+;;     (read-from-string
+;;      ;; When reading a string, it must be followed by something:
+;;      (concatenate 'string (cl:map 'string #'character u) " ")
+;;      nil $eof$)))
 
 (declaim (ftype (cl:function (t) list) explode))
 
@@ -4351,6 +4370,9 @@ Called by ON/OFF COMP; see 'clrend.red'."
 ;;; sl-on-cl.lisp ends here
 
 ;; To do:
+
+;; Revise compress to use read and explode to use prin1.  Failing
+;; that, use Common Lisp characters.
 
 ;; Try using long floats in CLISP; see manual section 12.2.4.
 
