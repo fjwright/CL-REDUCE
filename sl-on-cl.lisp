@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-15 14:44:40 franc>
+;; Time-stamp: <2026-02-15 17:38:30 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -376,7 +376,8 @@ EXPR PROCEDURE MINUSP(U);
 ;; EXPR PROCEDURE NUMBERP(U);
 ;;    IF OR(FIXP U, FLOATP U) THEN T ELSE NIL;
 
-(declaim (ftype (cl:function (t) boolean)
+(declaim (inline sl::onep vectorp sl::zerop)
+         (ftype (cl:function (t) boolean)
                 sl::onep sl::pairp vectorp sl::zerop))
 
 (defun sl::onep (u)
@@ -803,7 +804,8 @@ type mismatch error occurs."
   (cl:mapc #'(lambda (x) (put x v t)) u)
   nil)
 
-(declaim (ftype (cl:function (t t) boolean) sl::flagp))
+(declaim (inline sl::flagp)
+         (ftype (cl:function (t t) boolean) sl::flagp))
 
 (defun sl::flagp (u v)
   "FLAGP(U:any, V:any):boolean eval, spread
@@ -1681,11 +1683,21 @@ Returns T if U is strictly greater than V, otherwise returns NIL.")
   "LESSP(U:number, V:number):boolean eval, spread
 Returns T if U is strictly less than V, otherwise returns NIL.")
 
-;; The definitions in REDUCE don't work correctly on CL with mixed
-;; integer and float arguments, so...
+;; The definitions of geq and leq in "rlisp/rsupport.red" don't work
+;; correctly on CL with mixed integer and float arguments, and these
+;; definitions should be a bit faster:
 (%defalias sl::geq cl:>=)
 (%defalias sl::leq cl:<=)
 ;; Flagged lose in "clprolo.red".
+
+;; The function neq is defined in "rlisp/rsupport.red", but this
+;; definition should be a bit faster:
+(declaim (inline sl::neq)
+         (ftype (cl:function (t t) boolean) sl::neq))
+
+(defun sl::neq (u v) (not (equal u v))) ; use SL equal!
+
+(flag '(sl::neq) 'sl::lose)
 
 (import 'cl:max :sl)
 ;; MAX([U:number]):number noeval, nospread, or macro
