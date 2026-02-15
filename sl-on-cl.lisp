@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-14 17:43:56 franc>
+;; Time-stamp: <2026-02-15 14:44:40 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4347,6 +4347,9 @@ Called by ON/OFF COMP; see 'clrend.red'."
 
 #+ABCL (setq *autoload-verbose* t)
 
+;; Tracing support
+;; ===============
+
 (setf (macro-function 'sl::cltrace) (macro-function 'cl:trace)) ; for debugging
 (setf (macro-function 'sl::cluntrace) (macro-function 'cl:untrace))
 
@@ -4354,6 +4357,16 @@ Called by ON/OFF COMP; see 'clrend.red'."
 (defmacro sl::cltracebr (&rest fns)
   "Break on entry to the specified functions and enter the debugger."
   `(cl:trace :break t ,@fns))
+
+;; Profiling support
+;; =================
+
+#+SBCL
+(progn
+  (defun sl::profile-begin ()
+    (sb-profile:profile "SL"))
+  (defun sl::profile-end ()
+    (sb-profile:report :limit 50 :print-no-call-list nil)))
 
 ;; Common Lisp symbols used in REDUCE source code:
 (import
