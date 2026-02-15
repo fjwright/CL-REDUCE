@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-02-11 16:54:36 franc>
+Time-stamp: <2026-02-15 09:47:57 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -213,7 +213,7 @@ REDUCE 7290 on Cygwin CLISP 2.49 (**not** using LispMath)
 Package Test | Comment / To Do
 -------------|----------------
 arith        | Expected numerical discrepancies.
-economise    | Output truncated; probably timed out.
+economise    | Output truncated; presumably timed out.
 gf2          | `+++ Error in call to gf2_groeb`
 ibalp        | `*** - Program stack overflow. RESET`
 numeric      | Expected numerical discrepancies.
@@ -222,7 +222,6 @@ Regression Test                    | Comment / To Do
 -----------------------------------|----------------
 2013-06-30-rounding                | Expected numerical discrepancies for pi, sin and sqrt(2).
 2014-11-09-accuracy-elementary-fns | Expected numerical discrepancies; 2 large arguments invalid for sin.
-2020-10-25-safe-fp                 | ?.?????e+308 -> 0.0e+308; fixable printing issue?
 2024-02-23-error-in-matrix-svd-computation | Expected numerical discrepancies.
 
 #### Clozure Common Lisp (CCL)
@@ -234,7 +233,7 @@ Package Test | Comment / To Do
 gf2          | `+++ Error in call to gf2_groeb`
 lalr         | Compiled functions instead of lambdas (because CCL always compiles).
 numeric      | Expected numerical discrepancies.
-ofsf         | Output truncated; probably timed out!
+ofsf         | Output truncated; presumably timed out!
 
 Regression test results as for SBCL.
 

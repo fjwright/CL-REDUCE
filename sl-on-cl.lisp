@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-14 16:51:45 franc>
+;; Time-stamp: <2026-02-14 17:43:56 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -50,11 +50,11 @@
 #+(and SBCL (not DEBUG))
 (declaim (sb-ext:muffle-conditions sb-ext:compiler-note style-warning))
 
-;; Use Common Lisp expt and math functions if possible, cf.
-;; "support/fastmath.red".  OK for SBCL and CCL, but CLISP expt causes
-;; floating point underflow, trigonometric function accuracy can be
-;; poor for very large arguments, and tan can lead to division by
-;; zero, so use "arith/math.red" for safety:
+;; Use Common Lisp math functions if possible, cf.
+;; "support/fastmath.red".  OK for SBCL and CCL, but CLISP
+;; trigonometric function accuracy can be poor for very large
+;; arguments, and tan can lead to division by zero, so use
+;; "arith/math.red" for safety:
 #+(and (or SBCL CCl LISPMATH) (not NOLISPMATH))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (push :LISPMATH *features*))
@@ -1628,12 +1628,10 @@ EXPR PROCEDURE DIVIDE(U, V);
    (QUOTIENT(U, V) . REMAINDER(U, V));"
   (multiple-value-call #'cons (truncate u v)))
 
-(declaim (inline expt)
-         (ftype (cl:function (number number) number) expt))
+(declaim (inline sl::expt)
+         (ftype (cl:function (number number) number) sl::expt))
 
-(export 'expt)                          ; used internally
-
-(defun expt (u v)
+(defun sl::expt (u v)
   "EXPT(U:number, V:integer):number eval, spread
 Returns U raised to the V power. A floating point U to an integer
 power V does not have V changed to a floating number before
@@ -1643,7 +1641,7 @@ exponentiation."
   #-CLISP (cl:expt u v))
 
 ;; Prevent use of the definition of expt in "arith/math.red":
-(flag '(expt) 'sl::lose)
+(flag '(sl::expt) 'sl::lose)
 
 (declaim (inline sl::fix)
          (ftype (cl:function (number) integer) sl::fix))
@@ -2769,9 +2767,8 @@ in vector-notation.  The value of U is returned."
 (defun %prin-float-to-string (u)
   "Print a float to a string, rounded to 6 significant digits."
   ;; Must be able to handle 2.0^1023 and 2.0^(-1022), used in
-  ;; "arith/rounded.red"!
-  ;; Uses expt defined earlier in this file so as to avoid CLISP
-  ;; underflow error.
+  ;; "arith/rounded.red", and 1.797e+308, used in
+  ;; "regressions/2020-10-25-safe-fp.tst"!
   (if (cl:zerop u) "0.0"
       (let* ((absu (abs u))
              (e (floor (cl:log absu 10d0)))) ; decimal exponent
@@ -2779,12 +2776,15 @@ in vector-notation.  The value of U is returned."
         ;; integer part of u contains e+1 digits.  To make u
         ;; contain d significant digits, multiply by a scale
         ;; factor s = 10^(d-e-1), round and divide s out again.
-        ;; The multiplication by s is done in two steps to avoid
-        ;; overflow!
-        (setq u (* u (expt 10d0 (- e)))
-              u (fround (* u 1d5))) ; 6 sig figs as integer-valued float
+        (if (plusp e)
+            (setq u (fround (* u (cl:expt 10d0 (- 5 e)))))
+            ;; The multiplication by s is done in two steps to avoid
+            ;; overflow!
+            (setq u (* u (cl:expt 10d0 (- e)))
+                  u (fround (* u 1d5))))
+        ;; Now u is an integer-valued float with 6 significant digits.
         (if (or (>= absu 999999.5d0) (< absu 0.0001d0))
-            ;; Exponential (e) format, e.g. 9.99999e-05
+            ;; Use exponential (e) format, e.g. 9.99999e-05
             (progn
               ;; Special case: if 999999.5 <= absu < 1000000.0
               ;; then it rounds up to 1000000 with 7 significant
@@ -2797,11 +2797,11 @@ in vector-notation.  The value of U is returned."
                     ((or (char/= (elt m f) #\0)
                          (= (- l f) 4))
                      (when (/= f l) (setq m (subseq m 0 (1+ f))))))
-                (if (< e 0)
+                (if (minusp e)
                     (format nil "~ae-~2,'0d" m (- e))
                     (format nil "~ae+~2,'0d" m e))))
-            ;; Fixed (f) format, e.g. 99999.9
-            (format nil "~f" (/ u (expt 10d0 (- 5 e))))))))
+            ;; Use fixed (f) format, e.g. 99999.9
+            (format nil "~f" (/ u (cl:expt 10d0 (- 5 e))))))))
 
 (declaim (ftype (cl:function (simple-vector cl:function) null) %prin-vector))
 
