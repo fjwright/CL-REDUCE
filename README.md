@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-02-15 09:47:57 franc>
+Time-stamp: <2026-02-16 15:28:18 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -194,7 +194,7 @@ Regression Test               | Comment / To Do
 
 #### Steel Bank Common Lisp (SBCL)
 
-REDUCE 7290 on (native Windows) SBCL 2.6.1 (using LispMath)
+REDUCE 7295 on native Windows SBCL 2.6.1 (using LispMath)
 
 Package Test | Comment / To Do
 -------------|----------------
@@ -208,7 +208,7 @@ Regression Test                    | Comment / To Do
 
 #### GNU CLISP
 
-REDUCE 7290 on Cygwin CLISP 2.49 (**not** using LispMath)
+REDUCE 7295 on Cygwin CLISP 2.49 (**not** using LispMath)
 
 Package Test | Comment / To Do
 -------------|----------------
@@ -226,7 +226,7 @@ Regression Test                    | Comment / To Do
 
 #### Clozure Common Lisp (CCL)
 
-REDUCE 7290 on native Windows CCL 1.13 (using LispMath)
+REDUCE 7295 on native Windows CCL 1.13 (using LispMath)
 
 Package Test | Comment / To Do
 -------------|----------------
@@ -249,19 +249,19 @@ ccl   | 1218               | 33
 
 #### Steel Bank Common Lisp (SBCL)
 
-REDUCE 7290 on SBCL 2.6.0.
+REDUCE 7294 on SBCL 2.6.1 (using LispMath)
 
 All test results very similar to those for Windows, except no differences for numeric package or 2013-06-30-rounding regression test.
 
 ### GNU CLISP
 
-REDUCE 7290 on CLISP 2.49
+REDUCE 7294 on CLISP 2.49 (**not** using LispMath)
 
 All test results very similar to those for Windows.
 
 #### Clozure Common Lisp (CCL)
 
-REDUCE 7290 on CCL 1.13
+REDUCE 7294 on CCL 1.13 (using LispMath)
 
 All test results very similar to those for Windows, except no differences for numeric package or 2013-06-30-rounding regression test.
 
