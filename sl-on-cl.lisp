@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-15 17:38:30 franc>
+;; Time-stamp: <2026-02-17 17:35:25 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -12,8 +12,8 @@
 ;; - CCL (Clozure Common Lisp); see https://ccl.clozure.com/
 ;; - ECL (Embeddable Common Lisp); see https://ecl.common-lisp.dev/
 
-;; Support for Armed Bear Common Lisp by Rainer Schöpf, but not yet complete!
-;; Support for Clozure Common Lisp by Marco Ferraris.
+;; Support for Clozure Common Lisp by Marco Ferraris.  Also support
+;; for Armed Bear Common Lisp by Rainer Schöpf, but not yet complete!
 
 ;; This file implements a superset of Standard Lisp that is a subset
 ;; of PSL and CSL in a package called STANDARD-LISP with nickname SL.
@@ -2028,6 +2028,21 @@ to test for equality.
              (if (and (consp x) (equal u (car x)))
                  (return x)))))
 
+(declaim (ftype (cl:function (t t) list) sl::atsoc))
+
+(defun sl::atsoc (u v)
+  "Return the element of list V whose car is eq to U, or nil if not found.
+The list V need not be proper and the elements of V can be of any
+type, unlike for Common Lisp `assoc'."
+  ;; This definition replaces the recursive definition in
+  ;; "rsupport.red".
+  (when (consp v)
+    (loop for x on v
+          if (and (consp x) (eqcar (car x) u))
+          return (car x))))
+
+(flag '(sl::atsoc) 'sl::lose)
+
 (declaim (ftype (cl:function (list symbol) list) sl::deflist))
 
 (defun sl::deflist (u ind)
@@ -2185,9 +2200,13 @@ END;"
     (setq w (cons (car u) w)
           u (cdr u))))
 
-(declaim (ftype (cl:function (list) list)  sl::reversip))
+(declaim (ftype (cl:function (list) list)  sl::reversip sl::reversip*))
 
-(%defalias sl::reversip cl:nreverse)       ; PSL function
+(%defalias sl::reversip cl:nreverse)    ; rsupport.red
+
+(%defalias sl::reversip* cl:nreverse)   ; rsupport.red
+
+(flag '(sl::reversip sl::reversip*) 'sl::lose)
 
 (declaim (ftype (cl:function (t list (function ())) t) sl::sassoc))
 
@@ -2253,10 +2272,11 @@ EXPR PROCEDURE SUBST(U, V, W);
 (declaim (inline sl::rassoc)
          (ftype (cl:function (t list) list) sl::rassoc))
 
-(defun sl::rassoc (key list)
-  "Return non-nil if KEY is equal to the cdr of an element of LIST.
-The value is actually the first element of LIST whose cdr equals KEY."
-  (cl:rassoc key list :test #'equal))
+(defun sl::rassoc (key alist)
+  "Return non-nil if KEY is equal to the cdr of an element of ALIST.
+The value is actually the first element of ALIST whose cdr equals KEY.
+The elements of ALIST must be lists!"
+  (cl:rassoc key alist :test #'equal))
 
 
 ;;; The Interpreter
@@ -4028,6 +4048,11 @@ Load a \".sl\" file using Standard Lisp read syntax.
                               :if-does-not-exist nil)
             (%load-extensions file-pathname)))))
 
+(defun sl::evload (module-list)
+  "Load each module in MODULE-LIST in turn."
+  ;; Modified from cslprolo.red (which calls load!-module, not load).
+  (dolist (m module-list) (load m)))
+
 
 ;;; Faslout/faslend interface
 ;;; =========================
@@ -4378,7 +4403,7 @@ Called by ON/OFF COMP; see 'clrend.red'."
   (defun sl::profile-begin ()
     (sb-profile:profile "SL"))
   (defun sl::profile-end ()
-    (sb-profile:report :limit 50 :print-no-call-list nil)))
+    (sb-profile:report :limit 30 :print-no-call-list nil)))
 
 ;; Common Lisp symbols used in REDUCE source code:
 (import

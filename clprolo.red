@@ -2,7 +2,7 @@
 
 % Author: Anthony C. Hearn.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2025-10-08 16:27:59 franc>
+% Time-stamp: <2026-02-17 12:38:02 franc>
 % The standard version is "packages/support/pslprolo.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -53,12 +53,6 @@ symbolic procedure create!-package(u,v);
       car u >>;
 
 % create!-package('(clprolo),nil);
-
-symbolic procedure evload l;
-   % Modified from cslprolo.red (which calls load!-module, not load).
-   % Written like this because load is defined as a statement in
-   % "rlisp/module.red".  Might be better defined in "sl-on-cl.lisp".
-   while l do << apply(function load, list car l); l := cdr l >>;
 
 flag('(concat), 'variadic);
 
