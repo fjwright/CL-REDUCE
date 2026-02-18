@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-17 17:35:25 franc>
+;; Time-stamp: <2026-02-18 17:06:10 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3612,10 +3612,34 @@ Store item L as the property list of U."
 ;; (declaim (ftype (cl:function (list list) list) union))
 ;; Declaiming this type breaks crack, which can call union with an
 ;; atomic argument.  (This is probably a bug in crack!)
-(defun sl::union (x y)                      ; PSL
-  "(union X:list Y:list): list expr
-Returns the union of sets X and Y."
-  (cl:union x y :test #'equal))
+
+;; (defun sl::union (x y)                      ; PSL
+;;   "(union X:list Y:list): list expr
+;; Returns the union of sets X and Y."
+;;   (cl:union x y :test #'equal))
+
+;; Non-recursive implementations of union and intersection that are
+;; designed to be compatible with the REDUCE versions defined in
+;; "rlisp/rsupport.red", which they replace.  Note that they MUST use
+;; sl::member and sl::delete!
+
+(declaim (ftype (cl:function (t t) list) sl::union sl::intersection))
+
+(defun sl::union (x y)
+  "Return the union of sets X and Y."
+  (when (consp x)
+    (loop for elx in x
+          unless (sl::member elx y) do (push elx y)))
+  y)
+
+(defun sl::intersection (x y)
+  "Return the intersection of sets X and Y."
+  (when (consp x)
+    (loop for elx in x
+          when (sl::member elx y) collect elx
+          and do (setq y (sl::delete elx y)))))
+
+(flag '(sl::union sl::intersection) 'sl::lose)
 
 ;; (declaim (ftype (cl:function (number number) number) mod))
 ;; Declaiming this type breaks cali, which redefines mod!
