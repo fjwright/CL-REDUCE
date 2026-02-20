@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-20 15:21:57 franc>
+;; Time-stamp: <2026-02-20 17:06:52 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -613,7 +613,7 @@ occurs:
 
 (declaim (ftype (cl:function (t) list) explode))
 
-(export 'explode)                       ; used internally (recursive)
+(export 'explode)                       ; used internally
 
 (defun explode (u)                      ; PSL spec
   "(explode U:any): id-list expr
@@ -626,45 +626,48 @@ printing (using prin1) to a list.  E.g.
 2 lisp> (explode '(a . b))
 \(!( a !  !. !  b !))"
   ;; Add support for vectors?  Share code with print routines?
-  (if (consp u)
-      ;; Exploding a cons:
-      (let ((ll (list (explode (car u)) (list 'sl::\())))
-        (loop while (consp (setq u (cdr u)))
-              do (push (list 'sl::\ ) ll)
-              do (push (explode (car u)) ll))
-        (when u
-          (push (list 'sl::\  'sl::\. 'sl::\ ) ll)
-          (push (explode u) ll))
-        (push (list 'sl::\)) ll)
-        (cl:apply #'nconc (nreverse ll)))
-      ;; Exploding an atom:
-      (typecase u
-        (string
-         ;; Add leading and trailing " and convert internal " to "":
-         (nconc
-          (list 'sl::\")
-          (loop for c across u
-                collect (%intern-character-invert-case c)
-                when (char= c #\") collect 'sl::\")
-          (list 'sl::\")))
-        (integer
-         (cl:map 'list #'%intern-character-preserve-case
-                 (princ-to-string u)))
-        (cl:float
-         (cl:map 'list #'%intern-character-invert-case
-                 (%prin-float-to-string u)))
-        (t
-         ;; Identifier, function-pointer, etc -- insert ! before
-         ;; an upper-case letter, leading digit or _, or special
-         ;; character (except _):
-         (loop with s = (princ-to-string u) and c
-               for i below (cl:length s)
-               do (setq c (aref s i))
-               unless (or (upper-case-p c) ; case-inverted!
-                          (and (not (eql i 0))
-                               (or (digit-char-p c) (char= c #\_))))
-               collect 'sl::\!
-               collect (%intern-character-preserve-case c))))))
+  (labels
+      ((%explode (u)
+         "Explode recursively to a list of CL characters."
+         (if (consp u)
+             ;; Exploding a cons:
+             (let ((ll (list (%explode (car u)) (list #\() )))
+               (loop while (consp (setq u (cdr u)))
+                     do (push (list #\Space) ll)
+                     do (push (%explode (car u)) ll))
+               (when u
+                 (push (list #\Space #\. #\Space) ll)
+                 (push (%explode u) ll))
+               (push (list #\)) ll)
+               (cl:apply #'nconc (nreverse ll)))
+             ;; Exploding an atom:
+             (typecase u
+               (string
+                ;; Add leading and trailing " and convert internal " to "":
+                `(#\"
+                  ,@(loop for c across u
+                          collect (%character-invert-case c)
+                          when (char= c #\") collect #\")
+                  #\"))
+               (integer
+                (cl:map 'list #'identity
+                        (princ-to-string u)))
+               (cl:float
+                (cl:map 'list #'%character-invert-case
+                        (%prin-float-to-string u)))
+               (t
+                ;; Identifier, function-pointer, etc -- insert ! before
+                ;; an upper-case letter, leading digit or _, or special
+                ;; character (except _):
+                (loop with s = (princ-to-string u) and c
+                      for i below (cl:length s)
+                      do (setq c (aref s i))
+                      unless (or (upper-case-p c) ; case-inverted!
+                                 (and (not (eql i 0))
+                                      (or (digit-char-p c) (char= c #\_))))
+                      collect #\!
+                      collect c))))))
+    (cl:mapcar #'%intern-character-preserve-case (%explode u))))
 
 (defvar %gensym-counter% 0
   "A non-negative integer used in constructing the name of the next
@@ -4467,8 +4470,7 @@ Called by ON/OFF COMP; see 'clrend.red'."
 
 ;; To do:
 
-;; Revise compress to use read and explode to use prin1.  Failing
-;; that, use Common Lisp characters.
+;; Revise compress to use Common Lisp characters.
 
 ;; Try using long floats in CLISP; see manual section 12.2.4.
 
