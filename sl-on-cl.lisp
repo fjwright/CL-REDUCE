@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-20 11:58:29 franc>
+;; Time-stamp: <2026-02-20 15:21:57 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -233,12 +233,6 @@ documentation string for OLDNAME."
 
 (declaim (ftype (cl:function (t t) boolean) eqcar))
 
-(export 'eqcar)                         ; used internally
-
-(defun eqcar (u v)
-  "Return true if U is a cons cell and its car is eq to V."
-  (and (consp u) (eq (car u) v)))
-
 (declaim (ftype (cl:function (character) character) %character-invert-case))
 
 (defun %character-invert-case (c)
@@ -311,6 +305,14 @@ EXPR PROCEDURE CONSTANTP(U);
 ;;             (vv (find-symbol (symbol-name v))))
 ;;         (and uu vv (cl:eq uu vv)))
 ;;       (cl:eq u v)))
+
+(export 'eqcar)                         ; used internally
+
+(defun eqcar (u v)
+  "Return true if U is a cons cell and its car is eq to V."
+  (and (consp u) (eq (car u) v)))
+
+;; (flag '(eqcar) 'sl::lose)               ; later
 
 (declaim (ftype (cl:function (t t) boolean) sl::eqn equal))
 
@@ -457,6 +459,8 @@ EXPR PROCEDURE ZEROP(U);
 
 (import '(cl:first cl:second cl:third cl:fourth cl:rest) :sl)
 
+;; (flag '(first second third rest) 'sl::lose) ; later
+
 (declaim (inline sl::lastpair sl::lastcar sl::nth sl::pnth)
          (ftype (cl:function (t) t) sl::lastpair sl::lastcar))
 
@@ -508,6 +512,8 @@ an out of range error occurs.
           ((not (pairp l)) (range-error))
           (t (pnth (rest l) (sub1 n)))))"
   (nthcdr (1- n) l))
+
+;; (flag '(sl::lastpair sl::lastcar sl::nth sl::pnth) 'sl::lose) ; later
 
 
 ;;; Identifiers
@@ -767,6 +773,34 @@ Do not do this if Lisp file load in progress."
     (setf %saved-plist-alist% nil))
   nil)
 
+(declaim (inline get)
+         (ftype (cl:function (t symbol) t) get))
+
+(export 'get)                           ; used internally
+
+(defun get (u ind)
+  "GET(U:any, IND:id):any eval, spread
+Returns the property associated with indicator IND from the
+property list of U. If U does not have indicator IND, NIL is
+returned.  GET cannot be used to access functions (use GETD
+instead)."
+  ;; MUST return nil if u is not a symbol.
+  (when (symbolp u) (cl:get u ind)))
+
+(declaim (inline put)
+         (ftype (cl:function (symbol symbol t) t) put))
+
+(export 'put)                           ; used internally
+
+(defun put (u ind prop)
+  "PUT(U:id, IND:id, PROP:any):any eval, spread
+The indicator IND with the property PROP is placed on the
+property list of the id U. If the action of PUT occurs, the value
+of PROP is returned. If either of U and IND are not ids the type
+mismatch error will occur and no property will be placed. PUT
+cannot be used to define functions (use PUTD instead)."
+  (setf (cl:get u ind) prop))
+
 (declaim (ftype (cl:function (list symbol) null) flag))
 
 (export 'flag)                          ; used internally
@@ -790,32 +824,6 @@ Returns T if U has been previously flagged with V, else NIL. Returns
 NIL if either U or V is not an id."
   (when (and (symbolp u) (symbolp v)) (cl:get u v)))
 
-(declaim (ftype (cl:function (t symbol) t) get))
-
-(export 'get)                           ; used internally
-
-(defun get (u ind)
-  "GET(U:any, IND:id):any eval, spread
-Returns the property associated with indicator IND from the
-property list of U. If U does not have indicator IND, NIL is
-returned.  GET cannot be used to access functions (use GETD
-instead)."
-  ;; MUST return nil if u is not a symbol.
-  (when (symbolp u) (cl:get u ind)))
-
-(declaim (ftype (cl:function (symbol symbol t) t) put))
-
-(export 'put)                           ; used internally
-
-(defun put (u ind prop)
-  "PUT(U:id, IND:id, PROP:any):any eval, spread
-The indicator IND with the property PROP is placed on the
-property list of the id U. If the action of PUT occurs, the value
-of PROP is returned. If either of U and IND are not ids the type
-mismatch error will occur and no property will be placed. PUT
-cannot be used to define functions (use PUTD instead)."
-  (setf (cl:get u ind) prop))
-
 (declaim (ftype (cl:function (list symbol) null) sl::remflag))
 
 (defun sl::remflag (u v)
@@ -836,6 +844,10 @@ Returns the removed property or NIL if there was no such indicator."
   (prog1 (get u ind)
     (when *defn (%save-plist u))
     (cl:remprop u ind)))
+
+(flag '(first second third rest) 'sl::lose)
+(flag '(sl::lastpair sl::lastcar sl::nth sl::pnth) 'sl::lose)
+(flag '(eqcar) 'sl::lose)
 
 
 ;;; Function Definition
@@ -1665,7 +1677,7 @@ Returns T if U is strictly less than V, otherwise returns NIL.")
 ;; definitions should be a bit faster:
 (%defalias sl::geq cl:>=)
 (%defalias sl::leq cl:<=)
-;; Flagged lose in "clprolo.red".
+(flag '(sl::geq sl::leq) 'sl::lose)
 
 ;; The function neq is defined in "rlisp/rsupport.red", but this
 ;; definition should be a bit faster:
@@ -1839,6 +1851,11 @@ Returns the product of U and V.")
 (declaim (ftype (cl:function (t t) boolean) sl::iequal))
 
 (%defalias sl::iequal cl:eql)
+
+(flag '(sl::iplus2 sl::itimes2 sl::isub1 sl::iadd1
+        sl::iminus sl::idifference sl::iquotient sl::iremainder
+        sl::igreaterp sl::ilessp sl::iminusp sl::iequal)
+      'sl::lose)
 
 ;; Small integer (fixnum) arithmetic operators required but not defined:
 
@@ -2219,9 +2236,15 @@ EXPR PROCEDURE SUBLIS(X, Y);
                  END;"
   (cl:sublis x y :test #'equal))
 
+;; The function subla is built into CSL and PSL and flagged lose.  It
+;; is also defined in "rtools/general.red" and "alg/general.red", but
+;; is needed early in the boot process.
+
 (defun sl::subla (x y)                  ; PSL function
   "Eq version of sublis; replaces atoms only."
   (cl:sublis x y :test #'eq))
+
+(flag '(sl::subla) 'sl::lose)
 
 (declaim (inline sl::subst)
          (ftype (cl:function (t t t) t) sl::subst))
@@ -2655,7 +2678,7 @@ This is the only function that actually produces graphical output.
 ;; The SL definition of PRINC is not used in REDUCE since PRINC is
 ;; redefined in rlisp/rsupport.red as
 ;; symbolic procedure princ u; prin2 u;
-;; so define it that way below and then flag it lose in clprolo.red.
+;; so define it that way below and then flag it lose.
 
 (declaim (inline terpri)
          (ftype (cl:function () null) terpri))
@@ -2732,6 +2755,8 @@ in vector-notation.  The value of U is returned."
   u)
 
 (%defalias sl::princ prin2)
+
+(flag '(sl::princ) 'sl::lose)
 
 (defun %prin1-id-to-string (u)
   "Convert identifier U to a string including appropriate `!' escapes."
@@ -3337,6 +3362,8 @@ Note some codes can be bigger than 0xff."
   ;; Flagged variadic in clprolo.
   (cl:apply #'concatenate 'string s))
 
+(flag '(concat) 'sl::variadic)
+
 ;; (%defalias sl::allocate-string cl:make-string ; PSL
 ;;   "(allocate-string SIZE:integer): string expr
 ;; Constructs and returns a string with SIZE characters. The contents of
@@ -3409,6 +3436,14 @@ are not valid UTF-8 is to be considered undefined."
 ;; Stores into a PSL string. String indexes start with 0."
 ;;   (setf (aref s i) (%character x)))
 
+;; These functions are defined in "rlisp/tok.red":
+(flag '(sl::list2widestring sl::widestring2list
+        ;; The following are only used by the above:
+        sl::string-store1 sl::string-store2
+        sl::string-store3 sl::string-store4
+        sl::moan-if-not-follower sl::moan-if-truncated)
+      'sl::lose)
+
 (declaim (ftype (cl:function (simple-string) (integer 0))  sl::string-length))
 
 (%defalias sl::string-length cl:length  ; PSL
@@ -3427,6 +3462,10 @@ function with string-upper-bound, documented below.")
   (values (cl:intern (cl:string-upcase (cl:symbol-name c)) :sl)))
 
 (%defalias sl::red-char-downcase sl::char-downcase) ; PSL
+
+;; red-char-downcase is used in "rlisp/tok.red" and redefined in
+;; several files:
+(flag '(sl::red-char-downcase) 'sl::lose)
 
 (defun sl::char-upcase (c)              ; CSL
   "Convert single-character identifier C to lower case."
@@ -3480,6 +3519,8 @@ character ! does not appear in the result.
   (%string-invert-case (cl:symbol-name d)))
 
 (%defalias sl::symbol-name sl::id2string)
+
+(flag '(sl::symbol-name) 'sl::lose)
 
 (declaim (inline string-downcase)
          (ftype (cl:function ((or symbol simple-string)) simple-string) string-downcase))
@@ -3619,8 +3660,12 @@ Store item L as the property list of U."
 (declaim (ftype (cl:function (integer integer) unsigned-byte)
                 sl::gcdn sl::lcmn))
 
+;; Procedure gcdn is defined in "alg/numsup.red", and procedure lcmn
+;; is defined in "algint/fracdi.red" and "taylor/tayutils.red", but
+;; these functions are already available (as gcd and lcm):
 (%defalias sl::gcdn cl:gcd)
 (%defalias sl::lcmn cl:lcm)
+(flag '(sl::gcdn sl::lcmn) 'sl::lose)
 
 (declaim (ftype (cl:function (symbol symbol) boolean) sl::orderp))
 
@@ -3649,6 +3694,10 @@ lower-case letters (i.e. ASCII code U <= ASCII code V)."
              (return (char< l m)))
             ((= i j) (return (<= j k)))
             ((= i k) (return nil))))))
+
+;; orderp is used in "rlisp/switch.red"; prevent it being redefined as
+;; it would be for PSL:
+(flag '(sl::orderp) 'sl::lose)
 
 (defvar sl::bfz*)
 
@@ -4411,6 +4460,8 @@ Called by ON/OFF COMP; see 'clrend.red'."
    #+SBCL sb-ext:*muffled-warnings*     ; used in build.sh
    )
  :sl)
+
+(flag '(evenp oddp) 'sl::lose)
 
 ;;; sl-on-cl.lisp ends here
 
