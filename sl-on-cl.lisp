@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-18 17:06:10 franc>
+;; Time-stamp: <2026-02-20 11:58:29 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -206,10 +206,6 @@ is printed whenever a function is redefined by PUTD.")
 (deftype filehandle () '(or cons null))
 
 (deftype number () '(or integer double-float))
-
-;; NB: CLISP only accepts (typespec var*) as an abbreviation for (type
-;; typespec var*) for standardized atomic type specifiers, which I
-;; think is a bug!
 
 ;; First, some utility functions used only internally:
 
@@ -608,25 +604,6 @@ occurs:
          (loop while (eq (car u) 'sl::\ ) do (setq u (cdr u)))))
     ;;
     (compress)))
-
-;; The following potential succinct new version of compress causes a
-;; problem reading "rlisp/tok.red" that I can't track down, so it is
-;; commented out for now.
-
-;; (defun sl::compress (u)                 ; PSL spec
-;;   "COMPRESS(U:id-list):{atom-vector} eval, spread
-;; U is a list of single character identifiers which is built into a
-;; Standard LISP entity and returned.  Recognized are lists, numbers,
-;; strings, and identifiers with the escape character prefixing special
-;; characters.  Identifiers are not interned.  Function pointers may not
-;; be compressed.  If an entity cannot be parsed out of U an error
-;; occurs:
-;; ***** Poorly formed atom in COMPRESS"
-;;   (let ((*readtable* %sl-readtable%))
-;;     (read-from-string
-;;      ;; When reading a string, it must be followed by something:
-;;      (concatenate 'string (cl:map 'string #'character u) " ")
-;;      nil $eof$)))
 
 (declaim (ftype (cl:function (t) list) explode))
 
@@ -1817,46 +1794,42 @@ Returns the product of U and V.")
 ;; Small integer (fixnum) arithmetic operators defined in
 ;; alg/farith.red:
 
-(declaim (inline sl::iplus2 sl::itimes2)
-         (ftype (cl:function (fixnum fixnum) fixnum)
+(declaim (ftype (cl:function (fixnum fixnum) fixnum)
                 sl::iplus2 sl::itimes2))
 
-(defun sl::iplus2 (u v) (+ u v))
+(%defalias sl::iplus2 cl:+)
 
-(defun sl::itimes2 (u v) (* u v))
+(%defalias sl::itimes2 cl:*)
 
-(declaim (inline sl::isub1 sl::iadd1 sl::iminus)
-         (ftype (cl:function (fixnum) fixnum)
+(declaim (ftype (cl:function (fixnum) fixnum)
                 sl::isub1 sl::iadd1 sl::iminus))
 
-(defun sl::isub1 (u) (1- u))
+(%defalias sl::isub1 cl:1-)
 
-(defun sl::iadd1 (u) (1+ u))
+(%defalias sl::iadd1 cl:1+)
 
-(defun sl::iminus (u) (- u))
+(%defalias sl::iminus cl:-)
 
-(declaim (inline sl::idifference sl::iquotient sl::iremainder)
+(declaim (inline sl::iquotient)
          (ftype (cl:function (fixnum fixnum) fixnum)
                 sl::idifference sl::iquotient sl::iremainder))
 
-(defun sl::idifference (u v) (- u v))
+(%defalias sl::idifference cl:-)
 
 (defun sl::iquotient (u v) (values (truncate u v)))
 
-(defun sl::iremainder (u v) (rem u v))
+(%defalias sl::iremainder cl:rem)
 
-(declaim (inline sl::igreaterp sl::ilessp)
-         (ftype (cl:function (fixnum fixnum) boolean)
+(declaim (ftype (cl:function (fixnum fixnum) boolean)
                 sl::igreaterp sl::ilessp))
 
-(defun sl::igreaterp (u v) (> u v))
+(%defalias sl::igreaterp cl:>)
 
-(defun sl::ilessp (u v) (< u v))
+(%defalias sl::ilessp cl:<)
 
-(declaim (inline sl::iminusp)
-         (ftype (cl:function (fixnum) boolean) sl::iminusp))
+(declaim (ftype (cl:function (fixnum) boolean) sl::iminusp))
 
-(defun sl::iminusp (u) (cl:minusp u))
+(%defalias sl::iminusp cl:minusp)
 
 ;; iequal is defined in CSL (but not PSL).  It is called with a list
 ;; as its first argument in sqrt2top in int/df2q.red, so it does not
@@ -1865,19 +1838,17 @@ Returns the product of U and V.")
 
 (declaim (ftype (cl:function (t t) boolean) sl::iequal))
 
-(%defalias sl::iequal eql)
+(%defalias sl::iequal cl:eql)
 
 ;; Small integer (fixnum) arithmetic operators required but not defined:
 
-(declaim (inline sl::itimes)
-         (ftype (cl:function (fixnum fixnum) fixnum) sl::itimes))
+(declaim (ftype (cl:function (fixnum fixnum) fixnum) sl::itimes))
 
-(defun sl::itimes (u v) (* u v)) ; used as a binary operator in dipoly/torder
+(%defalias sl::itimes cl:*) ; used as a binary operator in dipoly/torder
 
-(declaim (inline sl::izerop)
-         (ftype (cl:function (fixnum) boolean) sl::izerop))
+(declaim (ftype (cl:function (fixnum) boolean) sl::izerop))
 
-(defun sl::izerop (u) (cl:zerop u))     ; used in plot/plotexp3
+(%defalias sl::izerop cl:zerop)         ; used in plot/plotexp3
 
 
 ;;; Floating Point Math Functions
@@ -2023,10 +1994,10 @@ to test for equality.
   (cond ((not (pairp v)) nil)
         ((and (pairp (car v)) (equal u (caar v))) (car v))
         (t (assoc u (cdr v)))))"
-  (and (consp v)
-       (loop for x in v do
-             (if (and (consp x) (equal u (car x)))
-                 (return x)))))
+  (when (consp v)
+    (loop for x in v
+          when (and (consp x) (equal u (car x)))
+          return x)))
 
 (declaim (ftype (cl:function (t t) list) sl::atsoc))
 
@@ -2057,7 +2028,7 @@ EXPR PROCEDURE DEFLIST(U, IND);
       ELSE << PUT(CAAR U, IND, CADAR U);
               CAAR U >> . DEFLIST(CDR U, IND);"
   (cl:mapcar #'(lambda (x)
-                 (if *defn (%save-plist (car x)))
+                 (when *defn (%save-plist (car x)))
                  (put (car x) ind (cadr x))
                  (car x))
              u))
@@ -2132,9 +2103,9 @@ to A."
   ;; (cond ((atom l) nil)
   ;;       ((equal a (car l)) l)
   ;;       (t (member a (cdr l))))
-  (loop for tail on l do
-        (when (atom tail) (return))
-        (when (equal a (car tail)) (return tail))))
+  (loop for tail on l
+        when (atom tail) return nil
+        when (equal a (car tail)) return tail))
 
 (declaim (inline sl::memq))
 
@@ -2149,7 +2120,7 @@ to A."
   ;; (cond ((atom l) nil)
   ;;       ((eq a (car l)) l)
   ;;       (t (memq a (cdr l))))
-  (and (consp l) (cl:member a l :test #'cl:eq)))
+  (when (consp l) (cl:member a l :test #'cl:eq)))
 
 (import 'cl:nconc :sl)
 ;; NCONC(U:list, V:list):list eval, spread
@@ -2459,25 +2430,25 @@ the value of FILEHANDLE. An error occurs if the file can not be
 closed.
 ***** FILEHANDLE could not be closed"
   ;; A null filehandle represents standard IO; ignore it.
-  (if filehandle
-      (prog1 filehandle
-        (case (car filehandle)
-          (sl::file
-           ;; Output file stream ('file output-stream):
-           (cl:close (cadr filehandle)))
-          #+SBCL
-          (sl::pipe
-           ;; Output pipe stream ('pipe output-stream . process):
-           (sb-ext:process-close (cddr filehandle)) ; closes output-stream
-           (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
-          #+CLISP
-          (sl::pipe
-           ;; Output pipe stream ('pipe output-stream):
-           (cl:close (cadr filehandle))) ; closes output-stream
-          (t
-           ;; Input filehandle -- close echo stream then input stream:
-           (cl:close (cdr filehandle))
-           (cl:close (car filehandle)))))))
+  (when filehandle
+    (prog1 filehandle
+      (case (car filehandle)
+        (sl::file
+         ;; Output file stream ('file output-stream):
+         (cl:close (cadr filehandle)))
+        #+SBCL
+        (sl::pipe
+         ;; Output pipe stream ('pipe output-stream . process):
+         (sb-ext:process-close (cddr filehandle)) ; closes output-stream
+         (sb-ext:process-kill (cddr filehandle) 9)) ; 9 = SIGKILL
+        #+CLISP
+        (sl::pipe
+         ;; Output pipe stream ('pipe output-stream):
+         (cl:close (cadr filehandle)))  ; closes output-stream
+        (t
+         ;; Input filehandle -- close echo stream then input stream:
+         (cl:close (cdr filehandle))
+         (cl:close (car filehandle)))))))
 
 (declaim (ftype (cl:function () null) sl::eject))
 
@@ -3045,14 +3016,14 @@ selected output file.
       (ecase (car filehandle)
         (sl::file
          ;; Output file stream ('file output-stream):
-         (if (open-stream-p (cadr filehandle))
-             (setq *standard-output* (cadr filehandle)
-                   %write-stream% filehandle)))
+         (when (open-stream-p (cadr filehandle))
+           (setq *standard-output* (cadr filehandle)
+                 %write-stream% filehandle)))
         (sl::pipe
          ;; Output pipe stream ('pipe output-stream . process):
-         (if (open-stream-p (cadr filehandle))
-             (setq *standard-output* (cadr filehandle)
-                   %write-stream% filehandle)))))))
+         (when (open-stream-p (cadr filehandle))
+           (setq *standard-output* (cadr filehandle)
+                 %write-stream% filehandle)))))))
 
 (declaim (ftype (cl:function (simple-string symbol) filehandle) sl::pipe-open))
 
@@ -3283,7 +3254,7 @@ A function hung on the garbage collection hook."
   #+(not (or SBCL CLISP)) 0)
 
 (declaim (ftype (cl:function (t) list)
-                explode2  sl::explodec sl::explode2uc sl::explode2lc))
+                explode2 sl::explodec sl::explode2uc sl::explode2lc))
 
 (export 'explode2)                      ; used internally
 
@@ -3389,10 +3360,10 @@ lisp> (string2list \"STRING\")
   "Generalize cl:character to accept also a character code."
   (if (integerp x)
       ;; (if (<= 0 x 255)                  ; (and (<= 0 x) (<= x 255))
-          ;; Was 127, but then reading rlisp/tok.red fails!
-          ;; Should 128 -> nil as specified for PSL?
-          (code-char x)
-          ;; (%error "~d is not a character code" x))
+      ;; Was 127, but then reading rlisp/tok.red fails!
+      ;; Should 128 -> nil as specified for PSL?
+      (code-char x)
+      ;; (%error "~d is not a character code" x))
       (%id-to-char-invert-case x)))
 
 (declaim (inline sl::list2string)
@@ -4148,8 +4119,8 @@ files depends on the version of Common Lisp.)"
   ;; Output subsequent code as Common Lisp to a temporary file until
   ;; FASLEND evaluated.
   (setq name (string-downcase name))
-  (if *int
-      (format t "FASLOUT ~a: IN files$ or type in expressions.
+  (when *int
+    (format t "FASLOUT ~a: IN files$ or type in expressions.
 When all done, execute FASLEND;~2%" name))
   ;; (unless
   (setq %faslout-stream%
@@ -4159,8 +4130,8 @@ When all done, execute FASLEND;~2%" name))
                  #+CLISP charset:UTF-8
                  #-(or CLISP CCL) :UTF-8))
   ;; (%error "FASLOUT cannot open ~a" %faslout-name.lisp%))
-  (if %faslout-header%
-      (cl:princ %faslout-header% %faslout-stream%))
+  (when %faslout-header%
+    (cl:princ %faslout-header% %faslout-stream%))
   (setf %faslout-saved-prettyprint% (symbol-function 'prettyprint)
         (symbol-function 'prettyprint) (symbol-function '%faslout-prettyprint))
   (setq *defn t
@@ -4303,7 +4274,7 @@ When all done, execute FASLEND;~2%" name))
     (loop
      (with-simple-restart
          (abort "Return to REDUCE.")
-       (catch 'toplevel-catcher         ; thrown internally by SBCL
+       (catch 'sb-impl::toplevel-catcher ; thrown internally by SBCL
          (begin))))))
 
 #+CLISP
@@ -4411,7 +4382,7 @@ Called by ON/OFF COMP; see 'clrend.red'."
 ;; Tracing support
 ;; ===============
 
-(setf (macro-function 'sl::cltrace) (macro-function 'cl:trace)) ; for debugging
+(setf (macro-function 'sl::cltrace) (macro-function 'cl:trace))
 (setf (macro-function 'sl::cluntrace) (macro-function 'cl:untrace))
 
 #+SBCL

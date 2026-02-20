@@ -2,7 +2,7 @@
 
 % Author: Anthony C. Hearn.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2026-02-17 12:38:02 franc>
+% Time-stamp: <2026-02-19 17:39:27 franc>
 % The standard version is "packages/support/pslprolo.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -66,7 +66,7 @@ flag('(eqcar),'lose);
 flag('(princ),'lose);
 
 % These functions are already defined (more or less) in Common Lisp:
-flag('(first second third rest lastpair lastcar nth pnth reversip
+flag('(first second third rest lastpair lastcar nth pnth
    evenp oddp symbol!-name),'lose);
 
 % These functions are defined in rlisp/tok.red, but I have
