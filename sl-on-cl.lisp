@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-20 17:06:52 franc>
+;; Time-stamp: <2026-02-20 18:18:03 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -524,12 +524,6 @@ an out of range error occurs.
 MESSAGE possibly followed by arguments ARGS as for `format'."
   `(cl:error ,message ,@args))
 
-(declaim (ftype (cl:function (symbol) character) %id-to-char-invert-case))
-
-(defun %id-to-char-invert-case (c)
-  "As `cl:character', but case-inverted."
-  (%character-invert-case (character c)))
-
 (declaim (ftype (cl:function (list) t) sl::compress))
 
 (defun sl::compress (u)                 ; PSL spec
@@ -541,8 +535,10 @@ characters.  Identifiers are not interned.  Function pointers may not
 be compressed.  If an entity cannot be parsed out of U an error
 occurs:
 ***** Poorly formed atom in COMPRESS"
+  ;; NB: Doesn't handle a dotted pair correctly, but it doesn't seem
+  ;; to matter!
   (labels
-      ((compress () ; This internal function recursively process lists.
+      ((%compress () ; This internal function recursively processes lists.
          ;; Concatenate the characters into a string and then handle any !
          ;; characters as follows:
          ;; A string begins with " and should retain any ! characters without
@@ -551,35 +547,35 @@ occurs:
          ;; characters.
          ;; Otherwise, assume an identifier and replace ! by \, but !! by \!
          (let (u0)                      ; first element
-           (compress-skip-spaces)       ; skip leading spaces
+           (%compress-skip-spaces)      ; skip leading spaces
            (if (or (null u)
                    (cl:member (setq u0 (car u))
-                              '(sl::\' sl::\) sl::\, sl::\% sl::\[ sl::\\ sl::\`))) ; PSL
+                              '(#\' #\) #\, #\% #\[ #\\ #\`) ; PSL
+                              :test #'char=))
                (%error "Poorly formed S-expression in COMPRESS"))
            (cond
              ;; LIST?
-             ((eq u0 'sl::\() (setq u (cdr u))
-              (compress-skip-spaces)    ; skip leading spaces
+             ((char= u0 #\() (setq u (cdr u))
+              (%compress-skip-spaces)   ; skip leading spaces
               (loop
-                    while (not (eq (car u) 'sl::\)))
-                    collect (compress)
-                    do (compress-skip-spaces)))
+                    while (not (char= (car u) #\)))
+                    collect (%compress)
+                    do (%compress-skip-spaces)))
              ;; STRING?
-             ((eq u0 'sl::\")
+             ((char= u0 #\")
               ;; In Standard Lisp, "" in a string represents ":
               (loop with newu while (setq u (cdr u)) do
-                    (when (eq (car u) 'sl::\")
+                    (when (char= (car u) #\")
                       (setq u (cdr u))
-                      (if (not (and u (eq (car u) 'sl::\"))) ; end of string
-                          (return-from compress
-                            (cl:map 'string #'%id-to-char-invert-case
-                                    (nreverse newu)))))
+                      (when (not (and u (char= (car u) #\"))) ; end of string
+                        (return-from %compress
+                          (cl:map 'string #'%character-invert-case
+                                  (nreverse newu)))))
                     (push (car u) newu))
               ;; String not terminated:
               (%error "Poorly formed S-expression in COMPRESS"))
              ;; NUMBER?
-             ((or (digit u0) (char= (character u0) #\-))
-              ;; (eq u0 '-) fails because u0 is in SL but - is (an operator) in CL.
+             ((or (digit-char-p u0) (char= u0 #\-))
               (multiple-value-bind (obj pos)
                   (read-from-string (cl:map 'string #'character u))
                 (setq u (nthcdr pos u))
@@ -595,21 +591,23 @@ occurs:
               (loop with newu do
                     (cond ((or (null u)
                                (cl:member (car u)
-                                          '(sl::\  sl::\" sl::\' sl::\( sl::\) sl::\,
-                                            sl::\% sl::\[ sl::\\ sl::\] sl::\`)))
+                                          '(#\Space  #\" #\' #\( #\) #\,
+                                            #\% #\[ #\\ #\] #\`)
+                                          :test #'char=))
                            (return
                              (make-symbol ; uninterned symbol
                               (cl:map 'string #'character (nreverse newu)))))
-                          ((eq (car u) 'sl::!) ; ignore ! but keep WHATEVER follows it
+                          ((char= (car u) #\!) ; ignore ! but keep WHATEVER follows it
                            (if (setf u (cdr u))
                                (push (car u) newu)))
                           (t (push (car u) newu)))
                     (setf u (cdr u)))))))
        ;;
-       (compress-skip-spaces ()
-         (loop while (eq (car u) 'sl::\ ) do (setq u (cdr u)))))
+       (%compress-skip-spaces ()
+         (loop while (char= (car u) #\Space) do (setq u (cdr u)))))
     ;;
-    (compress)))
+    (setq u (cl:mapcar #'character u))
+    (%compress)))
 
 (declaim (ftype (cl:function (t) list) explode))
 
@@ -3394,7 +3392,7 @@ lisp> (string2list \"STRING\")
       ;; Should 128 -> nil as specified for PSL?
       (code-char x)
       ;; (%error "~d is not a character code" x))
-      (%id-to-char-invert-case x)))
+      (%character-invert-case (character x))))
 
 (declaim (inline sl::list2string)
          (ftype (cl:function (list) simple-string)
@@ -4469,8 +4467,6 @@ Called by ON/OFF COMP; see 'clrend.red'."
 ;;; sl-on-cl.lisp ends here
 
 ;; To do:
-
-;; Revise compress to use Common Lisp characters.
 
 ;; Try using long floats in CLISP; see manual section 12.2.4.
 
