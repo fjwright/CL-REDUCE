@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-02-16 12:24:17 franc>
+# Time-stamp: <2026-02-21 10:26:01 franc>
 
-# Build REDUCE on supported implementations of Common Lisp (CL),
-# namely SBCL, CLISP and CCL.
+# Build REDUCE on supported implementations of Common Lisp (CL) that
+# can save a memory image, namely SBCL, CLISP and CCL.
 
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
@@ -17,14 +17,12 @@
 #    Lisp.
 
 # 2. Build an initial bootstrap REDUCE system by using only REDUCE
-#    source files.  This does not form part of the final REDUCE system
-#    and should not need to be rebuilt very often.  It is used to
-#    compile a full REDUCE system.
+#    source files.  This does not form part of the final REDUCE
+#    system; it is used only to compile a full REDUCE system.
 
-# 3. Compile "trace.lisp", which provides rudimentary function
-#    tracing.
+# 3. Compile "trace.lisp", which provides function tracing.
 
-# 4. Compile all required fasl files and save a final REDUCE system.
+# 4. Compile all required packages and save a final REDUCE system.
 
 # This script must be run with the top-level CL REDUCE directory
 # called "common-lisp" as the current directory.
@@ -36,8 +34,9 @@
 
 function help {
     echo 'Build REDUCE on Common Lisp'
-    echo 'Usage: ./build.sh [-h] [-r revision] [-c/f] [-d] [-b/o] <lisp>'
+    echo 'Usage: ./build.sh [-h] [-r revision] [-c/f] [-d] [-b/o] <lisp> <lisp> ...'
     echo '<lisp> = sbcl/clisp/ccl'
+    echo 'If no <lisp> specified then build on SBCL, CLISP and CCL.'
     echo 'Option -r sets the REDUCE revision number (overriding the default).'
     echo 'Option -c ensures a clean build by deleting any previous build.'
     echo 'Option -f forces recompilation of all packages.'
@@ -50,10 +49,9 @@ function help {
     exit 1
 }
 
-while getopts l:r:cfdmnboh option
+while getopts r:cfdmnboh option
 do
     case $option in
-        l) lisp=$OPTARG;;       # obsolete
         r) revision=$OPTARG;;
         c) clean=true;;
         f) force='!*forcecompile := t;';;
@@ -67,163 +65,173 @@ do
     esac
 done
 
-[ -n "$lisp" ] || lisp=${!OPTIND}
-lisp=${lisp,,}                  # ensure lower case
+shift $((--OPTIND))
 
-# The following commands to run Lisp all suppress the user
-# initialisation file.
+lisps=${@:-'sbcl clisp ccl'}
 
-case $lisp in
-    'sbcl')
-        echo '+++++ Building REDUCE on Steel Bank Common Lisp'
-        runlisp='sbcl --no-userinit --disable-debugger'
-        runlispfile='sbcl --no-userinit --disable-debugger --load'
-        runbootstrap='sbcl --core fasl.sbcl/bootstrap.img --noinform --no-userinit --disable-debugger'
-        runreduce='sbcl --core fasl.sbcl/reduce.img --noinform --no-userinit --disable-debugger'
-        saveext='img'
-        faslext='fasl'
-        ;;
-    'clisp')
-        echo '+++++ Building REDUCE on CLISP'
-        runlisp='clisp -ansi -norc -E utf-8'
-        runlispfile="$runlisp"
-        runbootstrap="$runlisp -q -M fasl.clisp/bootstrap.mem"
-        runreduce="$runlisp -q -M fasl.clisp/reduce.mem"
-        saveext='mem'
-        faslext='fas'
-        ;;
-    'ccl')
-        echo '+++++ Building REDUCE on Clozure Common Lisp'
-        if [ "$(type -ft ccl64)" ]; then CCL='ccl64'; else CCL='ccl'; fi
-        runlisp="$CCL -n"
-        runlispfile="$CCL -n -l"
-	runbootstrap="$CCL -n -I fasl.ccl/bootstrap.image"
-        runreduce="$CCL -n -I fasl.ccl/reduce.image"
-        saveext='image'
-        case $(uname -s) in     # see CCL64 shell script in Clozure distribution
-            Darwin)             # macOS
-                faslext='dx64fsl';;
-            Linux)
-                faslext='lx64fsl';;
-            CYGWIN*)            # MS Windows
-                faslext='wx64fsl';;
-        esac
-        ;;
-    *)
-        echo $'Error: <lisp> argument is required\n'
-        help
-        ;;
-esac
+for lisp in $lisps; do
+    lisp=${lisp,,}              # ensure lower case
 
-if [ -n "$clean" ]
-then
-    echo '+++++ Clean build'
-    rm -rf fasl.$lisp log.$lisp
-fi
+    # The following commands to run Lisp all suppress the user
+    # initialisation file.
 
-[ -n "$debug" ] && echo '+++++ Building for debugging'
-[ -n "$lispmath" ] && echo '+++++ Using Common Lisp floating-point math functions'
-[ -n "$nolispmath" ] && echo '+++++ NOT using Common Lisp floating-point math functions'
+    case $lisp in
+        'sbcl')
+            echo $'\n========================================='
+            echo 'Building REDUCE on Steel Bank Common Lisp'
+            echo '========================================='
+            runlisp='sbcl --no-userinit --disable-debugger'
+            runlispfile='sbcl --no-userinit --disable-debugger --load'
+            runbootstrap='sbcl --core fasl.sbcl/bootstrap.img --noinform --no-userinit --disable-debugger'
+            runreduce='sbcl --core fasl.sbcl/reduce.img --noinform --no-userinit --disable-debugger'
+            saveext='img'
+            faslext='fasl'
+            ;;
+        'clisp')
+            echo $'\n========================'
+            echo 'Building REDUCE on CLISP'
+            echo '========================'
+            runlisp='clisp -ansi -norc -E utf-8'
+            runlispfile="$runlisp"
+            runbootstrap="$runlisp -q -M fasl.clisp/bootstrap.mem"
+            runreduce="$runlisp -q -M fasl.clisp/reduce.mem"
+            saveext='mem'
+            faslext='fas'
+            ;;
+        'ccl')
+            echo $'\n======================================'
+            echo 'Building REDUCE on Clozure Common Lisp'
+            echo '======================================'
+            if [ "$(type -ft ccl64)" ]; then CCL='ccl64'; else CCL='ccl'; fi
+            runlisp="$CCL -n"
+            runlispfile="$CCL -n -l"
+	    runbootstrap="$CCL -n -I fasl.ccl/bootstrap.image"
+            runreduce="$CCL -n -I fasl.ccl/reduce.image"
+            saveext='image'
+            case $(uname -s) in     # see CCL64 shell script in Clozure distribution
+                Darwin)             # macOS
+                    faslext='dx64fsl';;
+                Linux)
+                    faslext='lx64fsl';;
+                CYGWIN*)            # MS Windows
+                    faslext='wx64fsl';;
+            esac
+            ;;
+        *)
+            echo $'Error: <lisp> argument is required\n'
+            help
+            ;;
+    esac
 
-if [ -z "$reduce" ]
-then
-    if [ -e './packages' ]; then export reduce=.
-    elif [ -e '../packages' ]; then export reduce=..
-    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
-    fi
-fi
-
-if [ -z "$revision" ]
-then
-    if type svnversion > /dev/null
+    if [ -n "$clean" ]
     then
-        # Try to use Subversion in the packages directory:
-        packages="$reduce/packages"
-        # If $packages is a symlink then follow it (if possible):
-        if [ -L $packages ] && type readlink > /dev/null
-        then
-            packages=$(readlink -n "$packages")
+        echo '+++++ Clean build'
+        rm -rf fasl.$lisp log.$lisp
+    fi
+
+    [ -n "$debug" ] && echo '+++++ Building for debugging'
+    [ -n "$lispmath" ] && echo '+++++ Using Common Lisp floating-point math functions'
+    [ -n "$nolispmath" ] && echo '+++++ NOT using Common Lisp floating-point math functions'
+
+    if [ -z "$reduce" ]
+    then
+        if [ -e './packages' ]; then export reduce=.
+        elif [ -e '../packages' ]; then export reduce=..
+        else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
         fi
-        revision=$(svnversion -n "$packages")
-        # Value may be (e.g.) 4123:4168MSP so extract the second number:
-        revision=${revision/#*:}     # delete first number and ":"
-        revision=${revision/%[A-Z]*} # delete trailing letters
     fi
-    if [[ ! "$revision" =~ ^[[:digit:]]+$ ]]
+
+    if [ -z "$revision" ]
     then
-        # Try to parse the parent directory name:
-        revision=$(basename $(realpath ..))
-        shopt -s extglob
-        revision=${revision/#+([^[:digit:]])} # delete leading non-digits
-        revision=${revision/%+([^[:digit:]])} # delete trailing non-digits
-        shopt -u extglob
+        if type svnversion > /dev/null
+        then
+            # Try to use Subversion in the packages directory:
+            packages="$reduce/packages"
+            # If $packages is a symlink then follow it (if possible):
+            if [ -L $packages ] && type readlink > /dev/null
+            then
+                packages=$(readlink -n "$packages")
+            fi
+            revision=$(svnversion -n "$packages")
+            # Value may be (e.g.) 4123:4168MSP so extract the second number:
+            revision=${revision/#*:}     # delete first number and ":"
+            revision=${revision/%[A-Z]*} # delete trailing letters
+        fi
+        if [[ ! "$revision" =~ ^[[:digit:]]+$ ]]
+        then
+            # Try to parse the parent directory name:
+            revision=$(basename $(realpath ..))
+            shopt -s extglob
+            revision=${revision/#+([^[:digit:]])} # delete leading non-digits
+            revision=${revision/%+([^[:digit:]])} # delete trailing non-digits
+            shopt -u extglob
+        fi
     fi
-fi
-if [[ "$revision" =~ ^[[:digit:]]+$ ]]
-then
-    echo '+++++ REDUCE revision number set to' $revision
-else
-    echo '*** The REDUCE revision number cannot be set automatically.'
-    echo '    You can use the -r option to set it manually.'
-    unset -v revision
-fi
+    if [[ "$revision" =~ ^[[:digit:]]+$ ]]
+    then
+        echo '+++++ REDUCE revision number set to' $revision
+    else
+        echo '*** The REDUCE revision number cannot be set automatically.'
+        echo '    You can use the -r option to set it manually.'
+        unset -v revision
+    fi
 
-mkdir -p log.$lisp           # -p avoids complaint if directory exists
-mkdir -p fasl.$lisp
+    mkdir -p log.$lisp           # -p avoids complaint if directory exists
+    mkdir -p fasl.$lisp
 
-#################################
-# Compile sl-on-cl if necessary #
-#################################
+    #################################
+    # Compile sl-on-cl if necessary #
+    #################################
 
-if [ "sl-on-cl.lisp" -nt "fasl.$lisp/sl-on-cl.$faslext" ]
-then
-    echo $'\n+++++ Compiling sl-on-cl'
-    time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg &&
+    if [ "sl-on-cl.lisp" -nt "fasl.$lisp/sl-on-cl.$faslext" ]
+    then
+        echo $'\n+++++ Compiling sl-on-cl'
+        time eval $runlisp << EOF &> log.$lisp/sl-on-cl.blg &&
 $debug $lispmath $nolispmath
 (or (compile-file "sl-on-cl.lisp")
     #+CCL (quit 1)
     #-CCL (exit #+SBCL :code 1))
 EOF
-    mv sl-on-cl.$faslext fasl.$lisp &&
-        if [ $lisp = 'clisp' ]; then rm sl-on-cl.lib; fi
-fi || { echo '***** Compilation failed'; exit 1; }
+        mv sl-on-cl.$faslext fasl.$lisp &&
+            if [ $lisp = 'clisp' ]; then rm sl-on-cl.lib; fi
+    fi || { echo '***** Compilation failed'; exit 1; }
 
-########################################################
-# Build an initial bootstrap REDUCE image if necessary #
-########################################################
+    ########################################################
+    # Build an initial bootstrap REDUCE image if necessary #
+    ########################################################
 
-function grep_errors {
-    grep -i '^\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq |\
-        grep -viw errorset      # except matching lines
-}
+    function grep_errors {
+        grep -i '^\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq |\
+            grep -viw errorset      # except matching lines
+    }
 
-if [ ! -e fasl.$lisp/bootstrap.$saveext ]
-then
-    echo $'\n+++++ Building bootstrap REDUCE...'
-    time $runlispfile bootstrap &> log.$lisp/bootstrap.blg
     if [ ! -e fasl.$lisp/bootstrap.$saveext ]
     then
-        echo $'\n***** Building bootstrap REDUCE failed'; exit 1
-    else
-        echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
-        grep_errors bootstrap
+        echo $'\n+++++ Building bootstrap REDUCE...'
+        time $runlispfile bootstrap &> log.$lisp/bootstrap.blg
+        if [ ! -e fasl.$lisp/bootstrap.$saveext ]
+        then
+            echo $'\n***** Building bootstrap REDUCE failed'; exit 1
+        else
+            echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
+            grep_errors bootstrap
+        fi
+        echo $'\a'
     fi
-    echo $'\a'
-fi
 
-if [ -n "$bootstraponly" ]
-then
-    echo $'\nBootstrap only build requested.'
-    exit
-fi
+    if [ -n "$bootstraponly" ]
+    then
+        echo $'\nBootstrap only build requested.'
+        continue
+    fi
 
-################
-# Build REDUCE #
-################
+    ################
+    # Build REDUCE #
+    ################
 
-echo -n $'\n+++++ Collecting package data...'
+    echo -n $'\n+++++ Collecting package data...'
 
-eval $runbootstrap << EOF &> log.$lisp/build.blg
+    eval $runbootstrap << EOF &> log.$lisp/build.blg
 symbolic; $force
 
 off redefmsg;
@@ -266,23 +274,23 @@ end;
 bye;
 EOF
 
-if [ ! -e fasl.$lisp/core-packages.dat -o ! -e fasl.$lisp/noncore-packages.dat ]
-then
-    echo 'failed'; exit 1
-else
-    echo 'done.  Possible errors:'
-    grep_errors build
-fi
+    if [ ! -e fasl.$lisp/core-packages.dat -o ! -e fasl.$lisp/noncore-packages.dat ]
+    then
+        echo 'failed'; exit 1
+    else
+        echo 'done.  Possible errors:'
+        grep_errors build
+    fi
 
-echo $'\n+++++ Building REDUCE...'
+    echo $'\n+++++ Building REDUCE...'
 
-# Compile the "core" packages, each in a separate invocation of
-# bootstrap REDUCE to avoid adverse interactions:
+    # Compile the "core" packages, each in a separate invocation of
+    # bootstrap REDUCE to avoid adverse interactions:
 
-time for p in $(< fasl.$lisp/core-packages.dat)
-do
-    echo "+++++ Remaking core package $p"
-    eval $runbootstrap << EOF &> log.$lisp/$p.blg
+    time for p in $(< fasl.$lisp/core-packages.dat)
+    do
+        echo "+++++ Remaking core package $p"
+        eval $runbootstrap << EOF &> log.$lisp/$p.blg
 symbolic; $force
 
 off redefmsg;
@@ -302,44 +310,44 @@ package!-remake '$p;
 bye;
 EOF
 
-grep_errors $p
+        grep_errors $p
 
-done
+    done
 
-if [ -n "$coreonly" ]
-then
-    echo $'\nCore packages only build requested.'
-    exit
-fi
+    if [ -n "$coreonly" ]
+    then
+        echo $'\nCore packages only build requested.'
+        continue
+    fi
 
-##############################
-# Compile trace if necessary #
-##############################
+    ##############################
+    # Compile trace if necessary #
+    ##############################
 
-if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
-then
-    echo $'\n+++++ Compiling trace'
-    time eval $runlisp << EOF &> log.$lisp/trace.blg &&
+    if [ "trace.lisp" -nt "fasl.$lisp/trace.$faslext" ]
+    then
+        echo $'\n+++++ Compiling trace'
+        time eval $runlisp << EOF &> log.$lisp/trace.blg &&
 (load "fasl.$lisp/sl-on-cl")
 (or (compile-file "trace.lisp")
     #+CCL (quit 1)
     #-CCL (exit #+SBCL :code 1))
 EOF
-    mv trace.$faslext fasl.$lisp &&
-        if [ $lisp = 'clisp' ]; then rm trace.lib; fi
-fi || { echo '***** Compiling trace failed'; exit 1; }
+        mv trace.$faslext fasl.$lisp &&
+            if [ $lisp = 'clisp' ]; then rm trace.lib; fi
+    fi || { echo '***** Compiling trace failed'; exit 1; }
 
-###############################
-# Build the REDUCE image file #
-###############################
+    ###############################
+    # Build the REDUCE image file #
+    ###############################
 
-echo $'\n+++++ Building the REDUCE image file...'
+    echo $'\n+++++ Building the REDUCE image file...'
 
-# Start a new invocation of Lisp and load the key modules compiled
-# above.  Then save a final REDUCE image that will be used below to
-# compile the non-core modules.
+    # Start a new invocation of Lisp and load the key modules compiled
+    # above.  Then save a final REDUCE image that will be used below to
+    # compile the non-core modules.
 
-time eval $runlisp << EOF &> log.$lisp/reduce.blg
+    time eval $runlisp << EOF &> log.$lisp/reduce.blg
 (load "fasl.$lisp/sl-on-cl")
 (load "fasl.$lisp/trace") ; temporary -- until I can arrange autoloading!
 (standard-lisp)
@@ -408,20 +416,20 @@ time eval $runlisp << EOF &> log.$lisp/reduce.blg
 
 EOF
 
-if [ ! -e fasl.$lisp/reduce.$saveext ]
-then
-    echo $'\n***** Building the REDUCE image failed'; exit 1
-else
-    echo $'\n+++++ Built the REDUCE image file\n'
-fi
+    if [ ! -e fasl.$lisp/reduce.$saveext ]
+    then
+        echo $'\n***** Building the REDUCE image failed'; exit 1
+    else
+        echo $'\n+++++ Built the REDUCE image file\n'
+    fi
 
-# Finally, compile the "noncore" packages using reduce.img rather than
-# bootstrap.img.
+    # Finally, compile the "noncore" packages using reduce.img rather than
+    # bootstrap.img.
 
-time for p in $(< fasl.$lisp/noncore-packages.dat)
-do
-    echo "+++++ Remaking noncore package $p"
-    eval $runreduce << EOF &> log.$lisp/$p.blg
+    time for p in $(< fasl.$lisp/noncore-packages.dat)
+    do
+        echo "+++++ Remaking noncore package $p"
+        eval $runreduce << EOF &> log.$lisp/$p.blg
 symbolic; $force
 
 on verboseload;
@@ -458,8 +466,10 @@ if '$p eq 'gnuplot then
 bye;
 EOF
 
-grep_errors $p
+        grep_errors $p
+
+    done
+
+    echo $'\n+++++ Built REDUCE.\a'
 
 done
-
-echo $'\n+++++ Built REDUCE.\a'
