@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-02-21 10:26:01 franc>
+# Time-stamp: <2026-02-21 10:56:23 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL) that
 # can save a memory image, namely SBCL, CLISP and CCL.
@@ -65,6 +65,53 @@ do
     esac
 done
 
+[ -n "$debug" ] && echo '+++++ Building for debugging'
+[ -n "$lispmath" ] && echo '+++++ Using Common Lisp floating-point math functions'
+[ -n "$nolispmath" ] && echo '+++++ NOT using Common Lisp floating-point math functions'
+
+if [ -z "$reduce" ]
+then
+    if [ -e './packages' ]; then export reduce=.
+    elif [ -e '../packages' ]; then export reduce=..
+    else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
+    fi
+fi
+
+if [ -z "$revision" ]
+then
+    if type svnversion > /dev/null
+    then
+        # Try to use Subversion in the packages directory:
+        packages="$reduce/packages"
+        # If $packages is a symlink then follow it (if possible):
+        if [ -L $packages ] && type readlink > /dev/null
+        then
+            packages=$(readlink -n "$packages")
+        fi
+        revision=$(svnversion -n "$packages")
+        # Value may be (e.g.) 4123:4168MSP so extract the second number:
+        revision=${revision/#*:}     # delete first number and ":"
+        revision=${revision/%[A-Z]*} # delete trailing letters
+    fi
+    if [[ ! "$revision" =~ ^[[:digit:]]+$ ]]
+    then
+        # Try to parse the parent directory name:
+        revision=$(basename $(realpath ..))
+        shopt -s extglob
+        revision=${revision/#+([^[:digit:]])} # delete leading non-digits
+        revision=${revision/%+([^[:digit:]])} # delete trailing non-digits
+        shopt -u extglob
+    fi
+fi
+if [[ "$revision" =~ ^[[:digit:]]+$ ]]
+then
+    echo '+++++ REDUCE revision number set to' $revision
+else
+    echo '*** The REDUCE revision number cannot be set automatically.'
+    echo '    You can use the -r option to set it manually.'
+    unset -v revision
+fi
+
 shift $((--OPTIND))
 
 lisps=${@:-'sbcl clisp ccl'}
@@ -79,7 +126,7 @@ for lisp in $lisps; do
         'sbcl')
             echo $'\n========================================='
             echo 'Building REDUCE on Steel Bank Common Lisp'
-            echo '========================================='
+            echo $'=========================================\n'
             runlisp='sbcl --no-userinit --disable-debugger'
             runlispfile='sbcl --no-userinit --disable-debugger --load'
             runbootstrap='sbcl --core fasl.sbcl/bootstrap.img --noinform --no-userinit --disable-debugger'
@@ -90,7 +137,7 @@ for lisp in $lisps; do
         'clisp')
             echo $'\n========================'
             echo 'Building REDUCE on CLISP'
-            echo '========================'
+            echo $'========================\n'
             runlisp='clisp -ansi -norc -E utf-8'
             runlispfile="$runlisp"
             runbootstrap="$runlisp -q -M fasl.clisp/bootstrap.mem"
@@ -101,7 +148,7 @@ for lisp in $lisps; do
         'ccl')
             echo $'\n======================================'
             echo 'Building REDUCE on Clozure Common Lisp'
-            echo '======================================'
+            echo $'======================================\n'
             if [ "$(type -ft ccl64)" ]; then CCL='ccl64'; else CCL='ccl'; fi
             runlisp="$CCL -n"
             runlispfile="$CCL -n -l"
@@ -127,53 +174,6 @@ for lisp in $lisps; do
     then
         echo '+++++ Clean build'
         rm -rf fasl.$lisp log.$lisp
-    fi
-
-    [ -n "$debug" ] && echo '+++++ Building for debugging'
-    [ -n "$lispmath" ] && echo '+++++ Using Common Lisp floating-point math functions'
-    [ -n "$nolispmath" ] && echo '+++++ NOT using Common Lisp floating-point math functions'
-
-    if [ -z "$reduce" ]
-    then
-        if [ -e './packages' ]; then export reduce=.
-        elif [ -e '../packages' ]; then export reduce=..
-        else echo 'Error: cannot find packages directory.  Please set $reduce.'; exit 1
-        fi
-    fi
-
-    if [ -z "$revision" ]
-    then
-        if type svnversion > /dev/null
-        then
-            # Try to use Subversion in the packages directory:
-            packages="$reduce/packages"
-            # If $packages is a symlink then follow it (if possible):
-            if [ -L $packages ] && type readlink > /dev/null
-            then
-                packages=$(readlink -n "$packages")
-            fi
-            revision=$(svnversion -n "$packages")
-            # Value may be (e.g.) 4123:4168MSP so extract the second number:
-            revision=${revision/#*:}     # delete first number and ":"
-            revision=${revision/%[A-Z]*} # delete trailing letters
-        fi
-        if [[ ! "$revision" =~ ^[[:digit:]]+$ ]]
-        then
-            # Try to parse the parent directory name:
-            revision=$(basename $(realpath ..))
-            shopt -s extglob
-            revision=${revision/#+([^[:digit:]])} # delete leading non-digits
-            revision=${revision/%+([^[:digit:]])} # delete trailing non-digits
-            shopt -u extglob
-        fi
-    fi
-    if [[ "$revision" =~ ^[[:digit:]]+$ ]]
-    then
-        echo '+++++ REDUCE revision number set to' $revision
-    else
-        echo '*** The REDUCE revision number cannot be set automatically.'
-        echo '    You can use the -r option to set it manually.'
-        unset -v revision
     fi
 
     mkdir -p log.$lisp           # -p avoids complaint if directory exists
@@ -216,7 +216,6 @@ EOF
             echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
             grep_errors bootstrap
         fi
-        echo $'\a'
     fi
 
     if [ -n "$bootstraponly" ]
@@ -470,6 +469,6 @@ EOF
 
     done
 
-    echo $'\n+++++ Built REDUCE.\a'
+    echo $'\n+++++ Built REDUCE.'
 
 done
