@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-22 14:45:23 franc>
+;; Time-stamp: <2026-02-22 16:40:27 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2760,19 +2760,26 @@ in vector-notation.  The value of U is returned."
 (flag '(sl::princ) 'sl::lose)
 
 (defun %prin1-id-to-string (u)
-  "Convert identifier U to a string including appropriate `!' escapes."
-  ;; Insert ! before an upper-case letter, leading digit or _, or
-  ;; special character (except _):
-  (coerce
-   (loop with s = (cl:symbol-name u) and c
-         for i below (cl:length s)
-         do (setq c (aref s i))
-         unless (or (upper-case-p c)    ; case-inverted!
-                    (and (not (eql i 0))
-                         (or (digit-char-p c) (char= c #\_))))
-         collect #\!
-         collect (%character-invert-case c))
-   'string))
+  "Convert identifier U to a string including appropriate ! escapes.
+Insert ! before an upper-case letter, leading digit or _, or later
+non-alphanumeric character (except _).
+Map any non-ASCII character to !#<hexcode>;, where <hexcode> is
+printed with 4 or 6 digits, as appropriate."
+  (concatenate
+   'string
+   (loop with s = (cl:symbol-name u) and not-first and cc fixnum
+         for c across s
+         do (setq c (%character-invert-case c)) ; case-inverted!
+         if (> (setq cc (char-code c)) 127)     ; non-ASCII
+         append (map 'list #'character
+                     (format nil "!#~(~[~4,'0x~;~6,'0x~]~);"
+                             (values (truncate cc #xFFFF)) cc))
+         else unless (or (lower-case-p c)
+                         (and not-first
+                              (or (digit-char-p c) (char= c #\_))))
+         collect #\! and collect c
+         else collect c
+         do (setq not-first t))))
 
 (declaim (ftype (cl:function (simple-string) simple-string)
                 %prin1-string-to-string))
@@ -2786,8 +2793,8 @@ where <hexcode> is printed with 4 or 6 digits, as appropriate."
    `(#\"
      ,@(loop with cc fixnum
              for c across s
-             if (char= c #\") append '(#\" #\")
-             else if (char= c #\#)
+             if (char= c #\") append '(#\" #\") ; " -> ""
+             else if (char= c #\#)              ; # -> #hash;
              append '(#\# #\h #\a #\s #\h #\;)
              else if (> (setq cc (char-code c)) 127) ; non-ASCII
              append (map 'list #'character
