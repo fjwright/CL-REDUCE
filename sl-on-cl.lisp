@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-20 18:18:03 franc>
+;; Time-stamp: <2026-02-22 14:45:23 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2778,17 +2778,23 @@ in vector-notation.  The value of U is returned."
                 %prin1-string-to-string))
 
 (defun %prin1-string-to-string (s)
-  "Add delimiting \"s and escape internal \"s as \"\" in string S."
-  (loop with p = 0 and q and v = (list "\"")
-        ;; v must be a new cons to allow destructive reverse
-        do
-        (setq q (position #\" s :start p))
-        (if q (incf q))
-        (setq v (cons "\"" (cons (subseq s p q) v))
-              p q)
-        while q
-        finally (return
-                  (cl:apply #'concatenate 'string (nreverse v)))))
+  "Add delimiting \"s and escape internal \"s as \"\" in string S.
+Print # as #hash; and map any non-ASCII character to #<hexcode>;,
+where <hexcode> is printed with 4 or 6 digits, as appropriate."
+  (concatenate
+   'string
+   `(#\"
+     ,@(loop with cc fixnum
+             for c across s
+             if (char= c #\") append '(#\" #\")
+             else if (char= c #\#)
+             append '(#\# #\h #\a #\s #\h #\;)
+             else if (> (setq cc (char-code c)) 127) ; non-ASCII
+             append (map 'list #'character
+                         (format nil "#~(~[~4,'0x~;~6,'0x~]~);"
+                                 (values (truncate cc #xFFFF)) cc))
+             else collect c)
+     #\")))
 
 (declaim (ftype (cl:function (double-float) simple-string)
                 %prin-float-to-string))
