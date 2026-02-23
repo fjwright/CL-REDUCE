@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-23 17:53:44 franc>
+;; Time-stamp: <2026-02-23 18:15:20 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -609,9 +609,55 @@ occurs:
     (setq u (cl:mapcar #'character u))
     (%compress)))
 
-(declaim (ftype (cl:function (t) list) explode))
+(declaim (ftype (cl:function (t) list) explode %explode))
 
-(export 'explode)                       ; used internally
+(export 'explode)                       ; used internally ???
+
+(defun %explode (u)
+  "Explode recursively to a list of characters."
+  ;; Add support for vectors?  Share code with print routines?
+  (if (consp u)
+      ;; Exploding a cons:
+      (let ((ll (list (%explode (car u)) (list #\() )))
+        (loop while (consp (setq u (cdr u)))
+              do (push (list #\Space) ll)
+              do (push (%explode (car u)) ll))
+        (when u
+          (push (list #\Space #\. #\Space) ll)
+          (push (%explode u) ll))
+        (push (list #\)) ll)
+        (cl:apply #'nconc (nreverse ll)))
+      ;; Exploding an atom:
+      (typecase u
+        (string
+         ;; Add leading and trailing " and convert internal " to "":
+         `(#\"
+           ,@(loop for c across u
+                   if (char= c #\") append '(#\" #\") ; " -> ""
+                   else if (char= c #\#)              ; # -> #hash;
+                   append '(#\# #\H #\A #\S #\H #\;)
+                   else collect (%character-invert-case c))
+           #\"))
+        (integer
+         (cl:map 'list #'identity
+                 (princ-to-string u)))
+        (cl:float
+         (cl:map 'list #'%character-invert-case
+                 (%prin-float-to-string u)))
+        (t
+         ;; Identifier, function-pointer, etc -- insert !
+         ;; before a non-ASCII character, upper-case ASCII
+         ;; letter, leading digit or _, or non-alphanumeric
+         ;; character (except _):
+         (loop with s = (princ-to-string u) and c
+               for i below (cl:length s)
+               do (setq c (aref s i))
+               unless (and (<= (char-code c) 127)      ; ASCII
+                           (or (upper-case-p c) ; case-inverted!
+                               (and (not (eql i 0))
+                                    (or (digit-char-p c) (char= c #\_)))))
+               collect #\!
+               collect c)))))
 
 (defun explode (u)                      ; PSL spec
   "(explode U:any): id-list expr
@@ -623,53 +669,7 @@ printing (using prin1) to a list.  E.g.
 \(f o o)
 2 lisp> (explode '(a . b))
 \(!( a !  !. !  b !))"
-  ;; Add support for vectors?  Share code with print routines?
-  (labels
-      ((%explode (u)
-         "Explode recursively to a list of CL characters."
-         (if (consp u)
-             ;; Exploding a cons:
-             (let ((ll (list (%explode (car u)) (list #\() )))
-               (loop while (consp (setq u (cdr u)))
-                     do (push (list #\Space) ll)
-                     do (push (%explode (car u)) ll))
-               (when u
-                 (push (list #\Space #\. #\Space) ll)
-                 (push (%explode u) ll))
-               (push (list #\)) ll)
-               (cl:apply #'nconc (nreverse ll)))
-             ;; Exploding an atom:
-             (typecase u
-               (string
-                ;; Add leading and trailing " and convert internal " to "":
-                `(#\"
-                  ,@(loop for c across u
-                          if (char= c #\") append '(#\" #\") ; " -> ""
-                          else if (char= c #\#) ; # -> #hash;
-                          append '(#\# #\H #\A #\S #\H #\;)
-                          else collect (%character-invert-case c))
-                  #\"))
-               (integer
-                (cl:map 'list #'identity
-                        (princ-to-string u)))
-               (cl:float
-                (cl:map 'list #'%character-invert-case
-                        (%prin-float-to-string u)))
-               (t
-                ;; Identifier, function-pointer, etc -- insert !
-                ;; before a non-ASCII character, upper-case ASCII
-                ;; letter, leading digit or _, or non-alphanumeric
-                ;; character (except _):
-                (loop with s = (princ-to-string u) and c
-                      for i below (cl:length s)
-                      do (setq c (aref s i))
-                      unless (and (<= (char-code c) 127) ; ASCII
-                                  (or (upper-case-p c) ; case-inverted!
-                                      (and (not (eql i 0))
-                                           (or (digit-char-p c) (char= c #\_)))))
-                      collect #\!
-                      collect c))))))
-    (cl:mapcar #'%intern-character-preserve-case (%explode u))))
+  (cl:mapcar #'%intern-character-preserve-case (%explode u)))
 
 (defvar %gensym-counter% 0
   "A non-negative integer used in constructing the name of the next
@@ -3354,8 +3354,8 @@ characters involved, e.g. explodecn \"#alpha;\" => (945)."
 (defun sl::exploden (u)
   "Like explode but returns a list of integer codes.
 Note some codes can be bigger than 0xff."
-  (cl:mapcar #'(lambda (x) (cl:char-code (character x)))
-             (explode u)))
+  (cl:mapcar #'(lambda (c) (cl:char-code (%character-invert-case c)))
+             (%explode u)))
 
 (declaim (inline concat2)
          (ftype (cl:function (string string) ; might not be simple!
