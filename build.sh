@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-02-21 10:56:23 franc>
+# Time-stamp: <2026-02-23 15:08:47 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL) that
 # can save a memory image, namely SBCL, CLISP and CCL.
@@ -45,11 +45,12 @@ function help {
     echo 'Option -n do NOT use Common Lisp floating-point math functions.'
     echo 'Option -b builds only the bootstrap REDUCE image.'
     echo 'Option -o builds only the core REDUCE packages.'
+    echo 'Option -i builds only the core packages and REDUCE image.'
     echo 'Option -h displays this help message and exits.'
     exit 1
 }
 
-while getopts r:cfdmnboh option
+while getopts r:cfdmnboih option
 do
     case $option in
         r) revision=$OPTARG;;
@@ -60,6 +61,7 @@ do
         n) nolispmath='(push :NOLISPMATH *features*)';;
         b) bootstraponly=true;;
         o) coreonly=true;;
+        i) imageonly=true;;
         h) help;;
         ?) exit 1;;
     esac
@@ -420,6 +422,12 @@ EOF
         echo $'\n***** Building the REDUCE image failed'; exit 1
     else
         echo $'\n+++++ Built the REDUCE image file\n'
+    fi
+
+    if [ -n "$imageonly" ]
+    then
+        echo 'Core packages and REDUCE image only build requested.'
+        continue
     fi
 
     # Finally, compile the "noncore" packages using reduce.img rather than

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-22 16:40:27 franc>
+;; Time-stamp: <2026-02-23 17:02:06 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -644,8 +644,10 @@ printing (using prin1) to a list.  E.g.
                 ;; Add leading and trailing " and convert internal " to "":
                 `(#\"
                   ,@(loop for c across u
-                          collect (%character-invert-case c)
-                          when (char= c #\") collect #\")
+                          if (char= c #\") append '(#\" #\") ; " -> ""
+                          else if (char= c #\#) ; # -> #hash;
+                          append '(#\# #\H #\A #\S #\H #\;)
+                          else collect (%character-invert-case c))
                   #\"))
                (integer
                 (cl:map 'list #'identity
