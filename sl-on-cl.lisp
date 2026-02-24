@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-24 15:53:48 franc>
+;; Time-stamp: <2026-02-24 17:47:47 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3310,33 +3310,59 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
     (t (cl:map 'list #'%intern-character-preserve-case
                (princ-to-string u)))))
 
+(defun %intern-char-ASCII-down-else-invert-case (c)
+  (%intern-character-invert-case
+   (if (<= (char-code c) 127)           ; ASCII
+       (char-upcase c)
+       c)))
+
+(defun %intern-char-ASCII-up-else-invert-case (c)
+  (%intern-character-invert-case
+   (if (<= (char-code c) 127)           ; ASCII
+       (char-downcase c)
+       c)))
+
 (%defalias sl::explodec explode2)       ; see "pslrend.red"
 
 (defun sl::explode2uc (u)               ; see "pslrend.red"
   "Like explode2 but with ASCII letters up-cased."
-  (cl:map 'list
-          #'(lambda (c)
-              (%intern-character-invert-case
-               (if (<= (char-code c) 127) ; ASCII
-                   (char-upcase c)
-                   c)))
-          (typecase u
-            (string u)
-            (cl:float (%prin-float-to-string u))
-            (t (princ-to-string u)))))
+  (typecase u
+    (string
+     (cl:map 'list
+             #'%intern-char-ASCII-down-else-invert-case
+             u))
+    (cl:float
+     (cl:map 'list
+             #'%intern-char-ASCII-down-else-invert-case
+             (%prin-float-to-string u)))
+    (t
+     (cl:map 'list
+             #'(lambda (c)
+                 (%intern-character-preserve-case
+                  (if (<= (char-code c) 127) ; ASCII
+                      (char-downcase c)
+                      c)))
+             (princ-to-string u)))))
 
 (defun sl::explode2lc (u)               ; see "pslrend.red"
   "Like explode2 but with ASCII letters down-cased."
-  (cl:map 'list
-          #'(lambda (c)
-              (%intern-character-invert-case
-               (if (<= (char-code c) 127) ; ASCII
-                   (char-downcase c)
-                   c)))
-          (typecase u
-            (string u)
-            (cl:float (%prin-float-to-string u))
-            (t (princ-to-string u)))))
+  (typecase u
+    (string
+     (cl:map 'list
+             #'%intern-char-ASCII-up-else-invert-case
+             u))
+    (cl:float
+     (cl:map 'list
+             #'%intern-char-ASCII-up-else-invert-case
+             (%prin-float-to-string u)))
+    (t
+     (cl:map 'list
+             #'(lambda (c)
+                 (%intern-character-preserve-case
+                  (if (<= (char-code c) 127) ; ASCII
+                      (char-upcase c)
+                      c)))
+             (princ-to-string u)))))
 
 (declaim (ftype (cl:function (unsigned-byte) list) sl::explodehex))
 
