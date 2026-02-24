@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-02-23 15:08:47 franc>
+# Time-stamp: <2026-02-24 14:54:36 franc>
 
 # Build REDUCE on supported implementations of Common Lisp (CL) that
 # can save a memory image, namely SBCL, CLISP and CCL.
@@ -178,7 +178,7 @@ for lisp in $lisps; do
         rm -rf fasl.$lisp log.$lisp
     fi
 
-    mkdir -p log.$lisp           # -p avoids complaint if directory exists
+    mkdir -p log.$lisp       # -p avoids complaint if directory exists
     mkdir -p fasl.$lisp
 
     #################################
@@ -343,6 +343,8 @@ EOF
     ###############################
 
     echo $'\n+++++ Building the REDUCE image file...'
+
+    rm -f fasl.$lisp/reduce.$saveext
 
     # Start a new invocation of Lisp and load the key modules compiled
     # above.  Then save a final REDUCE image that will be used below to

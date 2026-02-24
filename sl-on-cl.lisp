@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-23 18:15:20 franc>
+;; Time-stamp: <2026-02-24 15:53:48 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -609,9 +609,7 @@ occurs:
     (setq u (cl:mapcar #'character u))
     (%compress)))
 
-(declaim (ftype (cl:function (t) list) explode %explode))
-
-(export 'explode)                       ; used internally ???
+(declaim (ftype (cl:function (t) list) %explode sl::explode))
 
 (defun %explode (u)
   "Explode recursively to a list of characters."
@@ -659,7 +657,7 @@ occurs:
                collect #\!
                collect c)))))
 
-(defun explode (u)                      ; PSL spec
+(defun sl::explode (u)                  ; PSL spec
   "(explode U:any): id-list expr
 Explode returns a list of interned single-character identifiers
 representing the characters required to print the S-expression U in a
@@ -3315,24 +3313,30 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 (%defalias sl::explodec explode2)       ; see "pslrend.red"
 
 (defun sl::explode2uc (u)               ; see "pslrend.red"
-  "Upper-case version of explode2."
-  ;; NB: downcase because of symbol name case inversion!
-  (cl:map 'list #'%intern-character-preserve-case
-          (cl:string-downcase
-           (typecase u
-             (string u)
-             (cl:float (%prin-float-to-string u))
-             (t (princ-to-string u))))))
+  "Like explode2 but with ASCII letters up-cased."
+  (cl:map 'list
+          #'(lambda (c)
+              (%intern-character-invert-case
+               (if (<= (char-code c) 127) ; ASCII
+                   (char-upcase c)
+                   c)))
+          (typecase u
+            (string u)
+            (cl:float (%prin-float-to-string u))
+            (t (princ-to-string u)))))
 
-(defun sl::explode2lc (u)               ; defined in "pslrend.red"
-  "Lower-case version of explode2."
-  ;; NB: upcase because of symbol name case inversion!
-  (cl:map 'list #'%intern-character-preserve-case
-          (cl:string-upcase
-           (typecase u
-             (string u)
-             (cl:float (%prin-float-to-string u))
-             (t (princ-to-string u))))))
+(defun sl::explode2lc (u)               ; see "pslrend.red"
+  "Like explode2 but with ASCII letters down-cased."
+  (cl:map 'list
+          #'(lambda (c)
+              (%intern-character-invert-case
+               (if (<= (char-code c) 127) ; ASCII
+                   (char-downcase c)
+                   c)))
+          (typecase u
+            (string u)
+            (cl:float (%prin-float-to-string u))
+            (t (princ-to-string u)))))
 
 (declaim (ftype (cl:function (unsigned-byte) list) sl::explodehex))
 
@@ -3346,16 +3350,18 @@ Hex digits are represented as identifiers using lower case letters."
 (declaim (ftype (cl:function (t) list) sl::explodecn sl::exploden))
 
 (defun sl::explodecn (u)
-  "Like explodec but returns a list of the numeric codes of the
-characters involved, e.g. explodecn \"#alpha;\" => (945)."
-  (cl:mapcar #'(lambda (x) (cl:char-code (character x)))
-             (explode2 u)))
+  "Like explodec/explode2 but return a list of numeric character codes,
+e.g. explodecn \"#alpha;\" => (945)."
+  (cl:mapcar
+   #'(lambda (x) (cl:char-code (%character-invert-case (character x))))
+   (explode2 u)))
 
 (defun sl::exploden (u)
-  "Like explode but returns a list of integer codes.
-Note some codes can be bigger than 0xff."
-  (cl:mapcar #'(lambda (c) (cl:char-code (%character-invert-case c)))
-             (%explode u)))
+  "Like explode but return a list of numeric character codes,
+e.g. exploden \"#alpha;\" => (945)."
+  (cl:mapcar
+   #'(lambda (c) (cl:char-code (%character-invert-case c)))
+   (%explode u)))
 
 (declaim (inline concat2)
          (ftype (cl:function (string string) ; might not be simple!
