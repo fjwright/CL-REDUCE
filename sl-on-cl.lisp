@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-24 17:47:47 franc>
+;; Time-stamp: <2026-02-25 09:29:44 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -233,9 +233,9 @@ documentation string for OLDNAME."
 
 (declaim (ftype (cl:function (t t) boolean) eqcar))
 
-(declaim (ftype (cl:function (character) character) %character-invert-case))
+(declaim (ftype (cl:function (character) character) %char-invert-case))
 
-(defun %character-invert-case (c)
+(defun %char-invert-case (c)
   "Invert the case of character C (if it is a letter)."
   (if (cl:both-case-p c)
       (if (cl:lower-case-p c)
@@ -248,18 +248,18 @@ documentation string for OLDNAME."
 (defun %string-invert-case (s)
   "Return a copy of string S with the case of each letter inverted."
   ;; The consequences are undefined if a symbol name is ever modified!
-  (cl:map 'simple-string #'%character-invert-case s))
+  (cl:map 'simple-string #'%char-invert-case s))
 
 (declaim (ftype (cl:function (character) symbol)
-                %intern-character-preserve-case %intern-character-invert-case))
+                %intern-char-preserve-case %intern-char-invert-case))
 
-(defun %intern-character-preserve-case (c)
+(defun %intern-char-preserve-case (c)
   "Convert character C to an interned (case-preserved) symbol."
   (values (cl:intern (string c) :sl)))
 
-(defun %intern-character-invert-case (c)
+(defun %intern-char-invert-case (c)
   "Convert character C to an interned (case-inverted) symbol."
-  (values (cl:intern (string (%character-invert-case c)) :sl)))
+  (values (cl:intern (string (%char-invert-case c)) :sl)))
 
 
 ;;; Elementary Predicates
@@ -569,7 +569,7 @@ occurs:
                       (setq u (cdr u))
                       (when (not (and u (char= (car u) #\"))) ; end of string
                         (return-from %compress
-                          (cl:map 'string #'%character-invert-case
+                          (cl:map 'string #'%char-invert-case
                                   (nreverse newu)))))
                     (push (car u) newu))
               ;; String not terminated:
@@ -634,13 +634,13 @@ occurs:
                    if (char= c #\") append '(#\" #\") ; " -> ""
                    else if (char= c #\#)              ; # -> #hash;
                    append '(#\# #\H #\A #\S #\H #\;)
-                   else collect (%character-invert-case c))
+                   else collect (%char-invert-case c))
            #\"))
         (integer
          (cl:map 'list #'identity
                  (princ-to-string u)))
         (cl:float
-         (cl:map 'list #'%character-invert-case
+         (cl:map 'list #'%char-invert-case
                  (%prin-float-to-string u)))
         (t
          ;; Identifier, function-pointer, etc -- insert !
@@ -667,7 +667,7 @@ printing (using prin1) to a list.  E.g.
 \(f o o)
 2 lisp> (explode '(a . b))
 \(!( a !  !. !  b !))"
-  (cl:mapcar #'%intern-character-preserve-case (%explode u)))
+  (cl:mapcar #'%intern-char-preserve-case (%explode u)))
 
 (defvar %gensym-counter% 0
   "A non-negative integer used in constructing the name of the next
@@ -2771,7 +2771,7 @@ printed with 4 or 6 digits, as appropriate."
    'string
    (loop with s = (cl:symbol-name u) and not-first and cc fixnum
          for c across s
-         do (setq c (%character-invert-case c)) ; case-inverted!
+         do (setq c (%char-invert-case c)) ; case-inverted!
          if (> (setq cc (char-code c)) 127)     ; non-ASCII
          append (map 'list #'character
                      (format nil "!#~(~[~4,'0x~;~6,'0x~]~);"
@@ -3016,9 +3016,9 @@ Comments delimited by % and end-of-line are not transparent to READCH."
             (setq %posn% (if (char= c #\Newline) 0 (1+ %posn%))))
           (if *raise
               ;; down-case (because REDUCE is now LC, not UC!)
-              (%intern-character-preserve-case (cl:char-upcase c))
+              (%intern-char-preserve-case (cl:char-upcase c))
               ;; preserve case
-              (%intern-character-invert-case c))))))
+              (%intern-char-invert-case c))))))
 
 (declaim (inline %default-write-stream)
          (ftype (cl:function () filehandle) %default-write-stream))
@@ -3304,23 +3304,43 @@ A function hung on the garbage collection hook."
 PRIN2-like version of EXPLODE without escapes or double quotes."
   ;; NB: invert case because of symbol name case inversion!
   (typecase u
-    (string (cl:map 'list #'%intern-character-invert-case u))
-    (cl:float (cl:map 'list #'%intern-character-invert-case
+    (string (cl:map 'list #'%intern-char-invert-case u))
+    (cl:float (cl:map 'list #'%intern-char-invert-case
                       (%prin-float-to-string u)))
-    (t (cl:map 'list #'%intern-character-preserve-case
+    (t (cl:map 'list #'%intern-char-preserve-case
                (princ-to-string u)))))
 
-(defun %intern-char-ASCII-down-else-invert-case (c)
-  (%intern-character-invert-case
+(defun %intern-char-ASCII-down-else-preserve-case (c)
+  "Convert character C to an interned symbol.
+If C is an ASCII letter then lower its case."
+  (%intern-char-preserve-case
+   (if (<= (char-code c) 127)           ; ASCII
+       (char-downcase c)
+       c)))
+
+(defun %intern-char-ASCII-up-else-preserve-case (c)
+  "Convert character C to an interned symbol.
+If C is an ASCII letter then raise its case."
+  (%intern-char-preserve-case
    (if (<= (char-code c) 127)           ; ASCII
        (char-upcase c)
        c)))
 
-(defun %intern-char-ASCII-up-else-invert-case (c)
-  (%intern-character-invert-case
+(defun %intern-char-ASCII-down-else-invert-case (c)
+  "Convert character C to an interned symbol.
+If C is an ASCII letter then lower its case, otherwise invert it."
+  (%intern-char-preserve-case
    (if (<= (char-code c) 127)           ; ASCII
        (char-downcase c)
-       c)))
+       (%char-invert-case c))))
+
+(defun %intern-char-ASCII-up-else-invert-case (c)
+  "Convert character C to an interned symbol.
+If C is an ASCII letter then raise its case, otherwise invert it."
+  (%intern-char-preserve-case
+   (if (<= (char-code c) 127)           ; ASCII
+       (char-upcase c)
+       (%char-invert-case c))))
 
 (%defalias sl::explodec explode2)       ; see "pslrend.red"
 
@@ -3337,11 +3357,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
              (%prin-float-to-string u)))
     (t
      (cl:map 'list
-             #'(lambda (c)
-                 (%intern-character-preserve-case
-                  (if (<= (char-code c) 127) ; ASCII
-                      (char-downcase c)
-                      c)))
+             #'%intern-char-ASCII-down-else-preserve-case
              (princ-to-string u)))))
 
 (defun sl::explode2lc (u)               ; see "pslrend.red"
@@ -3357,11 +3373,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
              (%prin-float-to-string u)))
     (t
      (cl:map 'list
-             #'(lambda (c)
-                 (%intern-character-preserve-case
-                  (if (<= (char-code c) 127) ; ASCII
-                      (char-upcase c)
-                      c)))
+             #'%intern-char-ASCII-up-else-preserve-case
              (princ-to-string u)))))
 
 (declaim (ftype (cl:function (unsigned-byte) list) sl::explodehex))
@@ -3369,7 +3381,7 @@ PRIN2-like version of EXPLODE without escapes or double quotes."
 (defun sl::explodehex (u)
   "Explode an unsigned integer to a list of hexadecimal digits.
 Hex digits are represented as identifiers using lower case letters."
-  (cl:map 'list #'%intern-character-preserve-case
+  (cl:map 'list #'%intern-char-preserve-case
           (with-output-to-string (s)
             (write u :base 16 :stream s))))
 
@@ -3379,14 +3391,14 @@ Hex digits are represented as identifiers using lower case letters."
   "Like explodec/explode2 but return a list of numeric character codes,
 e.g. explodecn \"#alpha;\" => (945)."
   (cl:mapcar
-   #'(lambda (x) (cl:char-code (%character-invert-case (character x))))
+   #'(lambda (x) (cl:char-code (%char-invert-case (character x))))
    (explode2 u)))
 
 (defun sl::exploden (u)
   "Like explode but return a list of numeric character codes,
 e.g. exploden \"#alpha;\" => (945)."
   (cl:mapcar
-   #'(lambda (c) (cl:char-code (%character-invert-case c)))
+   #'(lambda (c) (cl:char-code (%char-invert-case c)))
    (%explode u)))
 
 (declaim (inline concat2)
@@ -3441,7 +3453,7 @@ lisp> (string2list \"STRING\")
       ;; Should 128 -> nil as specified for PSL?
       (code-char x)
       ;; (%error "~d is not a character code" x))
-      (%character-invert-case (character x))))
+      (%char-invert-case (character x))))
 
 (declaim (inline sl::list2string)
          (ftype (cl:function (list) simple-string)
@@ -3534,8 +3546,8 @@ id NIL is always found by (int2id 128)."
   ;; Defined in csl.red as
   ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
   ;;   intern list2string list x;
-  ;; (unless (= i 128) (%intern-character (code-char i)))
-  (%intern-character-invert-case (code-char i)))
+  ;; (unless (= i 128) (%intern-char (code-char i)))
+  (%intern-char-invert-case (code-char i)))
 
 (declaim (inline sl::id2int sl::char-code)
          (ftype (cl:function (symbol) (unsigned-byte 8)) sl::id2int sl::char-code))
@@ -3547,7 +3559,7 @@ Returns the id space position of D as a LISP integer."
   ;; inline procedure id2int x; % Gets first octet of UTF-8 form of name
   ;;   car string2list x;
   ;; (if d (cl:char-code (aref (symbol-name d) 0)) 128)
-  (cl:char-code (%character-invert-case (aref (cl:symbol-name d) 0))))
+  (cl:char-code (%char-invert-case (aref (cl:symbol-name d) 0))))
 
 (defun sl::char-code (c)                ; PSL
   "Returns the code attribute of C. (In PSL this function is an identity function.)"
