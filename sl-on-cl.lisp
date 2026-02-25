@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-25 09:29:44 franc>
+;; Time-stamp: <2026-02-25 16:37:41 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3535,18 +3535,12 @@ function with string-upper-bound, documented below.")
   (values (cl:intern (cl:string-downcase (cl:symbol-name c)) :sl)))
 
 (declaim (inline sl::int2id)
-         (ftype (cl:function ((unsigned-byte 8)) symbol) sl::int2id))
+         (ftype (cl:function ((unsigned-byte 21)) symbol) sl::int2id))
 
-(defun sl::int2id (i)                   ; PSL
-  "(int2id I:integer): id expr
-Converts an integer to an id; this refers to the I'th id in the id space. Since
-0 ... 255 correspond to ASCII characters, int2id with an argument in this
-range converts an ASCII code to the corresponding single character id. The
-id NIL is always found by (int2id 128)."
-  ;; Defined in csl.red as
-  ;; inline procedure int2id x; % Turns 8-bit value into name. Only OK is under 0x80
-  ;;   intern list2string list x;
-  ;; (unless (= i 128) (%intern-char (code-char i)))
+(defun sl::int2id (i)
+  "Convert an integer to an identifier.
+More precisely, convert any Unicode code point (21-bit unsigned
+integer) to the corresponding Standard Lisp character (identifier)."
   (%intern-char-invert-case (code-char i)))
 
 (declaim (inline sl::id2int sl::char-code)
