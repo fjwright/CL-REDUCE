@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-25 16:37:41 franc>
+;; Time-stamp: <2026-02-26 15:03:39 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -538,7 +538,7 @@ occurs:
   ;; NB: Doesn't handle a dotted pair correctly, but it doesn't seem
   ;; to matter!
   (labels
-      ((%compress () ; This internal function recursively processes lists.
+      ((%compress ()     ; Recursively process lists of CL characters.
          ;; Concatenate the characters into a string and then handle any !
          ;; characters as follows:
          ;; A string begins with " and should retain any ! characters without
@@ -564,14 +564,19 @@ occurs:
              ;; STRING?
              ((char= u0 #\")
               ;; In Standard Lisp, "" in a string represents ":
-              (loop with newu while (setq u (cdr u)) do
+              (loop while (setq u (cdr u)) do
                     (when (char= (car u) #\")
                       (setq u (cdr u))
                       (when (not (and u (char= (car u) #\"))) ; end of string
                         (return-from %compress
-                          (cl:map 'string #'%char-invert-case
-                                  (nreverse newu)))))
-                    (push (car u) newu))
+                          (cl:map 'string #'%char-invert-case newu))))
+                    collect (car u) into newu
+                    when (char= (car u) #\#) ; compress #hash; to #
+                    do (loop with v = u
+                             for w across "HASH;"
+                             while (setq v (cdr v))
+                             when (char/= (car v) w) return nil
+                             finally (setq u v)))
               ;; String not terminated:
               (%error "Poorly formed S-expression in COMPRESS"))
              ;; NUMBER?
