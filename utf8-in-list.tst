@@ -13,6 +13,7 @@
 
 lisp;
 on echo;
+fluid '(y);                             % for REDUCE on Common Lisp
 
 % test line overflow
 
@@ -111,7 +112,7 @@ on echo;
 % Self-consistency checks:
   foreach x in list(w1, intern w1) do <<
      terpri();
-     prin2 "Test using ";
+     prin2 "Self-consistency tests using ";
      prin2t if stringp x then "strings" else "symbols";
 
      prin2t "These lengths should be equal:";
@@ -146,7 +147,6 @@ on echo;
      % end;
 
      % REDUCE read write = identity test:
-     % CSL passes this test; CL does not!
      begin scalar y;
         out "utf8-in-list.tmp";
         prin2 "y := "; if idp x then prin2 "'"; prin1 x; prin2t "$";
@@ -155,11 +155,10 @@ on echo;
         in "utf8-in-list.tmp";
         prin2 "in prin1 = identity is ";
         prin2t if intern y eq intern x then "true" else "*FALSE*";
-        % pause;
      end;
   >>;
 
-  %% Final $ here to suppress echo from in:
+  % Final $ here to suppress echo from in:
 >>$
 
 end;
