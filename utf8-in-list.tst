@@ -114,26 +114,6 @@ on echo;
      prin2 "Test using ";
      prin2t if stringp x then "strings" else "symbols";
 
-     prin2 "compress explode = identity is ";
-     % intern necessary for symbols (and works with strings):
-     prin2t if intern compress explode x eq intern x
-     then "true" else "*FALSE*";
-     prin2 "compress int2id exploden = identity is ";
-     prin2t if intern compress mapcar(exploden x, function int2id) eq intern x
-     then "true" else "*FALSE*";
-
-     % read prin1 = identity test:
-     begin scalar !*echo, y;
-        wrs open("2014-03-17-utf8-in-list.tmp", 'output);
-        print x;
-        close wrs nil;
-        rds open("2014-03-17-utf8-in-list.tmp", 'input);
-        y := read();
-        close rds nil;
-        prin2 "read prin1 = identity is ";
-        prin2t if intern y eq intern x then "true" else "*FALSE*";
-     end;
-
      prin2t "These lengths should be equal:";
      prin2 "length explode  = "; prin2t length explode x;
      prin2 "length exploden = "; prin2t length exploden x;
@@ -143,8 +123,43 @@ on echo;
      prin2 "length explodecn  = "; prin2t length explodecn x;
      prin2 "length explode2uc = "; prin2t length explode2uc x;
      prin2 "length explode2lc = "; prin2t length explode2lc x;
+
+     prin2 "compress explode = identity is ";
+     % intern necessary for symbols (and works with strings):
+     prin2t if intern compress explode x eq intern x
+     then "true" else "*FALSE*";
+     prin2 "compress int2id exploden = identity is ";
+     prin2t if intern compress mapcar(exploden x, function int2id) eq intern x
+     then "true" else "*FALSE*";
+
+     % Lisp read write = identity test:
+     % No version of REDUCE currently passes this test.
+     % begin scalar !*echo, y;
+     %    wrs open("2014-03-17-utf8-in-list.tmp", 'output);
+     %    print x;
+     %    close wrs nil;
+     %    rds open("2014-03-17-utf8-in-list.tmp", 'input);
+     %    y := read();
+     %    close rds nil;
+     %    prin2 "read prin1 = identity is ";
+     %    prin2t if intern y eq intern x then "true" else "*FALSE*";
+     % end;
+
+     % REDUCE read write = identity test:
+     % CSL passes this test; CL does not!
+     begin scalar y;
+        out "utf8-in-list.tmp";
+        prin2 "y := "; if idp x then prin2 "'"; prin1 x; prin2t "$";
+        prin2t "end$";
+        shut "utf8-in-list.tmp";
+        in "utf8-in-list.tmp";
+        prin2 "in prin1 = identity is ";
+        prin2t if intern y eq intern x then "true" else "*FALSE*";
+        % pause;
+     end;
   >>;
 
-  terpri() >>;
+  %% Final $ here to suppress echo from in:
+>>$
 
 end;
