@@ -133,8 +133,8 @@ fluid '(y);                             % for REDUCE on Common Lisp
      prin2t if intern compress mapcar(exploden x, function int2id) eq intern x
      then "true" else "*FALSE*";
 
-     % Lisp read write = identity test:
-     % No version of REDUCE currently passes this test.
+     % Lisp read prin1 = identity test:
+     % No version of REDUCE currently passes this test!
      % begin scalar !*echo, y;
      %    wrs open("2014-03-17-utf8-in-list.tmp", 'output);
      %    print x;
@@ -146,15 +146,16 @@ fluid '(y);                             % for REDUCE on Common Lisp
      %    prin2t if intern y eq intern x then "true" else "*FALSE*";
      % end;
 
-     % REDUCE read write = identity test:
-     begin scalar y;
-        out "utf8-in-list.tmp";
+     % REDUCE in prin1 = identity test:
+     begin scalar y, tmpfile := "utf8-in-list.tmp";
+        out tmpfile;
         prin2 "y := "; if idp x then prin2 "'"; prin1 x; prin2t "$";
         prin2t "end$";
-        shut "utf8-in-list.tmp";
-        in "utf8-in-list.tmp";
+        shut tmpfile;
+        in tmpfile;
         prin2 "in prin1 = identity is ";
         prin2t if intern y eq intern x then "true" else "*FALSE*";
+        system concat2("rm ", tmpfile);
      end;
   >>;
 
