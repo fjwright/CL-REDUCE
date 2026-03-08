@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-02-26 15:03:39 franc>
+;; Time-stamp: <2026-03-08 17:59:11 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2359,10 +2359,18 @@ EXPR PROCEDURE EVLIS(U);
 (export 'eval)                          ; used internally
 
 (defun eval (u)
-  "Treat (function foo) the same as the operator foo.
-Otherwise revert to the Common Lisp eval."
-  (if (and (consp u) (functionp (car u)))
-      (cl:apply (car u) (evlis (cdr u)))
+  "Treat a lambda expression as a constant.
+Do this both on its own and as a function argument.
+Otherwise call Common Lisp eval."
+  (if (consp u)
+      (let ((caru (car u)))
+        (cond ((eq caru 'quote) (cadr u))
+              ((eq caru 'lambda) u)
+              ((or (consp caru)         ; lambda form
+                   (macro-function caru)
+                   (special-operator-p caru))
+               (cl:eval u))
+              (t (cl:apply caru (evlis (cdr u))))))
       (cl:eval u)))
 
 ;; EVAL(U:any):any eval, spread
