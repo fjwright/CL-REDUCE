@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-03-09 17:36:55 franc>
+;; Time-stamp: <2026-03-11 17:22:21 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1736,14 +1736,6 @@ Returns -U.
 EXPR PROCEDURE MINUS(U);
    DIFFERENCE(0, U);")
 
-;; (declaim (ftype (cl:function (&rest number) number) sl::plus))
-
-;; (%defalias sl::plus cl:+
-;;   "PLUS([U:number]):number noeval, nospread, or macro
-;; Forms the sum of all its arguments.
-;; MACRO PROCEDURE PLUS(U);
-;;    EXPAND(CDR U, 'PLUS2);")
-
 (dm sl::plus (u)
     ;;   "PLUS([U:number]):number noeval, nospread, or macro
     ;; Forms the sum of all its arguments.
@@ -1797,25 +1789,6 @@ Returns the value of U less 1. If U is a FLOAT type number, the
 value returned is U less 1.0.
 EXPR PROCEDURE SUB1(U);
    DIFFERENCE(U, 1);")
-
-;; (declaim (ftype (cl:function (&rest number) number) sl::times))
-
-;; #+CLISP
-;; (progn
-;;   (declaim (inline sl::times))
-;;   (defun sl::times (&rest args)
-;;     "TIMES([U:number]):number noeval, nospread, or macro
-;; Returns the product of all its arguments.
-;; MACRO PROCEDURE TIMES(U);
-;;    EXPAND(CDR U, 'TIMES2);"
-;;     (ext:without-floating-point-underflow (cl:apply #'* args))))
-
-;; #-CLISP
-;; (%defalias sl::times cl:*
-;;   "TIMES([U:number]):number noeval, nospread, or macro
-;; Returns the product of all its arguments.
-;; MACRO PROCEDURE TIMES(U);
-;;    EXPAND(CDR U, 'TIMES2);")
 
 (dm sl::times (u)
     ;;   "TIMES([U:number]):number noeval, nospread, or macro
