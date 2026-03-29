@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-03-11 17:22:21 franc>
+;; Time-stamp: <2026-03-29 11:24:51 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4350,6 +4350,9 @@ When all done, execute FASLEND;~2%" name))
 
 (defun begin ())                        ; redefined in "clrend.red"
 
+(defvar sl::no_init_file nil
+  "If non-nil then ignore REDUCE initialisation file.")
+
 ;; From: Common Lisp the Language, 2nd Edition
 ;; https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node341.html
 
@@ -4389,6 +4392,8 @@ When all done, execute FASLEND;~2%" name))
   ;; Enable compilation only if *comp is true:
   (setq sb-ext:*evaluator-mode*
         (if *comp :compile :interpret))
+  (when (member "--no-rcfile" (rest sb-ext:*posix-argv*) :test #'string=)
+    (setq sl::no_init_file t))
   (standard-lisp)
   (with-simple-restart
       (abort "Exit REDUCE.")
