@@ -1,7 +1,7 @@
 # REDUCE on Common Lisp
 
 **[Francis Wright](https://sites.google.com/site/fjwcentaur)**<br/>
-Time-stamp: <2026-03-29 17:07:33 franc>
+Time-stamp: <2026-03-31 17:12:49 franc>
 
 * [Building REDUCE](#building-reduce)
 * [Running REDUCE](#running-reduce)
@@ -66,7 +66,7 @@ Beware that input editing may not work using the shell interface; possible solut
 
 REDUCE should run from any directory and the command to start it can be specified by using either an absolute or a relative file path.  **But note that neither a hard nor a symbolic link will work!**  Alternatively, you can add the `common-lisp` directory to your command search path and then run REDUCE via the appropriate command from any directory.
 
-At the start of a REDUCE session, the system checks for the existence of a user's startup file, and if possible executes the REDUCE statements in it; see [REDUCE Startup File](https://reduce-algebra.sourceforge.io/manual-lookup.php?REDUCE%20Startup%20File) in the REDUCE Manual.  This can be inhibited by using the command-line argument `--no-rcfile`, e.g. `redsbcl --no-rcfile`, which works for PSL, CSL and SBCL REDUCE (at present).  When using this argument together with other arguments specific to a particular version of Common Lisp, it is recommended to put it last, since it applies to the Lisp program (REDUCE) rather than Lisp itself.
+At the start of a REDUCE session, the system checks for the existence of a user's startup file, and if possible executes the REDUCE statements in it; see [REDUCE Startup File](https://reduce-algebra.sourceforge.io/manual-lookup.php?REDUCE%20Startup%20File) in the REDUCE Manual.  This can be inhibited by using the command-line argument `--no-rcfile`, e.g. `redsbcl --no-rcfile` (which is a standard option for PSL and CSL REDUCE).  The Common Lisp `red<lisp>` commands also accept the command-line arguments `-h` and `--help`, which both cause the commands to display a brief help message and exit.  The help message lists useful options, which depend on the Lisp.  For details, please see the Lisp documentation available from the same source as the Lisp itself.  (Lisp options are not currently available with CCL.)
 
 Interrupting REDUCE (with Control-C) invokes a Lisp break loop and aborting that should return you to REDUCE.  Within the break loop you can run arbitrary Lisp code, but remember that you are running Common Lisp and in particular Lisp output uses Common Lisp syntax, although you are initially in the Standard Lisp package.  However, package prefixes are recognised (which they are not from within REDUCE) so you can access most of Common Lisp, but beware that you might break REDUCE so that you cannot return to it!  Evaluating the Lisp expression `(exit)` from a Lisp break loop should completely terminate REDUCE.
 
@@ -259,11 +259,8 @@ I cannot see any way to support the REDUCE facilities for restricting execution 
 ## To do
 
 * Re-implement the sparse package to use hash tables as a test?
-* Command-line option to suppress reading the REDUCE Startup File.
 * Revise interaction between SL-on-CL `readch` and RLISP `readch1`.
-* Check that command-line options to redsbcl etc. work; the preserved REDUCE executable may not handle them!
 * Review my hacked version of `gnuintfc.red` for Common Lisp.
-
 * Make faslout/faslend more robust by using a single function that calls begin internally (cf. infile) and make faslend generate a throw.  (See also the old mkfasl code?)
 * Implement a genuinely lower-case Standard Lisp, perhaps using case-inversion for a few special symbols such as `lambda`, `nil`, `t`?
 

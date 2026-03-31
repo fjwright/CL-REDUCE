@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-03-30 15:55:25 franc>
+;; Time-stamp: <2026-03-31 17:51:59 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4433,6 +4433,10 @@ When all done, execute FASLEND;~2%" name))
 
 #+CCL
 (defun %reduce-init-function ()
+  "The function executed at startup of the saved REDUCE memory image."
+  (when (member "--no-rcfile" (cdr ccl:*command-line-argument-list*)
+                :test #'string=)
+    (setq sl::no_init_file t))
   (standard-lisp)
   (if  (or (getenv "interactive")
            (getenv "INSIDE_EMACS"))

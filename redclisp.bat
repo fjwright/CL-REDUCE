@@ -1,7 +1,7 @@
 @echo off
 rem Start CLISP REDUCE on Windows.
 rem Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-rem Time-stamp: <2026-03-30 18:19:08 franc>
+rem Time-stamp: <2026-03-31 17:56:48 franc>
 
 setlocal
 :loop
@@ -23,9 +23,9 @@ goto doit
 echo Start CLISP REDUCE on Windows.
 echo Usage: redclisp ^<options^>
 echo Useful options:
-echo   -h or --help  Print this message and exit.
-echo   -m ^<size^>     Set memory size ^(^<size^> = nB or nKB or nMB^).
-echo   --no-rcfile   Inhibit REDUCE startup file.
+echo   -h, --help   Print this message and exit.
+echo   -m ^<size^>    Set memory size ^(^<size^> = nB or nKB or nMB^).
+echo   --no-rcfile  Inhibit REDUCE startup file.
 exit /b
 
 :doit
