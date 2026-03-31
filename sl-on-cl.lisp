@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-03-29 11:24:51 franc>
+;; Time-stamp: <2026-03-30 15:55:25 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4408,6 +4408,8 @@ When all done, execute FASLEND;~2%" name))
 ;; "clisp-2.49-6.20150312hg15611.src/clisp/src/reploop.lisp".
 (defun %reduce-init-function ()
   "The function executed at startup of the saved REDUCE memory image."
+  (when (member "--no-rcfile" ext:*args* :test #'string=)
+    (setq sl::no_init_file t))
   (standard-lisp)
   (if  (or (interactive-stream-p *standard-output*)
            (getenv "INSIDE_EMACS"))
