@@ -1,7 +1,7 @@
 @echo off
 rem Start CCL REDUCE on Windows.
 rem Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-rem Time-stamp: <2026-03-31 17:29:27 franc>
+rem Time-stamp: <2026-04-01 12:50:11 franc>
 
 setlocal
 :loop
@@ -23,11 +23,10 @@ goto doit
 echo Start CCL REDUCE on Windows.
 echo Usage: redccl ^<options^>
 echo Useful options:
-echo   -h, --help    Print this message and exit.
-rem echo   -V, --version         Print CCL version information and exit.
-rem echo   -S, --stack-size n    Set initial control stack to n bytes.
-rem echo   -R, --heap-reserve n  Reserves n bytes for heap expansion.
-echo   --no-rcfile   Inhibit REDUCE startup file.
+echo   -h, --help            Print this message and exit.
+echo   -S, --stack-size n    Set initial control stack to n bytes.
+echo   -R, --heap-reserve n  Reserves n bytes for heap expansion.
+echo   --no-rcfile           Inhibit REDUCE startup file.
 exit /b
 
 :doit
@@ -41,5 +40,3 @@ IF ERRORLEVEL 1 (
 
 rem CCL REDUCE options (currently only --no-rcfile) must appear after
 rem any CCL options and *must* follow the option separator --.
-
-rem But CCL options are not currently processed by CCL REDUCE!
