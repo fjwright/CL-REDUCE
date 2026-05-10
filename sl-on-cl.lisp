@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-03-31 17:51:59 franc>
+;; Time-stamp: <2026-05-10 16:44:42 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -2083,8 +2083,9 @@ Returns T if U is a digit, otherwise NIL.
 EXPR PROCEDURE DIGIT(U);
    IF MEMQ(U, '(!0 !1 !2 !3 !4 !5 !6 !7 !8 !9))
       THEN T ELSE NIL;"
-  (handler-case (not (not (digit-char-p (character u))))
-    (cl:error () nil)))
+  (and (symbolp u)
+       (eql (cl:length (symbol-name u)) 1)
+       (not (not (digit-char-p (character u))))))
 
 (declaim (ftype (cl:function (t) (integer 0)) sl::length))
 
@@ -2115,8 +2116,9 @@ EXPR PROCEDURE LITER(U);
                 !a !b !c !d !e !f !g !h !i !j !k !l !m
                 !n !o !p !q !r !s !t !u !v !w !x !y !z))
       THEN T ELSE NIL;"
-  (handler-case (alpha-char-p (character u))
-    (cl:error () nil)))
+  (and (symbolp u)
+       (eql (cl:length (symbol-name u)) 1)
+       (alpha-char-p (character u))))
 
 (declaim (ftype (cl:function (t t) list) sl::member sl::memq))
 
