@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-05-10 16:44:42 franc>
+;; Time-stamp: <2026-05-25 10:00:32 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3834,16 +3834,16 @@ rather like errorset."
 ;; defined in "rlisp/proc.red".
 
 (defmacro sl::mkhash (size type &optional expansion)
-  "Create and return a new hash table.
+  "Create and return a new hash-table.
 - SIZE is a non-negative integer that determines approximately the
   number of entries that can be inserted without having to enlarge the
   hash table.
 - If TYPE is 0 then the test used is eq, otherwise it is cl:equal.
-- EXPANSION specifies how much to increase the size of the hash table
+- EXPANSION specifies how much to increase the size of the hash-table
   when it becomes full.  This can be an integer greater than zero,
   which is the number of entries to add, or it can be a floating-point
   number greater than 1, which is the ratio of the new size to the old
-  size. The default value for this argument is implementation-dependent."
+  size.  The default value for this argument is implementation-dependent."
   `(make-hash-table
     :test (if (eql ,type 0) 'eq 'cl:equal) ; should this be equalp?
     :size ,size
@@ -3852,15 +3852,15 @@ rather like errorset."
 (flag '(sl::mkhash) 'sl::variadic)
 
 (import 'hash-table-p :sl)
-;; hash-table-p is true if its argument is a hash table, and otherwise
+;; hash-table-p is true if its argument is a hash-table, and otherwise
 ;; is false.
 
 (import 'gethash :sl)
-;; gethash finds the entry in hash-table whose key is key and returns
-;; the associated value.  If there is no such entry, gethash returns
-;; default, which is nil if not specified.
+;; gethash(key, table) finds the entry in hash-table TABLE whose key
+;; is KEY and returns the associated value.  If there is no such
+;; entry, gethash returns default, which is nil if not specified.
 
-(declaim (ftype (cl:function (t t t) t) sl::puthash))
+(declaim (ftype (cl:function (t hash-table t) t) sl::puthash))
 
 (defun sl::puthash (key table val)
   "Make a new entry with the specified key KEY in hash
@@ -3869,9 +3869,9 @@ already exists, it is removed before the new entry is added."
   (setf (gethash key table) val))
 
 (import 'remhash :sl)
-;; remhash removes any entry for key in hash-table. This is a
-;; predicate that is true if there was an entry or false if there was
-;; not.
+;; remhash(key, table) removes any entry for KEY in hash-table
+;; TABLE.  This is a predicate that is true if there was an entry or
+;; false if there was not.
 
 (declaim (ftype (cl:function (hash-table) list) sl::hashcontents))
 
@@ -3886,6 +3886,29 @@ already exists, it is removed before the new entry is added."
 (import 'clrhash :sl)
 ;; This removes all the entries from hash-table and returns the hash
 ;; table itself.
+
+;; These functions are used in my REDUCE SPARSEMATRIX package but NOT
+;; implemented in CSL and PSL.  Fall-back versions are defined in
+;; "sparsematrix/sparsematrix.red".
+
+(declaim (inline sl::maphash)
+         (ftype (cl:function (hash-table cl:function) null) sl::maphash))
+
+(defun sl::maphash (table fn)
+  "Iterate over all entries in the hash-table TABLE and return nil.
+For each entry, the function FN is called with two arguments --
+the key and the value of that entry.
+This function is the Common Lisp function maphash but with
+argument ordering like Standard Lisp map functions."
+  (cl:maphash fn table))
+
+(declaim (ftype (cl:function (hash-table) hash-table) sl::copyhash))
+
+(%defalias sl::copyhash cl:copy-structure)
+;; (defun copyhash (table)
+;;   "Copy each element of hash-table TABLE to a new hash-table.
+;; Return the latter."
+;;   (cl:copy-structure table))
 
 
 ;;; Operating System Interface
