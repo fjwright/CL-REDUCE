@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-05-25 10:00:32 franc>
+;; Time-stamp: <2026-06-06 16:13:54 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -426,6 +426,11 @@ EXPR PROCEDURE ZEROP(U);
 ;; CDR(U:dotted-pair):any eval, spread
 ;; CDR(CONS(a, b)) --> b. The right part of U is returned. The type
 ;; mismatch error occurs if U is not a dotted-pair.
+
+;; Common Lisp car and cdr are safe, so...
+(%defalias sl::safe-car cl:car)
+(%defalias sl::safe-cdr cl:cdr)
+;; (flag '(sl::safe-car sl::safe-cdr) 'lose) ; later
 
 ;; The composites of CAR and CDR are supported up to 4 levels:
 (import '(cl:caar cl:cadr cl:cdar cl:cddr cl:caaar cl:caadr cl:cadar
@@ -855,6 +860,7 @@ Returns the removed property or NIL if there was no such indicator."
     (when *defn (%save-plist u))
     (cl:remprop u ind)))
 
+(flag '(sl::safe-car sl::safe-cdr) 'lose)
 (flag '(first second third rest) 'sl::lose)
 (flag '(sl::lastpair sl::lastcar sl::nth sl::pnth) 'sl::lose)
 (flag '(eqcar) 'sl::lose)
