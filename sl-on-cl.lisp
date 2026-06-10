@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-06-06 16:13:54 franc>
+;; Time-stamp: <2026-06-10 17:46:14 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3857,10 +3857,6 @@ rather like errorset."
 
 (flag '(sl::mkhash) 'sl::variadic)
 
-(import 'hash-table-p :sl)
-;; hash-table-p is true if its argument is a hash-table, and otherwise
-;; is false.
-
 (import 'gethash :sl)
 ;; gethash(key, table) finds the entry in hash-table TABLE whose key
 ;; is KEY and returns the associated value.  If there is no such
@@ -3893,28 +3889,30 @@ already exists, it is removed before the new entry is added."
 ;; This removes all the entries from hash-table and returns the hash
 ;; table itself.
 
-;; These functions are used in my REDUCE SPARSEMATRIX package but NOT
-;; implemented in CSL and PSL.  Fall-back versions are defined in
+;; These functions are used in my REDUCE SPARSEMATRIX package but not
+;; all implemented in CSL and PSL.  Fall-back versions are defined in
 ;; "sparsematrix/sparsematrix.red".
 
-(declaim (inline sl::maphash)
-         (ftype (cl:function (hash-table cl:function) null) sl::maphash))
+(import 'hash-table-p :sl)
+;; hash-table-p is true if its argument is a hash-table, and otherwise
+;; is false.
 
-(defun sl::maphash (table fn)
-  "Iterate over all entries in the hash-table TABLE and return nil.
-For each entry, the function FN is called with two arguments --
-the key and the value of that entry.
-This function is the Common Lisp function maphash but with
-argument ordering like Standard Lisp map functions."
-  (cl:maphash fn table))
+(import 'maphash :sl)
+;; (maphash fn hash)
+;; Iterate over all entries in the hash-table HASH and return nil.
+;; For each entry, the function FN is called with two arguments -- the
+;; key and the value of that entry.
 
 (declaim (ftype (cl:function (hash-table) hash-table) sl::copyhash))
 
 (%defalias sl::copyhash cl:copy-structure)
-;; (defun copyhash (table)
-;;   "Copy each element of hash-table TABLE to a new hash-table.
-;; Return the latter."
-;;   (cl:copy-structure table))
+;; (copyhash hash)
+;; Copy each element of hash-table HASH to a new hash-table.
+;; Return the latter.
+
+(import 'hash-table-count :sl)
+;; (hash-table-count hash)
+;; Return the number of entries in the hash-table HASH.
 
 
 ;;; Operating System Interface
