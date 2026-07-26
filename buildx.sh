@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-07-25 16:37:54 franc>
+# Time-stamp: <2026-07-25 17:24:31 franc>
 
 #                   EXPERIMENTAL AND UNSUPPORTED!
 
 # Build REDUCE on implementations of Common Lisp (CL) that cannot save
-# a memory image, currently ABCL and ECL.
+# a memory image, currently only ECL (and maybe ABCL later).
 
 # Based on "psl/bootstrap.sh" and "psl/build.sh".
 
@@ -36,7 +36,8 @@
 function help {
     echo 'Build (eXtra) REDUCE on Common Lisp (eXperimental and unsupported)'
     echo 'Usage: ./buildx.sh [-h] [-r revision] [-c/f] [-d] [-b/o] <lisp> <lisp> ...'
-    echo '<lisp> = abcl/ecl[pn]'
+    # echo '<lisp> = abcl/ecl[pn]'
+    echo '<lisp> = ecl[pn]'
     # echo 'If no <lisp> specified then build on ???.'
     echo 'Option -r sets the REDUCE revision number (overriding the default).'
     echo 'Option -c ensures a clean build by deleting any previous build.'
@@ -128,16 +129,16 @@ do
     # initialisation file.
 
     case $lisp in
-        'abcl')
-            echo $'\n========================================='
-            echo    'Building REDUCE on Armed Bear Common Lisp'
-            echo   $'=========================================\n'
-            runlisp='java -jar abcl-bin-1.8.0/abcl.jar --noinit'
-            runlispfile='java -jar abcl-bin-1.8.0/abcl.jar --noinit --load'
-            runbootstrap='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/bootstrap.mem'
-            runreduce='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/reduce.mem'
-            saveext='jar'
-            faslext='abcl';;
+        # 'abcl')
+        #     echo $'\n========================================='
+        #     echo    'Building REDUCE on Armed Bear Common Lisp'
+        #     echo   $'=========================================\n'
+        #     runlisp='java -jar abcl-bin-1.8.0/abcl.jar --noinit'
+        #     runlispfile='java -jar abcl-bin-1.8.0/abcl.jar --noinit --load'
+        #     runbootstrap='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/bootstrap.mem'
+        #     runreduce='java -jar abcl-bin-1.8.0/abcl.jar --noinit --noinform -M fasl.abcl/reduce.mem'
+        #     saveext='jar'
+        #     faslext='abcl';;
         'ecl')
             # Use portable byte-code FASL files by default.
             # macOS bash may not support the following ;& syntax, so I may
@@ -190,24 +191,22 @@ do
 $debug $lispmath $nolispmath
 #+ECLP (ext:install-bytecodes-compiler)
 (or (compile-file "sl-on-cl.lisp")
-    #+ECL (quit 1)
+    #+ECL (quit 1))
 EOF
         mv sl-on-cl.$faslext fasl.$lisp
     fi || { echo '***** Compilation failed'; exit 1; }
 
-    ########################################################
-    # Build an initial bootstrap REDUCE image if necessary #
-    ########################################################
+    #####################################
+    # Build an initial bootstrap REDUCE #
+    #####################################
 
     function grep_errors {
         grep -i '^\*\{5\} \| error \|COMMON-LISP:ERROR' log.$lisp/$1.blg | uniq |\
             grep -viw errorset  # except matching lines
     }
 
-    case $lisp in
-        'eclp' | 'ecln')
-            echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE...'
-            time eval $runlispfile bootstrap << EOF &> log.$lisp/bootstrap.blg
+    echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE...'
+    time eval $runlispfile bootstrap << EOF &> log.$lisp/bootstrap.blg
 % Compile fasl files for the minimal set of packages:
 symbolic; $force
 off redefmsg;
@@ -223,43 +222,27 @@ package!-remake2('entry, 'support);
 package!-remake2('remake, nil);
 bye;
 EOF
-            echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE done.  Possible errors:'
-            grep_errors bootstrap
+    echo $'\n+++++ Building' ${lisp@U} 'bootstrap REDUCE done.  Possible errors:'
+    grep_errors bootstrap
 
-            if [ -n "$bootstraponly" ]
-            then
-                echo $'\nBootstrap only build requested.'
-                continue
-            fi
+    if [ -n "$bootstraponly" ]
+    then
+        echo $'\nBootstrap only build requested.'
+        continue
+    fi
 
-            echo $'\n+++++ Building the' ${lisp@U} 'bootstrap REDUCE dynamic load file...'
+    echo $'\n+++++ Building the' ${lisp@U} 'bootstrap REDUCE dynamic load file...'
 
-            # Can't currently build REDUCE the conventional way,
-            # i.e. statically!  Instead, build
-            # "fasl.ecl/bootstrapreduce.lisp", which builds bootstrap
-            # REDUCE dynamically.
+    # Can't currently build REDUCE the conventional way,
+    # i.e. statically!  Instead, build
+    # "fasl.ecl/bootstrapreduce.lisp", which builds bootstrap REDUCE
+    # dynamically.
 
-            date=\"$(date +%d-%b-%Y)\"
-            sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
-                bootstrapreduce-ecl.lisp > fasl.$lisp/bootstrapreduce.lisp
+    date=\"$(date +%d-%b-%Y)\"
+    sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
+        bootstrapreduce-ecl.lisp > fasl.$lisp/bootstrapreduce.lisp
 
-            echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."$'\a'
-            ;;
-        *)
-            if [ ! -e fasl.$lisp/bootstrap.$saveext ]
-            then
-                echo $'\n+++++ Building bootstrap REDUCE...'
-                time $runlispfile bootstrap &> log.$lisp/bootstrap.blg
-                if [ ! -e fasl.$lisp/bootstrap.$saveext ]
-                then
-                    echo $'\n***** Building bootstrap REDUCE failed'; exit 1
-                else
-                    echo $'\n+++++ Built bootstrap REDUCE.  Possible errors:'
-                    grep_errors bootstrap
-                fi
-                echo $'\a'
-            fi;;
-    esac
+    echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."$'\a'
 
     ################
     # Build REDUCE #

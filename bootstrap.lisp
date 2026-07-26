@@ -1,6 +1,6 @@
 ;; Lisp code to build a REDUCE image for bootstrapping on Common Lisp
 
-;; FJW -- Time-stamp: <2026-01-03 16:42:37 franc>
+;; FJW -- Time-stamp: <2026-07-25 18:25:49 franc>
 
 (load (concatenate 'string "fasl."
                    #+SBCL "sbcl"
@@ -140,7 +140,7 @@
 (load!-package!-sources 'clrend nil)
 (load!-package!-sources 'poly 'poly)
 (load!-package!-sources 'alg 'alg)
-(load!-package!-sources 'rtools 'rtools)  % https://sourceforge.net/p/reduce-algebra/code/5845/
+(load!-package!-sources 'rtools 'rtools)
 (load!-package!-sources 'arith 'arith)
 (load!-package!-sources 'entry 'support)
 (load!-package!-sources 'remake nil)
@@ -160,6 +160,10 @@
 )
 
 (initreduce)
-(setq date!* (date))
-(setq version!* "Bootstrap REDUCE")
-(save!-reduce!-image "bootstrap")       % doesn't save or stop ECL
+
+(cond
+  ((memq 'ecl lispsystem!*) (begin))
+  (t (progn
+       (setq date!* (date))
+       (setq version!* "Bootstrap REDUCE")
+       (save!-reduce!-image "bootstrap"))))
