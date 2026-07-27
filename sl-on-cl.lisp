@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-07-26 12:35:07 franc>
+;; Time-stamp: <2026-07-27 18:16:46 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4056,15 +4056,18 @@ in file name."
 #+CLISP (%defalias sl::getpid os:process-id)
 #+CCL (import 'ccl::getpid :sl)
 
+#+(or SBCL CLISP)
 (declaim (inline sl::setenv)
          (ftype (cl:function (simple-string simple-string) unsigned-byte)
                 sl::setenv))
 
-#+(or SBCL CLISP)               ; to avoid a warning with other Lisps!
+#+(or SBCL CLISP)
 (defun sl::setenv (name value)
   "Create or update an environment variable"
   #+SBCL (sb-posix:setenv name value 1) ; non-zero => overwrite
   #+CLISP (setf (ext:getenv name) value))
+
+#+(or CCL ECL) (export '(setenv))
 
 (declaim (inline sl::exit)
          (ftype (cl:function (&optional signed-byte) nil) sl::exit))
