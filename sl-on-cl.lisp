@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-07-22 11:30:04 franc>
+;; Time-stamp: <2026-07-26 12:35:07 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -4505,7 +4505,6 @@ When all done, execute FASLEND;~2%" name))
   #+CCL
   (ccl:save-application (concat "fasl.ccl/" name ".image")
                         :toplevel-function #'%reduce-init-function)
-  #+ECL (%reduce-init-function)
   #+ABCL (asdf-jar:package name :verbose t))
 
 (defparameter sl::lispsystem* '(sl::common-lisp sl::sl-on-cl)

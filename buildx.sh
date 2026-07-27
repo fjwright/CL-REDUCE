@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-07-25 17:24:31 franc>
+# Time-stamp: <2026-07-27 16:39:50 franc>
 
 #                   EXPERIMENTAL AND UNSUPPORTED!
 
@@ -242,7 +242,7 @@ EOF
     sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
         bootstrapreduce-ecl.lisp > fasl.$lisp/bootstrapreduce.lisp
 
-    echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."$'\a'
+    echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."
 
     ################
     # Build REDUCE #
@@ -354,115 +354,32 @@ EOF
         mv trace.$faslext fasl.$lisp
     fi || { echo '***** Compiling trace failed'; exit 1; }
 
-    ###############################
-    # Build the REDUCE image file #
-    ###############################
+    ######################
+    # Build REDUCE files #
+    ######################
 
-    echo $'\n+++++ Building the REDUCE image file...'
+    # Can't currently build REDUCE the conventional way,
+    # i.e. statically!  Instead, build "fasl.ecl/reduce.lisp", which
+    # builds REDUCE dynamically.
 
-    case $lisp in
-        'eclp' | 'ecln')
-            echo $'\n+++++ Building the' ${lisp@U} 'REDUCE dynamic load file...'
+    echo $'\n+++++ Building the' ${lisp@U} 'REDUCE dynamic load file...'
 
-            # Can't currently build REDUCE the conventional way,
-            # i.e. statically!  Instead, build "fasl.ecl/reduce.lisp",
-            # which builds REDUCE dynamically.
+    date="$(date +%d-%b-%Y)"
+    lispversion="`ecl --version | sed '1s/^\([^0-9.]\+[0-9.]\+\).*/\1/;q'`"
+    sed -e 's/[;%].*// ; /^ *$/d' \
+        -e "s/@date/$date/;s/@revision/$revision/;s/@lispversion/$lispversion/" \
+        reduce-ecl.lisp > fasl.$lisp/reduce.lisp
 
-            date=\"$(date +%d-%b-%Y)\"
-            sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
-                reduce-ecl.lisp > fasl.$lisp/reduce.lisp
-
-            echo '+++++ Built the' ${lisp@U} $'REDUCE dynamic load file.\n'
-            ;;
-        *)
-            echo $'\n+++++ Building the REDUCE image file...'
-
-            # Start a new invocation of Lisp and load the key modules compiled
-            # above.  Then save a final REDUCE image that will be used below to
-            # compile the non-core modules.
-
-            time eval $runlisp << EOF &> log.$lisp/reduce.blg
-(load "sl-on-cl") (load "trace") ; temporary -- until I can arrange autoloading!
-(standard-lisp)
-
-(cl:defparameter !*init!-stats!* (list (time) (gtheap)))
-
-(setq !*verboseload t)
-(setq !*redefmsg nil)
-(cl:defvar !*argnochk t)        % check argument count
-
-(load "module")                 % for definition of load-package
-(load "clprolo")                % initial CL specific code
-
-(cl:defvar revision!* $revision)
-(cl:when (not (cl:boundp 'revision!*)) (setq revision!* nil))
-(load!-package 'rlisp)
-(load!-package 'clrend)
-(load!-package 'smacros)
-(load!-package 'poly)
-(load!-package 'arith)
-(load!-package 'alg)
-(load!-package 'rtools)
-(load!-package 'mathpr)
-(load!-package 'entry)
-
-% Protect math functions from (further) redefinition for uniformity
-% across Lisps; the lose flag is used by assist.
-
-(flag '(sin cos tan asin acos atan atan2
-        sinh cosh tanh asinh acosh atanh
-        sqrt exp log ln logb expt)
-      'lose)
-
-(cl:fmakunbound 'prettyprint)   % otherwise defautoload has no effect!
-(defautoload prettyprint pretty)  % since only in entry file for PSL!
-
-(setq date!* (date))
-(setq version!* (cl:format nil "REDUCE (revision ~a on $lispversion)"
-      (or revision!* "???")))
-
-(initreduce)
-
-(setq !*verboseload nil)        % inhibit loading messages
-(setq !*redefmsg t)             % display redefinition messages
-
-(cond ((memq 'sbcl lispsystem!*)
-       (setq !*muffled-warnings!* 'warning))) % exported from sb-ext
-
-(prog nil
-   (terpri)
-   (prin2 "Time to build REDUCE: ")
-   (prin2 (quotient (difference (time) (car !*init!-stats!*)) 1000.0))
-   (prin2t " secs")
-   (prin2 "Heap used: ")
-   (prin2 (difference (cadr !*init!-stats!*) (gtheap)))
-   (prin2t " bytes")
-   (prin2 "Heap left: ")
-   (prin2 (gtheap))
-   (prin2t " bytes")
-   (cl:makunbound '!*init!-stats!*))
-
-(save!-reduce!-image "reduce")
-
-EOF
-
-            if [ ! -e fasl.$lisp/reduce.$saveext ]
-            then
-                echo $'\n***** Building the REDUCE image failed'; exit 1
-            else
-                echo $'\n+++++ Built the REDUCE image file\n'
-            fi
-            ;;
-    esac
+    echo '+++++ Built the' ${lisp@U} $'REDUCE dynamic load file.\n'
 
     if [ -n "$imageonly" ]
     then
-        echo 'Core packages and REDUCE image only build requested.'
+        echo 'Core packages and REDUCE "image" only build requested.'
         continue
     fi
 
-    # Finally, compile the "noncore" packages using reduce.img rather
-    # than bootstrap.img.
+    # Finally, compile the "noncore" packages using full REDUCE rather
+    # than the bootstrap version.
 
     time \
         { for p in $(< fasl.$lisp/noncore-packages.dat)
