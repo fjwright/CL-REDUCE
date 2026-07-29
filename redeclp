@@ -1,4 +1,26 @@
 #!/bin/bash
+
 # Start ECL REDUCE on Cygwin, Linux or macOS using portable byte-code fasl files.
+# Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
+# Time-stamp: <2026-07-29 16:15:13 franc>
+
+for arg do
+    case $arg in
+        -h|--help)
+            echo 'Start ECL REDUCE on Cygwin, Linux or macOS using portable byte-code fasl files.'
+            echo 'Usage: redeclp <options>'
+            echo 'Useful options:'
+            echo '  -h, --help   Print this message and exit.'
+            echo '  --no-rcfile  Inhibit REDUCE startup file.'
+            exit;;
+        --no-rcfile) norcfile='-- --no-rcfile';;
+        *) args="$args $arg";;
+    esac
+done
+args="$args $norcfile"
+
 cl=$(realpath $(dirname $0))    # common-lisp directory
-ecl --eval "(let (*load-verbose*) (pushnew :ECLP *features*) (load \"$cl/fasl.eclp/reduce\"))"
+exec ecl --norc --eval "(let (*load-verbose*) (pushnew :ECLP *features*) (load \"$cl/fasl.eclp/reduce\"))" $args
+
+# ECLP REDUCE options (currently only --no-rcfile) must appear after
+# any ECL options and *must* follow the option separator --.

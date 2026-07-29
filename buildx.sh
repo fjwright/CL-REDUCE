@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-07-27 16:39:50 franc>
+# Time-stamp: <2026-07-29 15:49:45 franc>
 
 #                   EXPERIMENTAL AND UNSUPPORTED!
 
@@ -125,8 +125,8 @@ for lisp in $lisps
 do
     lisp=${lisp,,}              # ensure lower case
 
-    # The following commands to run Lisp all suppress the user
-    # initialisation file.
+    # The following commands to run Lisp and REDUCE all suppress the
+    # Lisp and REDUCE user initialisation files.
 
     case $lisp in
         # 'abcl')
@@ -151,9 +151,9 @@ do
             echo    'using portable byte-code FASL files'
             echo   $'=========================================\n'
             runlisp='ecl --norc --eval "(pushnew :ECLP *features*)"'
-            runlispfile='ecl --norc --eval "(pushnew :ECLP *features*)" --load'
-            runbootstrap='ecl --norc --eval "(pushnew :ECLP *features*)" --load fasl.eclp/bootstrapreduce'
-            runreduce='./redeclp'
+            runlispfile="$runlisp --load"
+            runbootstrap="$runlisp --load fasl.eclp/bootstrapreduce -- --no-rcfile'
+            runreduce='./redeclp --no-rcfile'
             faslext='fasc';;
         'ecln')
             echo $'\n========================================='
@@ -161,15 +161,18 @@ do
             echo    'using (default) native binary FASL files'
             echo   $'=========================================\n'
             runlisp='ecl --norc --eval "(pushnew :ECLN *features*)"'
-            runlispfile='ecl --norc --eval "(pushnew :ECLN *features*)" --load'
-            runbootstrap='ecl --norc --eval "(pushnew :ECLN *features*)" --load fasl.ecln/bootstrapreduce'
-            runreduce='./redecln'
+            runlispfile="$runlisp --load"
+            runbootstrap="$runlisp --load fasl.ecln/bootstrapreduce -- --no-rcfile'
+            runreduce='./redecln --no-rcfile'
             faslext='fas';;
         *)
             echo $'Error: invalid <lisp> argument\n'
             help
             ;;
     esac
+
+    date="$(date +%d-%b-%Y)"
+    lispversion="`ecl --version | sed '1s/^\([^0-9.]\+[0-9.]\+\).*/\1/;q'`"
 
     if [ -n "$clean" ]
     then
@@ -238,8 +241,8 @@ EOF
     # "fasl.ecl/bootstrapreduce.lisp", which builds bootstrap REDUCE
     # dynamically.
 
-    date=\"$(date +%d-%b-%Y)\"
-    sed "s/revision\!\\*)\\s*%.*/revision\!* $revision)/;s/(date)/$date/" \
+    sed -e 's/[;%].*// ; /^ *$/d' \
+        -e "s/@date/$date/;s/@revision/$revision/;s/@lispversion/$lispversion/" \
         bootstrapreduce-ecl.lisp > fasl.$lisp/bootstrapreduce.lisp
 
     echo "+++++ Built the ${lisp@U} bootstrap REDUCE dynamic load file."
@@ -364,8 +367,6 @@ EOF
 
     echo $'\n+++++ Building the' ${lisp@U} 'REDUCE dynamic load file...'
 
-    date="$(date +%d-%b-%Y)"
-    lispversion="`ecl --version | sed '1s/^\([^0-9.]\+[0-9.]\+\).*/\1/;q'`"
     sed -e 's/[;%].*// ; /^ *$/d' \
         -e "s/@date/$date/;s/@revision/$revision/;s/@lispversion/$lispversion/" \
         reduce-ecl.lisp > fasl.$lisp/reduce.lisp
