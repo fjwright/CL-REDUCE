@@ -2,7 +2,7 @@ module clrend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2026-08-01 11:29:30 franc>
+% Time-stamp: <2026-08-01 12:03:47 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -221,9 +221,12 @@ symbolic procedure !begin;
       % Read init file:
       if null no!_init!_file then
       begin scalar erfg!*;
-         read!-init!-file "reduce";
-         if 'ECL memq lispsystem!* then % temporary hack?
-            read!-init!-file "eclreduce";
+         read!-init!-file "reduce"
+      end;
+      % Temporary hack:
+      if 'ECL memq lispsystem!* then
+      begin scalar erfg!*;
+         read!-init!-file "eclreduce"
       end;
       % Start main system:
       if errorp errorset!*('(begin1),nil) then go to a;

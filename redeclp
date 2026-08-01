@@ -2,7 +2,7 @@
 
 # Start ECL REDUCE on Cygwin, Linux or macOS using portable byte-code fasl files.
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-07-31 17:22:09 franc>
+# Time-stamp: <2026-08-01 17:07:38 franc>
 
 for arg do
     case $arg in
@@ -12,7 +12,10 @@ for arg do
             echo 'Useful options:'
             echo '  -h, --help   Print this message and exit.'
             echo '  --no-rcfile  Inhibit REDUCE startup file.'
-            echo '  --frame-stack <n>  Set memory limit to <n> bytes.'
+            echo '  --frame-stack <n>  Set limit to <n> nested frames, default 2048.'
+            echo '  --c-stack <n>      Set limit to <n> bytes, default 128Kb.'
+            echo '  --lisp-stack <n>   Set limit to <n> bytes, default 32Kb.'
+            echo '  --heap-size <n>    Set limit to <n> bytes, default 256Mb.'
             exit;;
         --no-rcfile) norcfile='-- --no-rcfile';;
         *) args="$args $arg";;
@@ -20,9 +23,9 @@ for arg do
 done
 
 cl=$(realpath $(dirname $0))    # common-lisp directory
-exec ecl --norc --frame-stack 5120 $args \
+exec ecl --norc --frame-stack 5120 --c-stack 5000000 $args \
      --eval "(let (*load-verbose*) (pushnew :ECLP *features*) (load \"$cl/fasl.eclp/reduce\"))" \
      $norcfile
 
-# ECLP REDUCE options (currently only --no-rcfile) must appear after
-# any ECL options and *must* follow the option separator --.
+# REDUCE options (currently only --no-rcfile) must appear after any
+# ECL options and *must* follow the option separator --.
