@@ -2,7 +2,7 @@ module clrend;  % CL REDUCE "back-end".
 
 % Authors: Anthony C. Hearn, Martin L. Griss, Arthur C. Norman, et al.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2026-02-20 15:06:23 franc>
+% Time-stamp: <2026-08-01 11:29:30 franc>
 % The standard versions are "packages/support/*rend.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -221,7 +221,9 @@ symbolic procedure !begin;
       % Read init file:
       if null no!_init!_file then
       begin scalar erfg!*;
-         read!-init!-file "reduce"
+         read!-init!-file "reduce";
+         if 'ECL memq lispsystem!* then % temporary hack?
+            read!-init!-file "eclreduce";
       end;
       % Start main system:
       if errorp errorset!*('(begin1),nil) then go to a;
@@ -391,6 +393,40 @@ flag('(lalr_collect_terminals), 'lose);
 inline procedure writechar n;
    % Print the character whose code is n.
    prin2 int2id n;
+
+% Temporary hack for ECLP?
+% ========================
+
+% Try to get the call of fluid in switch to work!
+
+% #if (memq 'ECLP lispsystem!*)
+
+% symbolic procedure switch u;
+%    % Declare list u as switches.
+%    for each x in u do
+%       begin scalar y,dflt;
+%          if eqcar(x,'equal) and not atom cdr x and idp cadr x
+%              and not null cddr x and null cdddr x
+%            then if caddr x memq '(on off t nil)
+%                   then <<dflt := list if caddr x = 'on then t
+%                                        else if caddr x = 'off then nil
+%                                        else caddr x;
+%                          x := cadr x>>
+%                  else typerr(caddr x,"switch default value");
+%          if not idp x then typerr(x,"switch");
+% 	 % Do nothing if the switch was already declared
+%  	 if flagp(x,'switch) and x memq switchlist!* then return;
+%          switchtree!* := add!-to!-sorted!-tree(x, switchtree!*);
+% % Building switchlist!* this way keeps it sorted, which feels tidy to me.
+%          switchlist!* := flatten!-sorted!-tree(switchtree!*, nil);
+%          switchstring!* := string!-of!-list switchlist!*;
+%          flag(list x,'switch);
+%          y := intern list2string ('!* . explode2 x);
+%          if not fluidp y and not globalp y then !!fluid list y;
+%          if not null dflt then <<put(x,'switchdefault,car dflt); set(y,car dflt)>>
+%       end;
+
+% #endif
 
 endmodule;
 

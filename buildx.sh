@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-07-29 15:49:45 franc>
+# Time-stamp: <2026-08-01 11:23:19 franc>
 
 #                   EXPERIMENTAL AND UNSUPPORTED!
 
@@ -126,7 +126,8 @@ do
     lisp=${lisp,,}              # ensure lower case
 
     # The following commands to run Lisp and REDUCE all suppress the
-    # Lisp and REDUCE user initialisation files.
+    # Lisp and REDUCE user initialisation files.  (Note that Bootstrap
+    # REDUCE never reads the init file.)
 
     case $lisp in
         # 'abcl')
@@ -152,7 +153,7 @@ do
             echo   $'=========================================\n'
             runlisp='ecl --norc --eval "(pushnew :ECLP *features*)"'
             runlispfile="$runlisp --load"
-            runbootstrap="$runlisp --load fasl.eclp/bootstrapreduce -- --no-rcfile'
+            runbootstrap="$runlisp --load fasl.eclp/bootstrapreduce"
             runreduce='./redeclp --no-rcfile'
             faslext='fasc';;
         'ecln')
@@ -162,7 +163,7 @@ do
             echo   $'=========================================\n'
             runlisp='ecl --norc --eval "(pushnew :ECLN *features*)"'
             runlispfile="$runlisp --load"
-            runbootstrap="$runlisp --load fasl.ecln/bootstrapreduce -- --no-rcfile'
+            runbootstrap="$runlisp --load fasl.ecln/bootstrapreduce"
             runreduce='./redecln --no-rcfile'
             faslext='fas';;
         *)

@@ -2,7 +2,7 @@
 
 # Start ECL REDUCE on Cygwin, Linux or macOS using portable byte-code fasl files.
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-07-29 16:15:13 franc>
+# Time-stamp: <2026-07-31 17:22:09 franc>
 
 for arg do
     case $arg in
@@ -12,15 +12,17 @@ for arg do
             echo 'Useful options:'
             echo '  -h, --help   Print this message and exit.'
             echo '  --no-rcfile  Inhibit REDUCE startup file.'
+            echo '  --frame-stack <n>  Set memory limit to <n> bytes.'
             exit;;
         --no-rcfile) norcfile='-- --no-rcfile';;
         *) args="$args $arg";;
     esac
 done
-args="$args $norcfile"
 
 cl=$(realpath $(dirname $0))    # common-lisp directory
-exec ecl --norc --eval "(let (*load-verbose*) (pushnew :ECLP *features*) (load \"$cl/fasl.eclp/reduce\"))" $args
+exec ecl --norc --frame-stack 5120 $args \
+     --eval "(let (*load-verbose*) (pushnew :ECLP *features*) (load \"$cl/fasl.eclp/reduce\"))" \
+     $norcfile
 
 # ECLP REDUCE options (currently only --no-rcfile) must appear after
 # any ECL options and *must* follow the option separator --.

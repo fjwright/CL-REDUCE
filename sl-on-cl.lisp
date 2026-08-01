@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-07-29 15:13:30 franc>
+;; Time-stamp: <2026-08-01 10:11:07 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1120,6 +1120,8 @@ This internal function is called only by FLUID."
                (put x :%fluid% t)))))
    idlist)
   nil)
+
+#+ECLP (%defalias sl::!fluid %fluid)    ; temporary hack?
 
 (export 'fluid)                         ; used internally
 

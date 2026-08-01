@@ -2,7 +2,7 @@
 
 % Author: Anthony C. Hearn.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2026-02-20 12:45:55 franc>
+% Time-stamp: <2026-08-01 10:48:49 franc>
 % The standard version is "packages/support/pslprolo.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -31,6 +31,112 @@
 % This file defines functions, variables and declarations needed to
 % make REDUCE and the underlying CL system compatible, and which need
 % to be input before the system independent REDUCE source is loaded.
+
+% The following switches are not being declared fluid as they should
+% be using ECL, so as a temporary fix...
+% COMMENT
+fluid '(
+!*allbranch
+!*arbvars
+!*assert_inline_procedures
+!*assert_procedures
+!*assertbreak
+!*assertinstall
+!*assertstatistics
+!*break
+!*cf_taylor
+!*commutedf
+!*compxroots
+!*cramer
+!*evalassert
+!*f5fractionfree
+!*f5interreduce
+!*f5parametric
+!*f5parametricnormalize
+!*f5statistics
+!*f5sugar
+!*f5usef5c
+!*force_gnuplot_term
+!*fullprecision
+!*fullroots
+!*lalr_verbose
+!*multiplicities
+!*multiroot
+!*nocommutedf
+!*noint
+!*nointint
+!*nonlnr
+!*nosturm
+!*odesolve_basis
+!*odesolve_check
+!*odesolve_diff
+!*odesolve_equidim_y
+!*odesolve_expand
+!*odesolve_explicit
+!*odesolve_fast
+!*odesolve_full
+!*odesolve_implicit
+!*odesolve_noint
+!*odesolve_norecurse
+!*odesolve_noswap
+!*odesolve_plus_or_minus
+!*odesolve_verbose
+!*parse_errors_fatal
+!*partialintint
+!*partialintdf
+!*partialintint
+!*plus_or_minus
+!*prephold
+!*printlower
+!*psprintorder
+!*pwrds
+!*qgosper_down
+!*qgosper_specialsol
+!*qhullkeepfiles
+!*qsum_nullspace
+!*qsum_trace
+!*qsumrecursion_certificate
+!*qsumrecursion_down
+!*qsumrecursion_exp
+!*qsumrecursion_profile
+!*ranum
+!*rational
+!*ratroot
+!*redefmsg
+!*rlabout
+!*rootmsg
+!*rtrace
+!*show!-shared
+!*show_grid
+!*simpnoncomdf
+!*smtabout
+!*smtprompt
+!*solvesingular
+!*taylorautocombine
+!*taylorautoexpand
+!*taylorkeeporiginal
+!*taylorprintorder
+!*tracelex
+!*tracespecfns
+!*trallfac
+!*trigform
+!*trlimit
+!*trnonlnr
+!*trroot
+!*trsolve
+!*trsum
+!*trtaylor
+!*usetaylor
+!*verboseload
+!*xpartialint
+!*xpartialintdf
+!*xpartialintint
+!*zb_factor
+!*zb_inhomogeneous
+!*zb_proof
+!*zb_timer
+!*zb_trace
+!*zeilberg);
 
 fluid '(!*savedef !*gc!-hook!* !*noinlines);
 
