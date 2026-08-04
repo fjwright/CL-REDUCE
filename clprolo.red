@@ -2,7 +2,7 @@
 
 % Author: Anthony C. Hearn.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2026-08-01 10:48:49 franc>
+% Time-stamp: <2026-08-04 15:36:14 franc>
 % The standard version is "packages/support/pslprolo.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -34,7 +34,7 @@
 
 % The following switches are not being declared fluid as they should
 % be using ECL, so as a temporary fix...
-% COMMENT
+COMMENT
 fluid '(
 !*allbranch
 !*arbvars
@@ -157,6 +157,30 @@ symbolic procedure create!-package(u,v);
       put(car u,'package,u);
 %     put(car u,'path,if null v then list car u else v);
       car u >>;
+
+% Try to work around an issue with ECL that calls of switch when
+% building REDUCE do not lead to the necessary fluid declaration. Note
+% that limited syntax is available when reading this file!
+
+symbolic procedure formswitch(u,vars,mode);
+   % Call fluid explicitly and then call switch as usual.
+   begin scalar swlist, switches, x, fllist;
+      swlist := if atom cadr u then cdr u else cadr u;
+      switches := swlist;
+      while switches do <<
+         x := car switches;  switches := cdr switches;
+         % Handle switch default settings:
+         if pairp x then x := cadr x;
+         x := intern list2string ('!* . explode2 x);
+         % if and(not fluidp x, not globalp x) then
+         fllist := x . fllist;
+      >>;
+      return list('progn,
+         list('fluid, mkquote fllist, t),
+         list('switch, mkquote swlist));
+   end;
+
+put('switch, 'formfn, 'formswitch);
 
 % create!-package('(clprolo),nil);
 

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-08-01 10:11:07 franc>
+;; Time-stamp: <2026-08-04 15:38:44 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -1103,7 +1103,7 @@ It is used in \"rsupport.red\" to compile inlines, etc."
 
 (declaim (ftype (cl:function (list) null) %fluid))
 
-(defun %fluid (idlist)
+(defun %fluid (idlist &optional quiet)
   "Declare each identifier X in list IDLIST to be FLUID and return nil.
 If X is already FLUID then do nothing; if X is already GLOBAL then
 display a warning and do nothing else.
@@ -1113,7 +1113,7 @@ This internal function is called only by FLUID."
        (unless (fluidp x)
          (if (globalp x)
              ;; A warning, as for PSL, is more convenient than an error!
-             (warn "GLOBAL ~a cannot be changed to FLUID" x)
+             (unless quiet (warn "GLOBAL ~a cannot be changed to FLUID" x))
              (progn
                ;; defvar is a macro, so ...
                (cl:eval `(defvar ,x nil "Standard LISP fluid variable."))
@@ -1121,11 +1121,9 @@ This internal function is called only by FLUID."
    idlist)
   nil)
 
-#+ECLP (%defalias sl::!fluid %fluid)    ; temporary hack?
-
 (export 'fluid)                         ; used internally
 
-(defmacro fluid (idlist)
+(defmacro fluid (idlist &optional quiet)
   ;; Must be a CL macro to be active at compile time!
   "FLUID(IDLIST:id-list):NIL eval, spread
 The ids in IDLIST are declared as FLUID type variables (ids not
@@ -1148,13 +1146,13 @@ from GLOBAL to FLUID is not permissible and results in the error:
          (eval-when (:compile-toplevel)
            (declaim (special ,@(cl:eval idlist))))
          (eval-when (:load-toplevel :execute)
-           (%fluid ,idlist))
+           (%fluid ,idlist ,quiet))
          nil)
     (cl:error ()
       ;; Assume a run-time call, e.g. as in
       ;; if not fluidp y and not globalp y then fluid list y;
       ;; in procedure switch in "rlisp/switch.red".
-      `(%fluid ,idlist))))
+      `(%fluid ,idlist ,quiet))))
 
 (declaim (ftype (cl:function (list) null) %global))
 
@@ -4599,3 +4597,19 @@ Called by ON/OFF COMP; see 'clrend.red'."
 
 ;; Revise documentation strings and function order to follow PSL
 ;; manual more closely?
+
+;; *** TEMPORARY HACKS TO TRY TO DEBUG ECLP REDUCE ***
+
+;; #+ECLP (%defalias sl::!fluid %fluid)
+;; #+ECLP (trace %fluid)
+;; #+ECLP
+;; (define-compiler-macro sl::switch (u)
+;;   `(print "~&Switch compiler macro called with arg ~a~%" ,u)
+;;   `(eval-when (:compile-toplevel)
+;;     (%fluid
+;;      (mapcar (lambda (x)
+;;                (intern (concatenate 'string "*" (symbol-name x)) :sl))
+;;              ,u)))
+;;   '(unless (fboundp '%switch)
+;;     (setf (symbol-function '%switch) (symbol-function 'sl::switch)))
+;;   `(%switch ,u))
