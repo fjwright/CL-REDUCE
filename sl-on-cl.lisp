@@ -3,7 +3,7 @@
 ;; Copyright (C) 2018-2026 Francis J. Wright
 
 ;; Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-;; Time-stamp: <2026-08-04 15:38:44 franc>
+;; Time-stamp: <2026-08-07 17:46:06 franc>
 ;; Created: 4 November 2018
 
 ;; Currently supported implementations of Common Lisp:
@@ -3674,7 +3674,7 @@ elements (for example ids, strings, and vectors) are not.")
   "Evaluate the expression U at compile time only."
   `(eval-when (:compile-toplevel :execute) ,u))
 
-(flag '(sl::bothtimes sl::compiletime) 'eval) ; evaluate despite "on defn"
+;; (flag '(sl::bothtimes sl::compiletime) 'eval) ; evaluate despite "on defn"
 ;; NB: eval already exported!
 
 (defmacro sl::loadtime (u)                  ; PSL
@@ -4295,6 +4295,8 @@ When all done, execute FASLEND;~2%" name))
   (setq *defn t
         *writingfaslfile t)
   #+CLISP (setq %faslout-name.lib% (concat2 name ".lib"))
+  ;; Stop switch running during translation of REDUCE to LISP:
+  (cl:remprop 'sl::switch 'eval)        ; NB: eval already exported!
   nil)
 
 (flag '(sl::faslout) 'sl::opfn)

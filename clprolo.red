@@ -2,7 +2,7 @@
 
 % Author: Anthony C. Hearn.
 % Modified by FJW for REDUCE on Common Lisp via "sl-on-cl.lisp".
-% Time-stamp: <2026-08-04 15:36:14 franc>
+% Time-stamp: <2026-08-06 17:33:48 franc>
 % The standard version is "packages/support/pslprolo.red".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -178,6 +178,8 @@ symbolic procedure formswitch(u,vars,mode);
       return list('progn,
          list('fluid, mkquote fllist, t),
          list('switch, mkquote swlist));
+      % Evaluate switch at both compile time and load time.
+      % list('bothtimes, list('switch, mkquote swlist)));
    end;
 
 put('switch, 'formfn, 'formswitch);

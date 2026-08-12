@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Author: Francis J. Wright <https://sourceforge.net/u/fjwright>
-# Time-stamp: <2026-08-01 11:23:19 franc>
+# Time-stamp: <2026-08-06 17:17:47 franc>
 
 #                   EXPERIMENTAL AND UNSUPPORTED!
 
@@ -261,16 +261,18 @@ off redefmsg;
 
 % First, compile fasl files for non-package source files:
 
-package!-remake2('clprolo, nil);
-package!-remake2('clrend, nil);
-package!-remake2('entry, 'support);
-package!-remake2('smacros,'support);
-package!-remake2('remake, nil); % for building noncore packages
+% package!-remake2('clprolo, nil);
+% package!-remake2('clrend, nil);
+% package!-remake2('entry, 'support);
+% package!-remake2('smacros,'support);
+% package!-remake2('remake, nil); % for building noncore packages
 
 % Second, create .dat files that list core and non-core modules to build:
 
 begin
-   scalar w, i, s, core, noncore;
+   scalar w, i, s, core, coreskip, noncore;
+   % Package already built for bootstrap REDUCE:
+   coreskip := '(revision rlisp alg poly rtools arith);
    i := open("$reduce/packages/package.map", 'input);
    s := rds i;
    w := read();
@@ -279,7 +281,7 @@ begin
    for each x in w do     % x is a row of package.map
       if member('csl, x) and member('psl, x) then <<
          if member('core, x) then
-            << if not (car x eq 'revision) then
+            << if not (car x memq coreskip) then
                core := car x . core >>
          else noncore := car x . noncore >>;
    i := open("fasl.$lisp/core-packages.dat", 'output);
